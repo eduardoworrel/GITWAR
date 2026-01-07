@@ -1,0 +1,1107 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* GitHub Dark Theme Colors */
+  --gh-bg-primary: #0d1117;
+  --gh-bg-secondary: #161b22;
+  --gh-bg-tertiary: #21262d;
+  --gh-border: #30363d;
+  --gh-text-primary: #c9d1d9;
+  --gh-text-secondary: #8b949e;
+  --gh-text-muted: #484f58;
+  --gh-accent-green: #238636;
+  --gh-accent-green-hover: #2ea043;
+  --gh-accent-blue: #58a6ff;
+  --gh-accent-purple: #8957e5;
+  --gh-accent-red: #f85149;
+  --gh-accent-orange: #d29922;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--gh-bg-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+  color: var(--gh-text-primary);
+  cursor: grab;
+}
+
+canvas {
+  cursor: inherit;
+}
+
+/* Auth Page */
+.auth-page {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--gh-bg-primary) 0%, var(--gh-bg-secondary) 100%);
+}
+
+.auth-container {
+  text-align: center;
+  padding: 2rem;
+}
+
+.auth-title {
+  font-size: 3rem;
+  color: var(--gh-text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.auth-subtitle {
+  font-size: 1.1rem;
+  color: var(--gh-text-secondary);
+  margin-bottom: 2rem;
+}
+
+/* Loading Screen */
+.loading-screen {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gh-bg-primary);
+}
+
+.loading-content {
+  text-align: center;
+}
+
+.loading-title {
+  font-size: 2.5rem;
+  color: var(--gh-text-primary);
+  margin-bottom: 2rem;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid var(--gh-border);
+  border-top-color: var(--gh-accent-green);
+  border-radius: 50%;
+  margin: 0 auto 1.5rem;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-message {
+  font-size: 1.1rem;
+  color: var(--gh-text-secondary);
+}
+
+.loading-retry {
+  margin-top: 1.5rem;
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  color: white;
+  background: var(--gh-accent-green);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+  font-weight: 500;
+}
+
+.loading-retry:hover {
+  background: var(--gh-accent-green-hover);
+  transform: scale(1.02);
+}
+
+/* Login Modal Overlay */
+.login-modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.login-modal-content {
+  pointer-events: auto;
+  background: var(--gh-bg-secondary);
+  border: 1px solid var(--gh-border);
+  border-radius: 12px;
+  padding: 2rem;
+  min-width: 320px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.login-title {
+  font-size: 1.5rem;
+  color: var(--gh-text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.login-subtitle {
+  font-size: 0.9rem;
+  color: var(--gh-text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.login-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.login-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 24px;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.2s, filter 0.2s;
+}
+
+.login-btn:hover {
+  transform: scale(1.02);
+  filter: brightness(1.1);
+}
+
+.login-btn svg {
+  flex-shrink: 0;
+}
+
+/* GitHub Button */
+.github-btn {
+  background: #24292f;
+}
+
+/* GitLab Button */
+.gitlab-btn {
+  background: #fc6d26;
+}
+
+/* HuggingFace Button */
+.huggingface-btn {
+  background: #ffcc00;
+  color: #1a1a1a;
+}
+
+.login-note {
+  font-size: 0.8rem;
+  color: var(--gh-text-muted);
+  margin-top: 1.5rem;
+}
+
+/* Spectator Banner */
+.spectator-banner {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--gh-bg-secondary);
+  padding: 0.75rem 1.5rem;
+  border-radius: 0 0 8px 8px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  z-index: 100;
+  border: 1px solid var(--gh-border);
+  border-top: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.spectator-icon {
+  font-size: 1.25rem;
+}
+
+.spectator-text {
+  color: var(--gh-text-secondary);
+  font-size: 0.9rem;
+}
+
+.spectator-text strong {
+  color: var(--gh-accent-blue);
+}
+
+.spectator-login-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: 1rem;
+}
+
+.spectator-login-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.2s, filter 0.2s;
+}
+
+.spectator-login-btn:hover {
+  transform: scale(1.1);
+  filter: brightness(1.2);
+}
+
+.spectator-login-btn.github {
+  background: #24292f;
+  color: white;
+}
+
+.spectator-login-btn.gitlab {
+  background: #fc6d26;
+  color: white;
+}
+
+.spectator-login-btn.huggingface {
+  background: #ffcc00;
+  color: #1a1a1a;
+}
+
+/* Login Bar - Bottom translucent bar */
+.login-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(22, 27, 34, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  z-index: 100;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.login-bar-text {
+  color: var(--gh-text-secondary);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.login-bar-buttons {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.login-bar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.2s, filter 0.2s;
+}
+
+.login-bar-btn:hover {
+  transform: scale(1.05);
+  filter: brightness(1.1);
+}
+
+.login-bar-btn.github {
+  background: #24292f;
+  color: white;
+}
+
+.login-bar-btn.gitlab {
+  background: #fc6d26;
+  color: white;
+}
+
+.login-bar-btn.huggingface {
+  background: #FFD21E;
+  color: #1a1a1a;
+}
+
+.login-bar-btn svg {
+  flex-shrink: 0;
+}
+
+/* Responsive: stack on small screens */
+@media (max-width: 600px) {
+  .login-bar {
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  .login-bar-buttons {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .login-bar-btn {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+  }
+}
+
+/* Mac-style Dock */
+.dock-container {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+}
+
+.dock {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.dock-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.dock-item:hover {
+  transform: translateY(-8px) scale(1.15);
+}
+
+.dock-item:active {
+  transform: translateY(-4px) scale(1.1);
+}
+
+.dock-item-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dock-item-disabled:hover {
+  transform: none;
+}
+
+.dock-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.05));
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.dock-item:hover .dock-icon {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1));
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.dock-tooltip {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  background: rgba(30, 30, 30, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: white;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: tooltipFadeIn 0.15s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.dock-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: rgba(30, 30, 30, 0.95);
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.dock-separator {
+  width: 1px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.2);
+  margin: 0 8px;
+}
+
+/* Calendar Modal */
+.calendar-modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.calendar-modal {
+  width: 90%;
+  max-width: 480px;
+  max-height: 80vh;
+  background: var(--gh-bg-secondary);
+  border: 1px solid var(--gh-border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+  animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.calendar-modal-wide {
+  max-width: 900px;
+  width: 95%;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, var(--gh-accent-purple), var(--gh-accent-blue));
+}
+
+.calendar-date {
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-day {
+  font-size: 42px;
+  font-weight: 700;
+  color: white;
+  line-height: 1;
+}
+
+.calendar-month {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  text-transform: capitalize;
+  margin-top: 4px;
+}
+
+.calendar-current-time {
+  font-size: 32px;
+  font-weight: 700;
+  color: white;
+  font-family: monospace;
+}
+
+.calendar-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.calendar-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 24px;
+  background: var(--gh-bg-tertiary);
+  border-bottom: 1px solid var(--gh-border);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--gh-text-secondary);
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* Calendar with Cards */
+/* Calendar Modal - Complete Rewrite */
+.cal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+}
+
+.cal-modal {
+  width: 95%;
+  max-width: 1400px;
+  height: 85vh;
+  background: var(--gh-bg-secondary);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  flex-shrink: 0;
+}
+
+.cal-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.cal-day {
+  font-size: 48px;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.cal-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.cal-weekday {
+  font-size: 16px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.cal-month {
+  font-size: 13px;
+  opacity: 0.8;
+  text-transform: capitalize;
+}
+
+.cal-current {
+  font-size: 36px;
+  font-weight: 200;
+  font-family: monospace;
+  letter-spacing: 2px;
+}
+
+.cal-close {
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cal-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+/* Legend */
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 12px 24px;
+  background: var(--gh-bg-tertiary);
+  border-bottom: 1px solid var(--gh-border);
+  flex-shrink: 0;
+}
+
+.cal-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--gh-text-primary);
+}
+
+.cal-legend-bar {
+  width: 24px;
+  height: 8px;
+  border-radius: 4px;
+}
+
+.cal-bar-bug {
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+}
+
+.cal-bar-inter {
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+}
+
+.cal-legend-icon {
+  font-size: 18px;
+}
+
+.cal-legend-freq {
+  font-size: 11px;
+  color: var(--gh-text-muted);
+  margin-left: 4px;
+}
+
+/* Scrollable Timeline */
+.cal-scroll {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: auto;
+  background: var(--gh-bg-primary);
+}
+
+.cal-scroll::-webkit-scrollbar {
+  height: 12px;
+  width: 12px;
+}
+
+.cal-scroll::-webkit-scrollbar-track {
+  background: var(--gh-bg-tertiary);
+}
+
+.cal-scroll::-webkit-scrollbar-thumb {
+  background: var(--gh-border);
+  border-radius: 6px;
+}
+
+.cal-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--gh-text-muted);
+}
+
+/* Timeline Container */
+.cal-timeline {
+  position: relative;
+  min-height: 400px;
+  padding-bottom: 20px;
+}
+
+/* Hour Grid Lines */
+.cal-grid-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--gh-border);
+  opacity: 0.4;
+}
+
+/* Hour Labels Bar */
+.cal-hours-bar {
+  position: sticky;
+  top: 0;
+  height: 36px;
+  background: var(--gh-bg-secondary);
+  border-bottom: 1px solid var(--gh-border);
+  z-index: 10;
+}
+
+.cal-hour-label {
+  position: absolute;
+  top: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gh-text-secondary);
+  font-family: monospace;
+  padding-left: 8px;
+}
+
+/* Event Rows */
+.cal-event-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 60px;
+  border-bottom: 1px solid var(--gh-border);
+}
+
+.cal-event-row-cards {
+  height: 100px;
+}
+
+/* Row Labels (sticky left) */
+.cal-row-label {
+  position: sticky;
+  left: 0;
+  flex-shrink: 0;
+  width: 140px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--gh-bg-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gh-text-primary);
+  z-index: 10;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+  box-sizing: border-box;
+}
+
+.cal-row-label span:first-child {
+  font-size: 18px;
+}
+
+/* Continuous Bar (Bug Swarm) */
+.cal-continuous-bar {
+  flex: 1;
+  height: 24px;
+  margin: auto 300px auto 0;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  padding-left: 16px;
+}
+
+.cal-continuous-bar.cal-bar-bug {
+  background: linear-gradient(90deg,
+    rgba(34, 197, 94, 0.3) 0%,
+    rgba(34, 197, 94, 0.5) 50%,
+    rgba(34, 197, 94, 0.3) 100%);
+  border: 1px solid rgba(34, 197, 94, 0.5);
+}
+
+.cal-bar-text {
+  font-size: 11px;
+  color: #22c55e;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Tick Marks Row (Intermediate) */
+.cal-tick-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.cal-tick {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  border-radius: 2px;
+}
+
+.cal-tick-inter {
+  background: #3b82f6;
+  opacity: 0.7;
+}
+
+.cal-tick-inter:hover {
+  opacity: 1;
+  height: 28px;
+}
+
+/* Cards Row Container */
+.cal-cards-row {
+  position: relative;
+  flex: 1;
+  height: 100%;
+}
+
+/* Event Cards */
+.cal-card {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--gh-bg-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  min-width: 160px;
+}
+
+.cal-card:hover {
+  transform: translateY(-50%) scale(1.05);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  z-index: 15;
+}
+
+.cal-card-inter {
+  border-left: 4px solid #3b82f6;
+  background: linear-gradient(135deg, var(--gh-bg-secondary), rgba(59, 130, 246, 0.1));
+  min-width: 120px;
+  padding: 8px 10px;
+}
+
+.cal-card-inter .cal-card-icon {
+  font-size: 22px;
+}
+
+.cal-card-inter .cal-card-time {
+  font-size: 12px;
+}
+
+.cal-card-inter .cal-card-name {
+  font-size: 11px;
+}
+
+.cal-card-unex {
+  border-left: 4px solid #a855f7;
+  background: linear-gradient(135deg, var(--gh-bg-secondary), rgba(168, 85, 247, 0.1));
+}
+
+.cal-card-boss {
+  border-left: 4px solid #ef4444;
+  background: linear-gradient(135deg, var(--gh-bg-secondary), rgba(239, 68, 68, 0.15));
+  min-width: 200px;
+  animation: bossGlow 2s ease-in-out infinite;
+}
+
+@keyframes bossGlow {
+  0%, 100% { box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3); }
+  50% { box-shadow: 0 8px 24px rgba(239, 68, 68, 0.5); }
+}
+
+.cal-card-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.cal-boss-icon {
+  font-size: 36px;
+  animation: bossShake 0.5s ease-in-out infinite;
+}
+
+@keyframes bossShake {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+.cal-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cal-card-time {
+  font-size: 14px;
+  font-weight: 700;
+  font-family: monospace;
+  color: var(--gh-text-primary);
+}
+
+.cal-card-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gh-text-primary);
+}
+
+.cal-card-desc {
+  font-size: 10px;
+  color: var(--gh-text-muted);
+}
+
+/* Current Time Indicator */
+.cal-now-indicator {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.cal-now-badge {
+  position: sticky;
+  top: 4px;
+  display: inline-block;
+  padding: 4px 10px;
+  background: #ef4444;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: monospace;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(239, 68, 68, 0.5);
+  transform: translateX(-50%);
+}
+
+.cal-now-line {
+  position: absolute;
+  top: 36px;
+  left: 0;
+  width: 2px;
+  height: 100%;
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+}
+
+/* Footer */
+.cal-footer {
+  padding: 12px 24px;
+  background: var(--gh-bg-tertiary);
+  border-top: 1px solid var(--gh-border);
+  text-align: center;
+  font-size: 12px;
+  color: var(--gh-text-muted);
+  flex-shrink: 0;
+}
+
+/* Now Button */
+.cal-now-btn {
+  position: absolute;
+  bottom: 70px;
+  right: 24px;
+  padding: 10px 20px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);
+  transition: all 0.2s ease;
+  z-index: 30;
+  animation: nowBtnPulse 2s ease-in-out infinite;
+}
+
+.cal-now-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 24px rgba(239, 68, 68, 0.5);
+}
+
+@keyframes nowBtnPulse {
+  0%, 100% { box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 4px 24px rgba(239, 68, 68, 0.6); }
+}
+
+/* Responsive dock */
+@media (max-width: 500px) {
+  .dock {
+    padding: 6px 10px;
+    gap: 2px;
+  }
+
+  .dock-item {
+    width: 40px;
+    height: 40px;
+  }
+
+  .dock-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .dock-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .dock-separator {
+    height: 28px;
+    margin: 0 4px;
+  }
+}

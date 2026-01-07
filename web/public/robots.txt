@@ -1,0 +1,9 @@
+# GitWorld Robots.txt
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://gitworld.app/sitemap.xml
+
+# Crawl-delay for politeness
+Crawl-delay: 1

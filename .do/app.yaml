@@ -1,0 +1,69 @@
+name: gitworld
+region: nyc
+
+domains:
+  - domain: gitwar.eduardoworrel.com
+    type: PRIMARY
+
+services:
+  - name: api
+    image:
+      registry_type: DOCR
+      repository: gitworld-api
+      tag: latest
+      registry: programador-tv
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 30
+      timeout_seconds: 10
+      period_seconds: 15
+      failure_threshold: 20
+    routes:
+      - path: /api
+      - path: /health
+      - path: /game
+    envs:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ConnectionStrings__DefaultConnection
+        value: Host=${db.HOSTNAME};Port=${db.PORT};Database=${db.DATABASE};Username=${db.USERNAME};Password=${db.PASSWORD};SSL Mode=Require;Trust Server Certificate=true
+      - key: S2__Enabled
+        value: "true"
+      - key: S2__Token
+        type: SECRET
+        # Configure via: doctl apps update <app-id> --spec .do/app.yaml
+      - key: S2__Basin
+        value: gitworld
+      - key: S2__StreamName
+        value: game-state
+      - key: S2__BaseUrl
+        value: https://aws.s2.dev
+      - key: GITHUB_TOKEN
+        type: SECRET
+        # Configure via DigitalOcean dashboard or doctl
+      - key: Clerk__SecretKey
+        type: SECRET
+        # Configure via DigitalOcean dashboard or doctl
+      - key: Clerk__Domain
+        value: thankful-sponge-61.clerk.accounts.dev
+
+  - name: web
+    image:
+      registry_type: DOCR
+      repository: gitworld-api
+      tag: web-latest
+      registry: programador-tv
+    http_port: 80
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    routes:
+      - path: /
+
+databases:
+  - name: db
+    engine: PG
+    production: false
+    version: "16"

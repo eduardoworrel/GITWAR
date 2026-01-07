@@ -1,0 +1,66 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
+x64/
+x86/
+artifacts/
+
+# .NET
+*.dll
+*.exe
+*.pdb
+*.user
+*.cache
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+.vs/
+
+# Rider
+.idea/
+*.sln.iml
+*.rsuser
+
+# NuGet
+**/packages/*
+!**/packages/build/
+*.nuget.props
+*.nuget.targets
+.nuget/
+nuget.exe
+
+# Environment
+.env
+.env.local
+.env.*.local
+*.local
+appsettings.*.local.json
+appsettings.Development.json
+
+# IDE
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Playwright MCP
+.playwright-mcp/
+
+# Frontend build
+web/dist/
+web/node_modules/

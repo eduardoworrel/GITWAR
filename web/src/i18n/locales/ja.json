@@ -1,0 +1,78 @@
+{
+  "monsters": {
+    "Bug": "バグ",
+    "AI Hallucination": "AIの幻覚",
+    "Manager": "マネージャー",
+    "Deploy Final Expediente": "金曜18時デプロイ",
+    "Unexplained Bug": "説明不能なバグ"
+  },
+  "auth": {
+    "loginGithub": "GitHubでログイン",
+    "signOut": "ログアウト"
+  },
+  "ui": {
+    "players": "プレイヤー",
+    "worldMap": "マップ",
+    "noPlayers": "プレイヤーなし",
+    "you": "あなた",
+    "combatStats": "戦闘ステータス",
+    "githubFormula": "ステータス計算式",
+    "viewOnGithub": "GitHubで見る",
+    "pressEscClose": "ESCで閉じる",
+    "shop": "ショップ",
+    "comingSoon": "近日公開"
+  },
+  "dock": {
+    "events": "イベント",
+    "shop": "ショップ",
+    "discord": "Discord"
+  },
+  "calendar": {
+    "bugSwarm": "Bug Swarm",
+    "intermediate": "Intermediate",
+    "unexplainedBug": "Unexplained Bug",
+    "boss": "ボス",
+    "every1min": "毎1分",
+    "every5min": "毎5分",
+    "every1hour": "毎1時間",
+    "at18h": "18:00",
+    "continuousEvent": "継続イベント - 毎1分発生",
+    "highHpBoss": "高HPボス",
+    "fridayDeploy": "終業デプロイ！",
+    "dragToNavigate": "← 横にドラッグしてナビゲート • 赤い線 = 現在 →",
+    "now": "今"
+  },
+  "game": {
+    "spectatorMode": "観戦モード：",
+    "waiting": "待機中...",
+    "miss": "ミス",
+    "crit": "🔥"
+  },
+  "stats": {
+    "hp": "HP",
+    "damage": "ダメージ",
+    "armor": "防御",
+    "critChance": "クリティカル %",
+    "evasion": "回避 %",
+    "attackSpeed": "攻撃速度",
+    "moveSpeed": "移動速度",
+    "elo": "ELO",
+    "winsLosses": "勝 / 敗"
+  },
+  "messages": {
+    "loading": "読み込み中...",
+    "joiningGame": "ゲームに参加中...",
+    "retry": "再試行",
+    "error": "エラー：{{message}}"
+  },
+  "connection": {
+    "reconnecting": "再接続中...",
+    "reconnectingDesc": "接続を復元しています",
+    "reconnected": "いくつかのバグが修正されました",
+    "reconnectedDesc": "サーバーが更新され、接続が復元されました。",
+    "ok": "OK"
+  },
+  "errors": {
+    "noActivity": "{{provider}}でアクティビティが見つかりませんでした。プレイするには少なくとも1つの公開リポジトリまたは1つのコミットが必要です。"
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "monsters": {
+    "Bug": "虫子",
+    "AI Hallucination": "AI幻觉",
+    "Manager": "经理",
+    "Deploy Final Expediente": "周五下午6点部署",
+    "Unexplained Bug": "无法解释的Bug"
+  },
+  "auth": {
+    "loginGithub": "使用 GitHub 登录",
+    "signOut": "退出"
+  },
+  "ui": {
+    "players": "玩家",
+    "worldMap": "地图",
+    "noPlayers": "暂无玩家",
+    "you": "你",
+    "combatStats": "战斗数据",
+    "githubFormula": "属性计算公式",
+    "viewOnGithub": "在 GitHub 查看",
+    "pressEscClose": "按 ESC 关闭",
+    "shop": "商店",
+    "comingSoon": "即将推出"
+  },
+  "dock": {
+    "events": "活动",
+    "shop": "商店",
+    "discord": "Discord"
+  },
+  "calendar": {
+    "bugSwarm": "Bug Swarm",
+    "intermediate": "Intermediate",
+    "unexplainedBug": "Unexplained Bug",
+    "boss": "BOSS",
+    "every1min": "每1分钟",
+    "every5min": "每5分钟",
+    "every1hour": "每1小时",
+    "at18h": "18:00",
+    "continuousEvent": "持续事件 - 每1分钟发生一次",
+    "highHpBoss": "高血量Boss",
+    "fridayDeploy": "下班部署！",
+    "dragToNavigate": "← 水平拖动导航 • 红线 = 现在 →",
+    "now": "现在"
+  },
+  "game": {
+    "spectatorMode": "观战模式：",
+    "waiting": "等待中...",
+    "miss": "未命中",
+    "crit": "🔥"
+  },
+  "stats": {
+    "hp": "生命",
+    "damage": "伤害",
+    "armor": "护甲",
+    "critChance": "暴击 %",
+    "evasion": "闪避 %",
+    "attackSpeed": "攻速",
+    "moveSpeed": "移速",
+    "elo": "ELO",
+    "winsLosses": "胜 / 负"
+  },
+  "messages": {
+    "loading": "加载中...",
+    "joiningGame": "正在加入游戏...",
+    "retry": "重试",
+    "error": "错误：{{message}}"
+  },
+  "connection": {
+    "reconnecting": "重新连接中...",
+    "reconnectingDesc": "正在恢复连接，请稍候",
+    "reconnected": "一些错误已修复",
+    "reconnectedDesc": "服务器已更新，连接已恢复。",
+    "ok": "确定"
+  },
+  "errors": {
+    "noActivity": "在 {{provider}} 上未找到活动记录。您需要至少1个公开仓库或1次提交才能游玩。"
+  }
+}

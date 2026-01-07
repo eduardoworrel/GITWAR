@@ -1,0 +1,80 @@
+{
+  "monsters": {
+    "Bug": "Bug",
+    "AI Hallucination": "AI Hallucination",
+    "Manager": "Manager",
+    "Deploy Final Expediente": "Friday 6pm Deploy",
+    "Unexplained Bug": "Unexplained Bug"
+  },
+  "auth": {
+    "loginGithub": "Sign in with GitHub",
+    "signOut": "Sign out"
+  },
+  "ui": {
+    "players": "PLAYERS",
+    "worldMap": "WORLD MAP",
+    "noPlayers": "No players",
+    "you": "YOU",
+    "combatStats": "Combat Stats",
+    "githubFormula": "GitHub Stats Formula",
+    "viewOnGithub": "View on GitHub",
+    "pressEscClose": "Press ESC to close",
+    "shop": "Shop",
+    "comingSoon": "Coming soon"
+  },
+  "dock": {
+    "events": "Events",
+    "shop": "Shop",
+    "discord": "Discord"
+  },
+  "calendar": {
+    "bugSwarm": "Bug Swarm",
+    "intermediate": "Intermediate",
+    "unexplainedBug": "Unexplained Bug",
+    "boss": "BOSS",
+    "every1min": "every 1 min",
+    "every5min": "every 5 min",
+    "every1hour": "every 1 hour",
+    "at18h": "6:00 PM",
+    "continuousEvent": "Continuous event - occurs every 1 minute",
+    "highHpBoss": "High HP Boss",
+    "fridayDeploy": "End of Day Deploy!",
+    "dragToNavigate": "← Drag horizontally to navigate • Red line = now →",
+    "now": "Now"
+  },
+  "game": {
+    "spectatorMode": "Spectator mode:",
+    "droneMode": "Panoramic view",
+    "playersOnline": "players online",
+    "waiting": "Waiting...",
+    "miss": "MISS",
+    "crit": "🔥"
+  },
+  "stats": {
+    "hp": "HP",
+    "damage": "Damage",
+    "armor": "Armor",
+    "critChance": "Crit %",
+    "evasion": "Evasion %",
+    "attackSpeed": "Atk Speed",
+    "moveSpeed": "Move Speed",
+    "elo": "ELO",
+    "winsLosses": "W / L"
+  },
+  "messages": {
+    "loading": "Loading...",
+    "joiningGame": "Joining game...",
+    "retry": "Try Again",
+    "error": "Error: {{message}}"
+  },
+  "connection": {
+    "reconnecting": "Reconnecting...",
+    "reconnectingDesc": "Please wait while we restore the connection",
+    "reconnected": "Some bugs fixed",
+    "reconnectedDesc": "The server was updated and the connection was restored.",
+    "ok": "OK"
+  },
+  "errors": {
+    "noActivity": "No activity found on {{provider}}. You need at least 1 public repository or 1 commit to play."
+  }
+}

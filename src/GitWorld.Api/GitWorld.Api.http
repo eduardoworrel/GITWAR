@@ -1,0 +1,25 @@
+@GitWorld.Api_HostAddress = http://localhost:5138
+
+### Health check
+GET {{GitWorld.Api_HostAddress}}/health
+Accept: application/json
+
+###
+
+### Game state
+GET {{GitWorld.Api_HostAddress}}/game/state
+Accept: application/json
+
+###
+
+### GitHub stats
+GET {{GitWorld.Api_HostAddress}}/github/eduardoworrel
+Accept: application/json
+
+###
+
+### Add test entity
+POST {{GitWorld.Api_HostAddress}}/game/test-entity
+Accept: application/json
+
+###

@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gitworld-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-gitworld}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-gitworld}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gitworld}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    container_name: gitworld-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=${POSTGRES_DB:-gitworld};Username=${POSTGRES_USER:-gitworld};Password=${POSTGRES_PASSWORD}
+      - S2__Enabled=true
+      - S2__Token=${S2_TOKEN}
+      - S2__Basin=${S2_BASIN:-gitworld}
+      - S2__BaseUrl=https://aws.s2.dev
+      - S2__StreamName=${S2_STREAM_NAME:-game-state-dev}
+      - Clerk__Domain=${CLERK_DOMAIN}
+      - Clerk__SecretKey=${CLERK_SECRET_KEY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+    ports:
+      - "5138:5138"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

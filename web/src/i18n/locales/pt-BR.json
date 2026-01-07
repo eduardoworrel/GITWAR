@@ -1,0 +1,80 @@
+{
+  "monsters": {
+    "Bug": "Bug",
+    "AI Hallucination": "Alucinação de IA",
+    "Manager": "Gerente",
+    "Deploy Final Expediente": "Deploy Sexta às 18h",
+    "Unexplained Bug": "Bug sem Explicação"
+  },
+  "auth": {
+    "loginGithub": "Entrar com GitHub",
+    "signOut": "Sair"
+  },
+  "ui": {
+    "players": "JOGADORES",
+    "worldMap": "MAPA",
+    "noPlayers": "Sem jogadores",
+    "you": "VOCÊ",
+    "combatStats": "Atributos de Combate",
+    "githubFormula": "Fórmula dos Atributos",
+    "viewOnGithub": "Ver no GitHub",
+    "pressEscClose": "Pressione ESC para fechar",
+    "shop": "Loja",
+    "comingSoon": "Em breve"
+  },
+  "dock": {
+    "events": "Eventos",
+    "shop": "Loja",
+    "discord": "Discord"
+  },
+  "calendar": {
+    "bugSwarm": "Bug Swarm",
+    "intermediate": "Intermediate",
+    "unexplainedBug": "Unexplained Bug",
+    "boss": "BOSS",
+    "every1min": "cada 1 min",
+    "every5min": "cada 5 min",
+    "every1hour": "cada 1 hora",
+    "at18h": "18:00",
+    "continuousEvent": "Evento contínuo - ocorre a cada 1 minuto",
+    "highHpBoss": "Boss de alta vida",
+    "fridayDeploy": "Deploy de Final de Expediente!",
+    "dragToNavigate": "← Arraste horizontalmente para navegar • Linha vermelha = agora →",
+    "now": "Agora"
+  },
+  "game": {
+    "spectatorMode": "Modo espectador:",
+    "droneMode": "Visão panorâmica",
+    "playersOnline": "jogadores online",
+    "waiting": "Aguardando...",
+    "miss": "ERROU",
+    "crit": "🔥"
+  },
+  "stats": {
+    "hp": "HP",
+    "damage": "Dano",
+    "armor": "Armadura",
+    "critChance": "Crítico %",
+    "evasion": "Evasão %",
+    "attackSpeed": "Vel. Ataque",
+    "moveSpeed": "Vel. Movimento",
+    "elo": "ELO",
+    "winsLosses": "V / D"
+  },
+  "messages": {
+    "loading": "Carregando...",
+    "joiningGame": "Entrando no jogo...",
+    "retry": "Tentar Novamente",
+    "error": "Erro: {{message}}"
+  },
+  "connection": {
+    "reconnecting": "Reconectando...",
+    "reconnectingDesc": "Aguarde enquanto restabelecemos a conexão",
+    "reconnected": "Alguns bugs corrigidos",
+    "reconnectedDesc": "O servidor foi atualizado e a conexão foi restabelecida.",
+    "ok": "OK"
+  },
+  "errors": {
+    "noActivity": "Nenhuma atividade encontrada no {{provider}}. Você precisa de pelo menos 1 repositório público ou 1 commit para jogar."
+  }
+}

@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GitWorld.Api/GitWorld.Api.csproj" />
+    <Project Path="src/GitWorld.Shared/GitWorld.Shared.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,78 @@
+{
+  "monsters": {
+    "Bug": "Bug",
+    "AI Hallucination": "Alucinación de IA",
+    "Manager": "Gerente",
+    "Deploy Final Expediente": "Deploy Viernes a las 18h",
+    "Unexplained Bug": "Bug sin Explicación"
+  },
+  "auth": {
+    "loginGithub": "Iniciar sesión con GitHub",
+    "signOut": "Cerrar sesión"
+  },
+  "ui": {
+    "players": "JUGADORES",
+    "worldMap": "MAPA",
+    "noPlayers": "Sin jugadores",
+    "you": "TÚ",
+    "combatStats": "Estadísticas de Combate",
+    "githubFormula": "Fórmula de Estadísticas",
+    "viewOnGithub": "Ver en GitHub",
+    "pressEscClose": "Presiona ESC para cerrar",
+    "shop": "Tienda",
+    "comingSoon": "Próximamente"
+  },
+  "dock": {
+    "events": "Eventos",
+    "shop": "Tienda",
+    "discord": "Discord"
+  },
+  "calendar": {
+    "bugSwarm": "Bug Swarm",
+    "intermediate": "Intermediate",
+    "unexplainedBug": "Unexplained Bug",
+    "boss": "JEFE",
+    "every1min": "cada 1 min",
+    "every5min": "cada 5 min",
+    "every1hour": "cada 1 hora",
+    "at18h": "18:00",
+    "continuousEvent": "Evento continuo - ocurre cada 1 minuto",
+    "highHpBoss": "Jefe de alta vida",
+    "fridayDeploy": "¡Deploy de Fin de Jornada!",
+    "dragToNavigate": "← Arrastra horizontalmente para navegar • Línea roja = ahora →",
+    "now": "Ahora"
+  },
+  "game": {
+    "spectatorMode": "Modo espectador:",
+    "waiting": "Esperando...",
+    "miss": "FALLO",
+    "crit": "🔥"
+  },
+  "stats": {
+    "hp": "HP",
+    "damage": "Daño",
+    "armor": "Armadura",
+    "critChance": "Crítico %",
+    "evasion": "Evasión %",
+    "attackSpeed": "Vel. Ataque",
+    "moveSpeed": "Vel. Movimiento",
+    "elo": "ELO",
+    "winsLosses": "V / D"
+  },
+  "messages": {
+    "loading": "Cargando...",
+    "joiningGame": "Entrando al juego...",
+    "retry": "Reintentar",
+    "error": "Error: {{message}}"
+  },
+  "connection": {
+    "reconnecting": "Reconectando...",
+    "reconnectingDesc": "Espera mientras restauramos la conexión",
+    "reconnected": "Algunos errores corregidos",
+    "reconnectedDesc": "El servidor se actualizó y la conexión se restableció.",
+    "ok": "OK"
+  },
+  "errors": {
+    "noActivity": "No se encontró actividad en {{provider}}. Necesitas al menos 1 repositorio público o 1 commit para jugar."
+  }
+}
