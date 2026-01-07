@@ -144,8 +144,8 @@ export function Dock() {
           {/* External links (right side) */}
           <DockItem
             icon={<GitHubIcon />}
-            label={t('ui.comingSoon')}
-            disabled
+            label="GitHub"
+            href="https://github.com/eduardoworrel/GITWAR"
           />
           <DockItem
             icon={<DiscordIcon />}
