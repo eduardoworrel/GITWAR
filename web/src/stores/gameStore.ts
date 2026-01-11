@@ -85,6 +85,37 @@ export interface EquippedItemInfo {
   tier: string;
 }
 
+// Raw entity payload from server (before defaults are applied)
+export interface EntityPayload {
+  id: string;
+  login?: string;
+  githubLogin?: string;
+  x: number;
+  y: number;
+  hp?: number;
+  currentHp?: number;
+  hpMax?: number;
+  maxHp?: number;
+  estado?: string;
+  state?: string;
+  reino: string;
+  type?: string;
+  alvoId?: string;
+  velocidadeAtaque?: number;
+  elo?: number;
+  vitorias?: number;
+  derrotas?: number;
+  dano?: number;
+  critico?: number;
+  evasao?: number;
+  armadura?: number;
+  velocidadeMovimento?: number;
+  level?: number;
+  exp?: number;
+  gold?: number;
+  equippedItems?: EquippedItemInfo[] | null;
+}
+
 export interface Player {
   id: string;
   githubLogin: string;
@@ -220,6 +251,8 @@ interface GameState {
   removePlayer: (id: string) => void;
   setPlayers: (players: Player[]) => void;
   updatePlayersPartial: (partials: Partial<Player & { id: string }>[]) => void;
+  mergeEntities: (players: Player[], removeAbsent: boolean) => void;
+  mergeEntitiesRaw: (entities: EntityPayload[], removeAbsent: boolean, parseEntityType: (type?: string) => EntityType) => void;
   setFrameTime: (time: number) => void;
   getInterpolatedPosition: (id: string) => { x: number; y: number } | null;
   addCombatEvents: (events: CombatEvent[]) => void;
@@ -442,6 +475,192 @@ export const useGameStore = create<GameState>((set, get) => ({
           }
         }
         // Note: We don't add new players from partials - they should come from full state
+      }
+
+      return { players: newPlayers };
+    }),
+
+  // Smart merge: add new, update existing, optionally remove absent
+  // This avoids full Map replacement which causes re-renders
+  mergeEntities: (players, removeAbsent) =>
+    set((state) => {
+      const newPlayers = new Map(state.players);
+      const now = Date.now();
+      const incomingIds = new Set(players.map(p => p.id));
+
+      // Update existing and add new
+      for (const player of players) {
+        const existing = newPlayers.get(player.id);
+
+        if (existing) {
+          // Check if anything actually changed to avoid unnecessary updates
+          const posChanged = Math.abs(player.x - existing.targetX) > 0.1 ||
+                            Math.abs(player.y - existing.targetY) > 0.1;
+          const hpChanged = player.hp !== existing.hp || player.maxHp !== existing.maxHp;
+          const stateChanged = player.estado !== existing.estado;
+          const statsChanged = player.level !== existing.level ||
+                              player.exp !== existing.exp ||
+                              player.gold !== existing.gold;
+
+          if (posChanged || hpChanged || stateChanged || statsChanged) {
+            // Calculate interpolated position for smooth movement
+            const elapsed = now - existing.lastUpdateTime;
+            const t = Math.min(1, elapsed / INTERPOLATION_DURATION_MS);
+            const currentX = lerp(existing.x, existing.targetX, t);
+            const currentY = lerp(existing.y, existing.targetY, t);
+
+            newPlayers.set(player.id, {
+              ...existing,
+              ...player,
+              x: currentX,
+              y: currentY,
+              targetX: player.x,
+              targetY: player.y,
+              lastUpdateTime: now,
+            });
+          }
+          // If nothing changed, keep existing reference (no update)
+        } else {
+          // New entity - add it
+          newPlayers.set(player.id, {
+            ...player,
+            targetX: player.x,
+            targetY: player.y,
+            lastUpdateTime: now,
+          });
+        }
+      }
+
+      // Remove entities not in incoming list (only for full state)
+      if (removeAbsent) {
+        for (const id of newPlayers.keys()) {
+          if (!incomingIds.has(id)) {
+            newPlayers.delete(id);
+          }
+        }
+      }
+
+      return { players: newPlayers };
+    }),
+
+  // Smart merge from raw server data - only applies defaults for NEW entities
+  // For existing entities, only updates fields that are actually present in the payload
+  mergeEntitiesRaw: (entities, removeAbsent, parseEntityType) =>
+    set((state) => {
+      const newPlayers = new Map(state.players);
+      const now = Date.now();
+      const incomingIds = new Set(entities.map(e => e.id));
+
+      for (const e of entities) {
+        const existing = newPlayers.get(e.id);
+
+        if (existing) {
+          // EXISTING entity - only update fields that are ACTUALLY present in payload
+          // This prevents overwriting real values with defaults
+          const updates: Partial<InterpolatedPlayer> = {};
+          let hasChanges = false;
+
+          // Position - always update if present
+          if (e.x !== undefined && e.y !== undefined) {
+            const posChanged = Math.abs(e.x - existing.targetX) > 0.1 ||
+                              Math.abs(e.y - existing.targetY) > 0.1;
+            if (posChanged) {
+              const elapsed = now - existing.lastUpdateTime;
+              const t = Math.min(1, elapsed / INTERPOLATION_DURATION_MS);
+              updates.x = lerp(existing.x, existing.targetX, t);
+              updates.y = lerp(existing.y, existing.targetY, t);
+              updates.targetX = e.x;
+              updates.targetY = e.y;
+              updates.lastUpdateTime = now;
+              hasChanges = true;
+            }
+          }
+
+          // HP - only if server sent it
+          const serverHp = e.hp ?? e.currentHp;
+          const serverMaxHp = e.hpMax ?? e.maxHp;
+          if (serverHp !== undefined && serverHp !== existing.hp) {
+            updates.hp = serverHp;
+            hasChanges = true;
+          }
+          if (serverMaxHp !== undefined && serverMaxHp !== existing.maxHp) {
+            updates.maxHp = serverMaxHp;
+            hasChanges = true;
+          }
+
+          // State - only if server sent it
+          const serverEstado = e.estado || e.state;
+          if (serverEstado !== undefined && serverEstado !== existing.estado) {
+            updates.estado = serverEstado;
+            hasChanges = true;
+          }
+
+          // Progression stats - only if server sent them
+          if (e.level !== undefined && e.level !== existing.level) {
+            updates.level = e.level;
+            hasChanges = true;
+          }
+          if (e.exp !== undefined && e.exp !== existing.exp) {
+            updates.exp = e.exp;
+            hasChanges = true;
+          }
+          if (e.gold !== undefined && e.gold !== existing.gold) {
+            updates.gold = e.gold;
+            hasChanges = true;
+          }
+
+          // Combat stats - only if server sent them
+          if (e.dano !== undefined) updates.dano = e.dano;
+          if (e.critico !== undefined) updates.critico = e.critico;
+          if (e.evasao !== undefined) updates.evasao = e.evasao;
+          if (e.armadura !== undefined) updates.armadura = e.armadura;
+          if (e.velocidadeAtaque !== undefined) updates.velocidadeAtaque = e.velocidadeAtaque;
+          if (e.velocidadeMovimento !== undefined) updates.velocidadeMovimento = e.velocidadeMovimento;
+
+          // Only update if something actually changed
+          if (hasChanges) {
+            newPlayers.set(e.id, { ...existing, ...updates });
+          }
+        } else {
+          // NEW entity - apply defaults here
+          const newPlayer: InterpolatedPlayer = {
+            id: e.id,
+            githubLogin: e.login || e.githubLogin || 'Unknown',
+            x: e.x,
+            y: e.y,
+            targetX: e.x,
+            targetY: e.y,
+            lastUpdateTime: now,
+            hp: e.hp ?? e.currentHp ?? 100,
+            maxHp: e.hpMax ?? e.maxHp ?? 100,
+            reino: e.reino,
+            type: parseEntityType(e.type),
+            estado: e.estado || e.state || 'idle',
+            velocidadeAtaque: e.velocidadeAtaque ?? 50,
+            elo: e.elo ?? 1000,
+            vitorias: e.vitorias ?? 0,
+            derrotas: e.derrotas ?? 0,
+            dano: e.dano ?? 20,
+            critico: e.critico ?? 10,
+            evasao: e.evasao ?? 5,
+            armadura: e.armadura ?? 10,
+            velocidadeMovimento: e.velocidadeMovimento ?? 50,
+            level: e.level ?? 1,
+            exp: e.exp ?? 0,
+            gold: e.gold ?? 0,
+            equippedItems: e.equippedItems ?? undefined,
+          };
+          newPlayers.set(e.id, newPlayer);
+        }
+      }
+
+      // Remove absent entities only if explicitly requested
+      if (removeAbsent) {
+        for (const id of newPlayers.keys()) {
+          if (!incomingIds.has(id)) {
+            newPlayers.delete(id);
+          }
+        }
       }
 
       return { players: newPlayers };

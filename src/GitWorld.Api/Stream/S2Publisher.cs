@@ -659,27 +659,27 @@ public class ActiveEventPayload
 public class EntityPayload
 {
     public Guid Id { get; set; }
-    public string Login { get; set; } = string.Empty;
-    public float X { get; set; }
-    public float Y { get; set; }
-    public int Hp { get; set; }
-    public int HpMax { get; set; }
-    public string Estado { get; set; } = "idle";
-    public string Reino { get; set; } = string.Empty;
+    public string? Login { get; set; }
+    public float? X { get; set; }
+    public float? Y { get; set; }
+    public int? Hp { get; set; }
+    public int? HpMax { get; set; }
+    public string? Estado { get; set; }
+    public string? Reino { get; set; }
     public Guid? AlvoId { get; set; }
-    public string Type { get; set; } = "player";
-    public int VelocidadeAtaque { get; set; } = 50;
-    public int VelocidadeMovimento { get; set; } = 50;
-    public int Elo { get; set; } = 1000;
-    public int Vitorias { get; set; }
-    public int Derrotas { get; set; }
-    public int Dano { get; set; } = 20;
-    public int Critico { get; set; } = 10;
-    public int Evasao { get; set; } = 5;
-    public int Armadura { get; set; } = 10;
-    public int Level { get; set; } = 1;
-    public int Exp { get; set; } = 0;
-    public int Gold { get; set; } = 0;
+    public string? Type { get; set; }
+    public int? VelocidadeAtaque { get; set; }
+    public int? VelocidadeMovimento { get; set; }
+    public int? Elo { get; set; }
+    public int? Vitorias { get; set; }
+    public int? Derrotas { get; set; }
+    public int? Dano { get; set; }
+    public int? Critico { get; set; }
+    public int? Evasao { get; set; }
+    public int? Armadura { get; set; }
+    public int? Level { get; set; }
+    public int? Exp { get; set; }
+    public int? Gold { get; set; }
     public List<EquippedItemPayload>? EquippedItems { get; set; }
 }
 

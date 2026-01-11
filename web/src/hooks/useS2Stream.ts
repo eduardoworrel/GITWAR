@@ -1,48 +1,12 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { S2 } from '@s2-dev/streamstore';
 import { useGameStore } from '../stores/gameStore';
-import type { Player, CombatEvent, CombatEventType, EntityType, EventType, RewardEvent, LevelUpEvent } from '../stores/gameStore';
+import type { CombatEvent, CombatEventType, EntityType, EventType, RewardEvent, LevelUpEvent, EntityPayload } from '../stores/gameStore';
 
 // S2 Configuration from environment
 const S2_TOKEN = import.meta.env.VITE_S2_READ_TOKEN;
 const S2_BASIN = import.meta.env.VITE_S2_BASIN || 'gitworld';
 const S2_STREAM = import.meta.env.VITE_S2_STREAM || 'game-state';
-
-interface EquippedItemPayload {
-  name: string;
-  category: string;
-  tier: string;
-}
-
-interface EntityPayload {
-  id: string;
-  login?: string;
-  githubLogin?: string;
-  x: number;
-  y: number;
-  hp?: number;
-  currentHp?: number;
-  hpMax?: number;
-  maxHp?: number;
-  estado?: string;
-  state?: string;
-  reino: string;
-  type?: string;
-  alvoId?: string;
-  velocidadeAtaque?: number;
-  elo?: number;
-  vitorias?: number;
-  derrotas?: number;
-  dano?: number;
-  critico?: number;
-  evasao?: number;
-  armadura?: number;
-  velocidadeMovimento?: number;
-  level?: number;
-  exp?: number;
-  gold?: number;
-  equippedItems?: EquippedItemPayload[] | null;
-}
 
 interface EventPayload {
   type: string;
@@ -110,8 +74,6 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
   const effectiveToken = customReadToken || S2_TOKEN;
 
   // Store selectors
-  const setPlayers = useGameStore((s) => s.setPlayers);
-  const updatePlayersPartial = useGameStore((s) => s.updatePlayersPartial);
   const addCombatEvents = useGameStore((s) => s.addCombatEvents);
   const addRewardEvents = useGameStore((s) => s.addRewardEvents);
   const addLevelUpEvents = useGameStore((s) => s.addLevelUpEvents);
@@ -137,74 +99,16 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
     return typeStr.toLowerCase() as EntityType;
   }, []);
 
-  // Process entities - handles both full state and delta updates
+  // Process entities - pass raw data to store for intelligent merging
   const processEntities = useCallback((entities: EntityPayload[], isFullState: boolean = true) => {
     if (entities.length === 0) return;
 
-    if (isFullState) {
-      // Full state: replace all entities
-      const players: Player[] = entities.map((e) => ({
-        id: e.id,
-        githubLogin: e.login || e.githubLogin || 'Unknown',
-        x: e.x,
-        y: e.y,
-        hp: e.hp ?? e.currentHp ?? 100,
-        maxHp: e.hpMax ?? e.maxHp ?? 100,
-        reino: e.reino,
-        type: parseEntityType(e.type),
-        estado: e.estado || e.state || 'idle',
-        velocidadeAtaque: e.velocidadeAtaque ?? 50,
-        elo: e.elo ?? 1000,
-        vitorias: e.vitorias ?? 0,
-        derrotas: e.derrotas ?? 0,
-        dano: e.dano ?? 20,
-        critico: e.critico ?? 10,
-        evasao: e.evasao ?? 5,
-        armadura: e.armadura ?? 10,
-        velocidadeMovimento: e.velocidadeMovimento ?? 50,
-        level: e.level ?? 1,
-        exp: e.exp ?? 0,
-        gold: e.gold ?? 0,
-        equippedItems: e.equippedItems ?? undefined,
-      }));
-      setPlayers(players);
-    } else {
-      // Delta update: merge only changed fields
-      const partials: Partial<Player & { id: string }>[] = entities.map((e) => {
-        const partial: Partial<Player & { id: string }> = { id: e.id };
-
-        // Only include fields that are present in the delta
-        if (e.login !== undefined || e.githubLogin !== undefined)
-          partial.githubLogin = e.login || e.githubLogin;
-        if (e.x !== undefined) partial.x = e.x;
-        if (e.y !== undefined) partial.y = e.y;
-        if (e.hp !== undefined || e.currentHp !== undefined)
-          partial.hp = e.hp ?? e.currentHp;
-        if (e.hpMax !== undefined || e.maxHp !== undefined)
-          partial.maxHp = e.hpMax ?? e.maxHp;
-        if (e.reino !== undefined) partial.reino = e.reino;
-        if (e.type !== undefined) partial.type = parseEntityType(e.type);
-        if (e.estado !== undefined || e.state !== undefined)
-          partial.estado = e.estado || e.state;
-        if (e.velocidadeAtaque !== undefined) partial.velocidadeAtaque = e.velocidadeAtaque;
-        if (e.elo !== undefined) partial.elo = e.elo;
-        if (e.vitorias !== undefined) partial.vitorias = e.vitorias;
-        if (e.derrotas !== undefined) partial.derrotas = e.derrotas;
-        if (e.dano !== undefined) partial.dano = e.dano;
-        if (e.critico !== undefined) partial.critico = e.critico;
-        if (e.evasao !== undefined) partial.evasao = e.evasao;
-        if (e.armadura !== undefined) partial.armadura = e.armadura;
-        if (e.velocidadeMovimento !== undefined) partial.velocidadeMovimento = e.velocidadeMovimento;
-        if (e.level !== undefined) partial.level = e.level;
-        if (e.exp !== undefined) partial.exp = e.exp;
-        if (e.gold !== undefined) partial.gold = e.gold;
-        if (e.equippedItems !== undefined) partial.equippedItems = e.equippedItems ?? undefined;
-
-        return partial;
-      });
-      updatePlayersPartial(partials);
+    // Pass raw payloads to mergeEntitiesRaw - it will handle defaults for NEW entities only
+    const mergeEntitiesRaw = useGameStore.getState().mergeEntitiesRaw;
+    if (mergeEntitiesRaw) {
+      mergeEntitiesRaw(entities, isFullState, parseEntityType);
     }
-  }, [setPlayers, updatePlayersPartial, parseEntityType]);
+  }, [parseEntityType]);
 
   // Process events
   const processEvents = useCallback((events: EventPayload[]) => {
@@ -275,8 +179,10 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
     lastMessageTimeRef.current = Date.now();
 
     const entities = payload.entidades || payload.entities || [];
-    // Default to full state if not specified (backwards compatible with global stream)
-    const isFullState = payload.isFullState !== false;
+    // CRITICAL: Only remove absent entities if server EXPLICITLY says isFullState: true
+    // Default to false to prevent constant entity removal/reset
+    const isFullState = payload.isFullState === true;
+
     processEntities(entities, isFullState);
 
     if (payload.eventos && payload.eventos.length > 0) {
@@ -473,6 +379,9 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
   const handleDisconnectedRef = useRef(handleDisconnected);
   handleDisconnectedRef.current = handleDisconnected;
 
+  const clearOldEventsRef = useRef(clearOldEvents);
+  clearOldEventsRef.current = clearOldEvents;
+
   // Track stream changes to force reconnection
   const prevStreamNameRef = useRef(effectiveStreamName);
   const prevTokenRef = useRef(effectiveToken);
@@ -493,7 +402,7 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
       wasDisconnectedRef.current = false;
     }
 
-    cleanupIntervalRef.current = window.setInterval(() => clearOldEvents(), 500);
+    cleanupIntervalRef.current = window.setInterval(() => clearOldEventsRef.current(), 500);
 
     lastMessageTimeRef.current = Date.now();
     heartbeatCheckRef.current = window.setInterval(() => {
@@ -520,5 +429,5 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
         clearInterval(heartbeatCheckRef.current);
       }
     };
-  }, [enabled, clearOldEvents, effectiveStreamName, effectiveToken]);
+  }, [enabled, effectiveStreamName, effectiveToken]);
 }
