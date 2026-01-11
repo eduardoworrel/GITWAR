@@ -1,9 +1,10 @@
 // @ts-nocheck
 // Models may not use all props - each has its own internal color scheme
-import { useRef } from 'react';
+import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { UNIT_VECTOR3 } from './optimizations';
+import { getSharedMaterial, SHARED_MATERIALS } from './AnimationManager';
 
 interface ErrorModelProps {
   color: number;

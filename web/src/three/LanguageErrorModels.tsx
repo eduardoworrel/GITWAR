@@ -1,9 +1,28 @@
 // @ts-nocheck
 // Models may not use all props - each has its own internal color scheme
-import { useRef } from 'react';
+import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { UNIT_VECTOR3 } from './optimizations';
+import { getSharedMaterial, SHARED_MATERIALS } from './AnimationManager';
+
+// Pre-create shared geometries for language error models
+const SHARED_GEOMETRIES = {
+  capsule: new THREE.CapsuleGeometry(8, 12, 8, 16),
+  smallSphere: new THREE.SphereGeometry(2, 8, 8),
+  mediumSphere: new THREE.SphereGeometry(5, 12, 8),
+  largeSphere: new THREE.SphereGeometry(8, 16, 16),
+  smallBox: new THREE.BoxGeometry(2, 2, 1),
+  mediumBox: new THREE.BoxGeometry(6, 4, 1),
+  largeBox: new THREE.BoxGeometry(12, 8, 3),
+  torus: new THREE.TorusGeometry(8, 0.3, 8, 16),
+  ring: new THREE.RingGeometry(1.5, 2.5, 16),
+  circle: new THREE.CircleGeometry(4, 16),
+  cylinder: new THREE.CylinderGeometry(2, 2, 25, 8),
+  cone: new THREE.ConeGeometry(5, 12, 8),
+  icosahedron: new THREE.IcosahedronGeometry(6, 0),
+  dodecahedron: new THREE.DodecahedronGeometry(4),
+};
 
 interface ErrorModelProps {
   color: number;
