@@ -88,7 +88,7 @@ export function JsUndefinedModel({ color, opacity, isWalking, lastAttackTime }: 
       {[0, 5, 10, 15].map((y, i) => (
         <mesh key={`ring-${i}`} position={[0, y - 5, 0]} rotation={[Math.PI / 2, 0, 0]}>
           <torusGeometry args={[8 - i * 0.5, 0.3, 8, 16]} />
-          <meshBasicMaterial color={0xcccccc} transparent opacity={opacity * 0.5} />
+          <meshBasicMaterial color={0xcccccc}  />
         </mesh>
       ))}
 
@@ -107,11 +107,11 @@ export function JsUndefinedModel({ color, opacity, isWalking, lastAttackTime }: 
         <group key={`qm-${i}`} ref={(el) => { if (el) questionMarksRef.current[i] = el; }}>
           <mesh>
             <boxGeometry args={[2, 6, 1]} />
-            <meshBasicMaterial color={0xf7df1e} transparent opacity={opacity * 0.8} />
+            <meshBasicMaterial color={0xf7df1e}  />
           </mesh>
           <mesh position={[0, -5, 0]}>
             <boxGeometry args={[2, 2, 1]} />
-            <meshBasicMaterial color={0xf7df1e} transparent opacity={opacity * 0.8} />
+            <meshBasicMaterial color={0xf7df1e}  />
           </mesh>
         </group>
       ))}
@@ -119,7 +119,7 @@ export function JsUndefinedModel({ color, opacity, isWalking, lastAttackTime }: 
       {/* "undefined" text representation - wavy bottom */}
       <mesh position={[0, -10, 0]}>
         <planeGeometry args={[20, 8]} />
-        <meshBasicMaterial color={0x666666} transparent opacity={opacity * 0.4} side={THREE.DoubleSide} />
+        <meshBasicMaterial color={0x666666}  side={THREE.DoubleSide} />
       </mesh>
     </group>
   );
@@ -205,17 +205,17 @@ export function JsNaNModel({ color, opacity, isWalking, lastAttackTime }: ErrorM
       {/* Core - chaotic shape with impossible colors */}
       <mesh ref={coreRef}>
         <icosahedronGeometry args={[6, 0]} />
-        <meshBasicMaterial color={0xff00ff} transparent opacity={opacity * 0.8} wireframe />
+        <meshBasicMaterial color={0xff00ff}  wireframe />
       </mesh>
       <mesh>
         <icosahedronGeometry args={[5, 0]} />
-        <meshBasicMaterial color={0x00ffff} transparent opacity={opacity * 0.5} />
+        <meshBasicMaterial color={0x00ffff}  />
       </mesh>
 
       {/* NaN text in center */}
       <mesh position={[0, 0, 6]}>
         <boxGeometry args={[8, 4, 0.5]} />
-        <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xff0000}  />
       </mesh>
 
       {/* Orbiting broken digits */}
@@ -296,43 +296,43 @@ export function JsCallbackHellModel({ color, opacity, isWalking, lastAttackTime 
             {/* Opening bracket/brace */}
             <mesh position={[-size / 2, 0, 0]}>
               <boxGeometry args={[1, 4, 1]} />
-              <meshBasicMaterial color={jsYellow} transparent opacity={opacity} />
+              <meshBasicMaterial color={jsYellow}  />
             </mesh>
             <mesh position={[-size / 2 + 1, 2, 0]}>
               <boxGeometry args={[2, 1, 1]} />
-              <meshBasicMaterial color={jsYellow} transparent opacity={opacity} />
+              <meshBasicMaterial color={jsYellow}  />
             </mesh>
             <mesh position={[-size / 2 + 1, -2, 0]}>
               <boxGeometry args={[2, 1, 1]} />
-              <meshBasicMaterial color={jsYellow} transparent opacity={opacity} />
+              <meshBasicMaterial color={jsYellow}  />
             </mesh>
 
             {/* Closing bracket/brace */}
             <mesh position={[size / 2, 0, 0]}>
               <boxGeometry args={[1, 4, 1]} />
-              <meshBasicMaterial color={jsYellow} transparent opacity={opacity} />
+              <meshBasicMaterial color={jsYellow}  />
             </mesh>
             <mesh position={[size / 2 - 1, 2, 0]}>
               <boxGeometry args={[2, 1, 1]} />
-              <meshBasicMaterial color={jsYellow} transparent opacity={opacity} />
+              <meshBasicMaterial color={jsYellow}  />
             </mesh>
             <mesh position={[size / 2 - 1, -2, 0]}>
               <boxGeometry args={[2, 1, 1]} />
-              <meshBasicMaterial color={jsYellow} transparent opacity={opacity} />
+              <meshBasicMaterial color={jsYellow}  />
             </mesh>
 
             {/* Callback arrow => */}
             <mesh position={[0, 0, 0]}>
               <boxGeometry args={[size - 4, 0.5, 0.5]} />
-              <meshBasicMaterial color={jsBlack} transparent opacity={opacity * 0.6} />
+              <meshBasicMaterial color={jsBlack}  />
             </mesh>
             <mesh position={[size / 2 - 4, 1, 0]} rotation={[0, 0, 0.5]}>
               <boxGeometry args={[2, 0.5, 0.5]} />
-              <meshBasicMaterial color={jsBlack} transparent opacity={opacity * 0.6} />
+              <meshBasicMaterial color={jsBlack}  />
             </mesh>
             <mesh position={[size / 2 - 4, -1, 0]} rotation={[0, 0, -0.5]}>
               <boxGeometry args={[2, 0.5, 0.5]} />
-              <meshBasicMaterial color={jsBlack} transparent opacity={opacity * 0.6} />
+              <meshBasicMaterial color={jsBlack}  />
             </mesh>
           </group>
         );
@@ -341,11 +341,11 @@ export function JsCallbackHellModel({ color, opacity, isWalking, lastAttackTime 
       {/* Eyes peeking from the depths */}
       <mesh position={[-3, layers * 5 + 5, 5]}>
         <sphereGeometry args={[2, 8, 8]} />
-        <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xff0000}  />
       </mesh>
       <mesh position={[3, layers * 5 + 5, 5]}>
         <sphereGeometry args={[2, 8, 8]} />
-        <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xff0000}  />
       </mesh>
     </group>
   );
@@ -405,21 +405,21 @@ export function PyIndentationErrorModel({ color, opacity, isWalking, lastAttackT
           position={[i % 2 === 0 ? -5 : 5, i * 6, 0]}
         >
           <boxGeometry args={[12, 5, 8]} />
-          <meshBasicMaterial color={i % 2 === 0 ? pythonBlue : pythonYellow} transparent opacity={opacity} />
+          <meshBasicMaterial color={i % 2 === 0 ? pythonBlue : pythonYellow}  />
         </mesh>
       ))}
 
       {/* Tab character visualization */}
       <mesh position={[-12, 15, 5]}>
         <boxGeometry args={[4, 8, 1]} />
-        <meshBasicMaterial color={0xff0000} transparent opacity={opacity * 0.7} />
+        <meshBasicMaterial color={0xff0000}  />
       </mesh>
 
       {/* Space character dots */}
       {[0, 1, 2, 3].map((i) => (
         <mesh key={`space-${i}`} position={[12 + i * 2, 15, 5]}>
           <sphereGeometry args={[0.5, 8, 8]} />
-          <meshBasicMaterial color={0x00ff00} transparent opacity={opacity * 0.7} />
+          <meshBasicMaterial color={0x00ff00}  />
         </mesh>
       ))}
 
@@ -427,7 +427,7 @@ export function PyIndentationErrorModel({ color, opacity, isWalking, lastAttackT
       <group position={[0, 38, 0]}>
         <mesh>
           <sphereGeometry args={[5, 12, 8]} />
-          <meshBasicMaterial color={pythonBlue} transparent opacity={opacity} />
+          <meshBasicMaterial color={pythonBlue}  />
         </mesh>
         {/* Eyes */}
         <mesh position={[-2, 2, 4]}>
@@ -521,7 +521,7 @@ export function PyNoneTypeModel({ color, opacity, isWalking, lastAttackTime }: E
       {/* "None" text outline */}
       <mesh position={[0, 0, 9]}>
         <ringGeometry args={[6, 8, 32]} />
-        <meshBasicMaterial color={0x3776ab} transparent opacity={opacity} side={THREE.DoubleSide} />
+        <meshBasicMaterial color={0x3776ab}  side={THREE.DoubleSide} />
       </mesh>
 
       {/* Concentric rings */}
@@ -543,7 +543,7 @@ export function PyNoneTypeModel({ color, opacity, isWalking, lastAttackTime }: E
           ref={(el) => { if (el) particlesRef.current[i] = el; }}
         >
           <boxGeometry args={[2, 2, 2]} />
-          <meshBasicMaterial color={0xffd43b} transparent opacity={opacity} />
+          <meshBasicMaterial color={0xffd43b}  />
         </mesh>
       ))}
     </group>
@@ -615,28 +615,28 @@ export function PyImportErrorModel({ color, opacity, isWalking, lastAttackTime }
         {/* Box body */}
         <mesh>
           <boxGeometry args={[16, 12, 12]} />
-          <meshBasicMaterial color={0x8b4513} transparent opacity={opacity} />
+          <meshBasicMaterial color={0x8b4513}  />
         </mesh>
         {/* Broken edges */}
         <mesh position={[8, 6, 0]} rotation={[0, 0, 0.3]}>
           <boxGeometry args={[2, 4, 12]} />
-          <meshBasicMaterial color={0x654321} transparent opacity={opacity} />
+          <meshBasicMaterial color={0x654321}  />
         </mesh>
         <mesh position={[-8, 6, 0]} rotation={[0, 0, -0.2]}>
           <boxGeometry args={[2, 4, 12]} />
-          <meshBasicMaterial color={0x654321} transparent opacity={opacity} />
+          <meshBasicMaterial color={0x654321}  />
         </mesh>
 
         {/* Lid */}
         <mesh ref={lidRef} position={[0, 6, -6]}>
           <boxGeometry args={[16, 2, 12]} />
-          <meshBasicMaterial color={0x654321} transparent opacity={opacity} />
+          <meshBasicMaterial color={0x654321}  />
         </mesh>
 
         {/* PyPI logo on box */}
         <mesh position={[0, 0, 6.1]}>
           <circleGeometry args={[4, 16]} />
-          <meshBasicMaterial color={pythonBlue} transparent opacity={opacity} />
+          <meshBasicMaterial color={pythonBlue}  />
         </mesh>
       </group>
 
@@ -650,13 +650,13 @@ export function PyImportErrorModel({ color, opacity, isWalking, lastAttackTime }
           {/* Snake head */}
           <mesh position={[0, 4, 0]}>
             <sphereGeometry args={[2, 8, 8]} />
-            <meshBasicMaterial color={i % 2 === 0 ? pythonBlue : pythonYellow} transparent opacity={opacity} />
+            <meshBasicMaterial color={i % 2 === 0 ? pythonBlue : pythonYellow}  />
           </mesh>
           {/* Snake body segments */}
           {[0, 1, 2, 3].map((j) => (
             <mesh key={`segment-${j}`} position={[0, -j * 3, 0]}>
               <sphereGeometry args={[1.5 - j * 0.2, 8, 8]} />
-              <meshBasicMaterial color={j % 2 === 0 ? pythonBlue : pythonYellow} transparent opacity={opacity} />
+              <meshBasicMaterial color={j % 2 === 0 ? pythonBlue : pythonYellow}  />
             </mesh>
           ))}
           {/* Eyes */}
@@ -726,12 +726,12 @@ export function JavaNullPointerModel({ color, opacity, isWalking, lastAttackTime
         {/* Arrow shaft */}
         <mesh position={[0, 0, -10]}>
           <cylinderGeometry args={[2, 2, 25, 8]} />
-          <meshBasicMaterial color={javaOrange} transparent opacity={opacity} />
+          <meshBasicMaterial color={javaOrange}  />
         </mesh>
         {/* Arrow head */}
         <mesh position={[0, 0, 5]} rotation={[Math.PI / 2, 0, 0]}>
           <coneGeometry args={[5, 12, 8]} />
-          <meshBasicMaterial color={javaRed} transparent opacity={opacity} />
+          <meshBasicMaterial color={javaRed}  />
         </mesh>
 
         {/* Cracks on arrow */}
@@ -743,7 +743,7 @@ export function JavaNullPointerModel({ color, opacity, isWalking, lastAttackTime
             rotation={[0, 0, Math.PI / 4 + i * 0.3]}
           >
             <boxGeometry args={[0.5, 6, 0.5]} />
-            <meshBasicMaterial color={0x000000} transparent opacity={opacity * 0.7} />
+            <meshBasicMaterial color={0x000000}  />
           </mesh>
         ))}
       </group>
@@ -751,7 +751,7 @@ export function JavaNullPointerModel({ color, opacity, isWalking, lastAttackTime
       {/* "null" target - empty/void */}
       <mesh position={[0, 0, 15]}>
         <ringGeometry args={[5, 8, 16]} />
-        <meshBasicMaterial color={0x333333} transparent opacity={opacity * 0.5} side={THREE.DoubleSide} />
+        <meshBasicMaterial color={0x333333}  side={THREE.DoubleSide} />
       </mesh>
       <mesh position={[0, 0, 15]}>
         <ringGeometry args={[0, 3, 16]} />
@@ -761,12 +761,12 @@ export function JavaNullPointerModel({ color, opacity, isWalking, lastAttackTime
       {/* Java coffee cup base */}
       <mesh position={[0, -15, 0]}>
         <cylinderGeometry args={[6, 5, 10, 16]} />
-        <meshBasicMaterial color={javaOrange} transparent opacity={opacity} />
+        <meshBasicMaterial color={javaOrange}  />
       </mesh>
       {/* Cup handle */}
       <mesh position={[7, -15, 0]} rotation={[0, 0, Math.PI / 2]}>
         <torusGeometry args={[3, 1, 8, 16, Math.PI]} />
-        <meshBasicMaterial color={javaOrange} transparent opacity={opacity} />
+        <meshBasicMaterial color={javaOrange}  />
       </mesh>
     </group>
   );
@@ -823,34 +823,34 @@ export function JavaClassNotFoundModel({ color, opacity, isWalking, lastAttackTi
       {/* Class keyword bracket */}
       <mesh position={[-8, 30, 0]}>
         <boxGeometry args={[2, 8, 2]} />
-        <meshBasicMaterial color={javaOrange} transparent opacity={opacity} />
+        <meshBasicMaterial color={javaOrange}  />
       </mesh>
       <mesh position={[8, 30, 0]}>
         <boxGeometry args={[2, 8, 2]} />
-        <meshBasicMaterial color={javaOrange} transparent opacity={opacity} />
+        <meshBasicMaterial color={javaOrange}  />
       </mesh>
 
       {/* Question mark in center */}
       <group position={[0, 20, 2]}>
         <mesh position={[0, 5, 0]}>
           <boxGeometry args={[6, 2, 1]} />
-          <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+          <meshBasicMaterial color={0xff0000}  />
         </mesh>
         <mesh position={[3, 3, 0]}>
           <boxGeometry args={[2, 4, 1]} />
-          <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+          <meshBasicMaterial color={0xff0000}  />
         </mesh>
         <mesh position={[0, 0, 0]}>
           <boxGeometry args={[6, 2, 1]} />
-          <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+          <meshBasicMaterial color={0xff0000}  />
         </mesh>
         <mesh position={[-3, -2, 0]}>
           <boxGeometry args={[2, 4, 1]} />
-          <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+          <meshBasicMaterial color={0xff0000}  />
         </mesh>
         <mesh position={[0, -6, 0]}>
           <boxGeometry args={[2, 2, 1]} />
-          <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+          <meshBasicMaterial color={0xff0000}  />
         </mesh>
       </group>
 
@@ -858,7 +858,7 @@ export function JavaClassNotFoundModel({ color, opacity, isWalking, lastAttackTi
       <group ref={searchLightRef} position={[0, 35, 0]}>
         <mesh rotation={[Math.PI / 4, 0, 0]}>
           <coneGeometry args={[3, 20, 16, 1, true]} />
-          <meshBasicMaterial color={0xffff00} transparent opacity={opacity * 0.3} side={THREE.DoubleSide} />
+          <meshBasicMaterial color={0xffff00}  side={THREE.DoubleSide} />
         </mesh>
       </group>
 
@@ -931,18 +931,18 @@ export function JavaOutOfMemoryModel({ color, opacity, isWalking, lastAttackTime
       {/* Giant coffee cup */}
       <mesh position={[0, 10, 0]}>
         <cylinderGeometry args={[12, 10, 20, 16]} />
-        <meshBasicMaterial color={javaOrange} transparent opacity={opacity} />
+        <meshBasicMaterial color={javaOrange}  />
       </mesh>
       {/* Cup handle */}
       <mesh position={[14, 10, 0]} rotation={[0, 0, Math.PI / 2]}>
         <torusGeometry args={[5, 2, 8, 16, Math.PI]} />
-        <meshBasicMaterial color={javaOrange} transparent opacity={opacity} />
+        <meshBasicMaterial color={javaOrange}  />
       </mesh>
 
       {/* Coffee inside - overflowing */}
       <mesh position={[0, 15, 0]}>
         <cylinderGeometry args={[11, 11, 12, 16]} />
-        <meshBasicMaterial color={coffeeColor} transparent opacity={opacity} />
+        <meshBasicMaterial color={coffeeColor}  />
       </mesh>
 
       {/* Overflow drops */}
@@ -952,7 +952,7 @@ export function JavaOutOfMemoryModel({ color, opacity, isWalking, lastAttackTime
           ref={(el) => { if (el) overflowRef.current[i] = el; }}
         >
           <sphereGeometry args={[2, 8, 8]} />
-          <meshBasicMaterial color={coffeeColor} transparent opacity={opacity} />
+          <meshBasicMaterial color={coffeeColor}  />
         </mesh>
       ))}
 
@@ -961,13 +961,13 @@ export function JavaOutOfMemoryModel({ color, opacity, isWalking, lastAttackTime
         {[0, 1, 2, 3, 4].map((i) => (
           <mesh key={`heap-${i}`} position={[(i - 2) * 5, i * 3, 0]}>
             <boxGeometry args={[4, 4, 4]} />
-            <meshBasicMaterial color={0xff0000} transparent opacity={opacity * 0.8} />
+            <meshBasicMaterial color={0xff0000}  />
           </mesh>
         ))}
         {/* "HEAP" text */}
         <mesh position={[0, 18, 5]}>
           <boxGeometry args={[15, 4, 1]} />
-          <meshBasicMaterial color={0xffffff} transparent opacity={opacity} />
+          <meshBasicMaterial color={0xffffff}  />
         </mesh>
       </group>
 
@@ -975,7 +975,7 @@ export function JavaOutOfMemoryModel({ color, opacity, isWalking, lastAttackTime
       {[0, 1, 2].map((i) => (
         <mesh key={`steam-${i}`} position={[(i - 1) * 5, 25 + Math.sin(phaseRef.current + i) * 3, 0]}>
           <sphereGeometry args={[2, 8, 8]} />
-          <meshBasicMaterial color={0xffffff} transparent opacity={opacity * 0.3} />
+          <meshBasicMaterial color={0xffffff}  />
         </mesh>
       ))}
     </group>
@@ -1033,7 +1033,7 @@ export function CsNullReferenceModel({ color, opacity, isWalking, lastAttackTime
       {/* Mirror frame */}
       <mesh position={[0, 15, -2]}>
         <boxGeometry args={[25, 30, 2]} />
-        <meshBasicMaterial color={csharpGreen} transparent opacity={opacity} />
+        <meshBasicMaterial color={csharpGreen}  />
       </mesh>
 
       {/* Broken mirror shards */}
@@ -1048,7 +1048,7 @@ export function CsNullReferenceModel({ color, opacity, isWalking, lastAttackTime
             rotation={[0, 0, (i * 0.3) - 0.5]}
           >
             <boxGeometry args={[6, 8, 0.5]} />
-            <meshBasicMaterial color={0xaaddff} transparent opacity={opacity * 0.7} />
+            <meshBasicMaterial color={0xaaddff}  />
           </mesh>
         );
       })}
@@ -1056,13 +1056,13 @@ export function CsNullReferenceModel({ color, opacity, isWalking, lastAttackTime
       {/* "null" reflection - empty */}
       <mesh position={[0, 15, 1]}>
         <planeGeometry args={[15, 8]} />
-        <meshBasicMaterial color={0x000000} transparent opacity={opacity * 0.5} />
+        <meshBasicMaterial color={0x000000}  />
       </mesh>
 
       {/* .NET logo hint */}
       <mesh position={[0, 32, 0]}>
         <dodecahedronGeometry args={[4]} />
-        <meshBasicMaterial color={csharpPurple} transparent opacity={opacity} />
+        <meshBasicMaterial color={csharpPurple}  />
       </mesh>
     </group>
   );
@@ -1113,22 +1113,22 @@ export function CsStackOverflowModel({ color, opacity, isWalking, lastAttackTime
           {/* Window frame */}
           <mesh>
             <boxGeometry args={[18, 12, 1]} />
-            <meshBasicMaterial color={windowGray} transparent opacity={opacity} />
+            <meshBasicMaterial color={windowGray}  />
           </mesh>
           {/* Title bar */}
           <mesh position={[0, 5, 0.6]}>
             <boxGeometry args={[18, 2, 0.5]} />
-            <meshBasicMaterial color={windowBlue} transparent opacity={opacity} />
+            <meshBasicMaterial color={windowBlue}  />
           </mesh>
           {/* Close button */}
           <mesh position={[7.5, 5, 0.8]}>
             <boxGeometry args={[2, 1.5, 0.3]} />
-            <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+            <meshBasicMaterial color={0xff0000}  />
           </mesh>
           {/* Error icon */}
           <mesh position={[0, 0, 0.6]}>
             <circleGeometry args={[3, 16]} />
-            <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+            <meshBasicMaterial color={0xff0000}  />
           </mesh>
         </group>
       ))}
@@ -1136,7 +1136,7 @@ export function CsStackOverflowModel({ color, opacity, isWalking, lastAttackTime
       {/* Recursive arrow */}
       <mesh position={[15, 25, 5]} rotation={[0, 0, Math.PI]}>
         <coneGeometry args={[3, 8, 8]} />
-        <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xff0000}  />
       </mesh>
     </group>
   );
@@ -1177,14 +1177,14 @@ export function CsInvalidCastModel({ color, opacity, isWalking, lastAttackTime }
       {/* Square peg (trying to fit) */}
       <mesh ref={shapeRef} position={[0, 30, 0]}>
         <boxGeometry args={[10, 10, 10]} />
-        <meshBasicMaterial color={csharpPurple} transparent opacity={opacity} />
+        <meshBasicMaterial color={csharpPurple}  />
       </mesh>
 
       {/* Round hole */}
       <group position={[0, 5, 0]}>
         <mesh ref={holeRef}>
           <cylinderGeometry args={[8, 8, 10, 16]} />
-          <meshBasicMaterial color={0x333333} transparent opacity={opacity} />
+          <meshBasicMaterial color={0x333333}  />
         </mesh>
         {/* Hole opening */}
         <mesh position={[0, 5, 0]} rotation={[Math.PI / 2, 0, 0]}>
@@ -1204,14 +1204,14 @@ export function CsInvalidCastModel({ color, opacity, isWalking, lastAttackTime }
           ]}
         >
           <octahedronGeometry args={[2]} />
-          <meshBasicMaterial color={0xffff00} transparent opacity={opacity * 0.8} />
+          <meshBasicMaterial color={0xffff00}  />
         </mesh>
       ))}
 
       {/* "InvalidCast" text bar */}
       <mesh position={[0, -5, 10]}>
         <boxGeometry args={[20, 3, 1]} />
-        <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xff0000}  />
       </mesh>
     </group>
   );
@@ -1282,7 +1282,7 @@ export function CSegFaultModel({ color, opacity, isWalking, lastAttackTime }: Er
       {/* Skull warning */}
       <mesh position={[0, 35, 5]}>
         <sphereGeometry args={[5, 8, 8]} />
-        <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xff0000}  />
       </mesh>
       {/* Skull eyes */}
       <mesh position={[-2, 36, 8]}>
@@ -1297,7 +1297,7 @@ export function CSegFaultModel({ color, opacity, isWalking, lastAttackTime }: Er
       {/* "SIGSEGV" text */}
       <mesh position={[0, -5, 5]}>
         <boxGeometry args={[20, 4, 1]} />
-        <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xff0000}  />
       </mesh>
     </group>
   );
@@ -1352,18 +1352,18 @@ export function CStackOverflowModel({ color, opacity, isWalking, lastAttackTime 
       <group position={[15, 30, 0]}>
         <mesh rotation={[0, 0, Math.PI]}>
           <coneGeometry args={[3, 10, 8]} />
-          <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+          <meshBasicMaterial color={0xff0000}  />
         </mesh>
         <mesh position={[0, -15, 0]}>
           <cylinderGeometry args={[1, 1, 20, 8]} />
-          <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+          <meshBasicMaterial color={0xff0000}  />
         </mesh>
       </group>
 
       {/* "main()" at bottom */}
       <mesh position={[0, -3, 5]}>
         <boxGeometry args={[12, 3, 1]} />
-        <meshBasicMaterial color={0x555555} transparent opacity={opacity} />
+        <meshBasicMaterial color={0x555555}  />
       </mesh>
     </group>
   );
@@ -1422,7 +1422,7 @@ export function CMemoryLeakModel({ color, opacity, isWalking, lastAttackTime }: 
       {/* Melting body */}
       <mesh ref={bodyRef} position={[0, 20, 0]}>
         <sphereGeometry args={[10, 12, 12]} />
-        <meshBasicMaterial color={leakColor} transparent opacity={opacity * 0.8} />
+        <meshBasicMaterial color={leakColor}  />
       </mesh>
 
       {/* Dripping drops */}
@@ -1433,7 +1433,7 @@ export function CMemoryLeakModel({ color, opacity, isWalking, lastAttackTime }: 
           position={[(i - 2) * 4, 15, 0]}
         >
           <sphereGeometry args={[1.5, 8, 8]} />
-          <meshBasicMaterial color={leakColor} transparent opacity={opacity} />
+          <meshBasicMaterial color={leakColor}  />
         </mesh>
       ))}
 
@@ -1446,7 +1446,7 @@ export function CMemoryLeakModel({ color, opacity, isWalking, lastAttackTime }: 
           rotation={[-Math.PI / 2, 0, 0]}
         >
           <circleGeometry args={[5, 16]} />
-          <meshBasicMaterial color={leakColor} transparent opacity={opacity * 0.5} />
+          <meshBasicMaterial color={leakColor}  />
         </mesh>
       ))}
 
@@ -1471,7 +1471,7 @@ export function CMemoryLeakModel({ color, opacity, isWalking, lastAttackTime }: 
       {/* "malloc" tag */}
       <mesh position={[0, 35, 0]}>
         <boxGeometry args={[12, 3, 1]} />
-        <meshBasicMaterial color={0xffaa00} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xffaa00}  />
       </mesh>
     </group>
   );
@@ -1522,7 +1522,7 @@ export function TsTypeErrorModel({ color, opacity, isWalking, lastAttackTime }: 
       {/* Cube trying to be sphere */}
       <mesh ref={cubeRef}>
         <boxGeometry args={[12, 12, 12]} />
-        <meshBasicMaterial color={tsBlue} transparent opacity={opacity} />
+        <meshBasicMaterial color={tsBlue}  />
       </mesh>
 
       {/* Ghost sphere it wants to be */}
@@ -1534,13 +1534,13 @@ export function TsTypeErrorModel({ color, opacity, isWalking, lastAttackTime }: 
       {/* Type annotation */}
       <mesh position={[0, -15, 0]}>
         <boxGeometry args={[20, 4, 1]} />
-        <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xff0000}  />
       </mesh>
 
       {/* TS logo */}
       <mesh position={[0, 0, 7]}>
         <boxGeometry args={[6, 8, 0.5]} />
-        <meshBasicMaterial color={0xffffff} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xffffff}  />
       </mesh>
 
       {/* Error squiggles */}
@@ -1551,7 +1551,7 @@ export function TsTypeErrorModel({ color, opacity, isWalking, lastAttackTime }: 
           rotation={[0, 0, Math.sin(phaseRef.current + i) * 0.3]}
         >
           <boxGeometry args={[4, 0.5, 0.5]} />
-          <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+          <meshBasicMaterial color={0xff0000}  />
         </mesh>
       ))}
     </group>
@@ -1600,13 +1600,13 @@ export function TsAnyModel({ color, opacity, isWalking, lastAttackTime }: ErrorM
       {/* Amorphous blob */}
       <mesh ref={blobRef}>
         <dodecahedronGeometry args={[10, 1]} />
-        <meshBasicMaterial color={0x888888} transparent opacity={opacity * 0.7} />
+        <meshBasicMaterial color={0x888888}  />
       </mesh>
 
       {/* "any" text floating */}
       <mesh position={[0, 18, 0]}>
         <boxGeometry args={[10, 4, 1]} />
-        <meshBasicMaterial color={0xffaa00} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xffaa00}  />
       </mesh>
 
       {/* Question marks around */}
@@ -1618,7 +1618,7 @@ export function TsAnyModel({ color, opacity, isWalking, lastAttackTime }: ErrorM
             position={[Math.cos(angle) * 15, 0, Math.sin(angle) * 15]}
           >
             <boxGeometry args={[2, 4, 1]} />
-            <meshBasicMaterial color={0xffffff} transparent opacity={opacity * 0.6} />
+            <meshBasicMaterial color={0xffffff}  />
           </mesh>
         );
       })}
@@ -1675,7 +1675,7 @@ export function TsReadonlyModel({ color, opacity, isWalking, lastAttackTime }: E
       {/* Frozen statue base */}
       <mesh position={[0, 15, 0]}>
         <boxGeometry args={[12, 25, 8]} />
-        <meshBasicMaterial color={tsBlue} transparent opacity={opacity} />
+        <meshBasicMaterial color={tsBlue}  />
       </mesh>
 
       {/* Ice covering */}
@@ -1696,12 +1696,12 @@ export function TsReadonlyModel({ color, opacity, isWalking, lastAttackTime }: E
         {/* Lock body */}
         <mesh>
           <boxGeometry args={[8, 6, 3]} />
-          <meshBasicMaterial color={0xffd700} transparent opacity={opacity} />
+          <meshBasicMaterial color={0xffd700}  />
         </mesh>
         {/* Lock shackle */}
         <mesh position={[0, 5, 0]}>
           <torusGeometry args={[3, 1, 8, 16, Math.PI]} />
-          <meshBasicMaterial color={0xcccccc} transparent opacity={opacity} />
+          <meshBasicMaterial color={0xcccccc}  />
         </mesh>
         {/* Keyhole */}
         <mesh position={[0, -1, 1.6]}>
@@ -1713,7 +1713,7 @@ export function TsReadonlyModel({ color, opacity, isWalking, lastAttackTime }: E
       {/* "readonly" text */}
       <mesh position={[0, -5, 5]}>
         <boxGeometry args={[16, 3, 1]} />
-        <meshBasicMaterial color={0x3178c6} transparent opacity={opacity} />
+        <meshBasicMaterial color={0x3178c6}  />
       </mesh>
     </group>
   );
@@ -1758,11 +1758,11 @@ export function PhpPaamayimModel({ color, opacity, isWalking, lastAttackTime }: 
       {/* Giant colon :: */}
       <mesh ref={dot1Ref} position={[0, 25, 0]}>
         <sphereGeometry args={[6, 16, 16]} />
-        <meshBasicMaterial color={phpPurple} transparent opacity={opacity} />
+        <meshBasicMaterial color={phpPurple}  />
       </mesh>
       <mesh ref={dot2Ref} position={[0, 10, 0]}>
         <sphereGeometry args={[6, 16, 16]} />
-        <meshBasicMaterial color={phpPurple} transparent opacity={opacity} />
+        <meshBasicMaterial color={phpPurple}  />
       </mesh>
 
       {/* Eyes on top dot */}
@@ -1804,13 +1804,13 @@ export function PhpPaamayimModel({ color, opacity, isWalking, lastAttackTime }: 
       {/* Confused expression lines */}
       <mesh position={[0, 17, 5]} rotation={[0, 0, Math.PI / 4]}>
         <boxGeometry args={[8, 1, 1]} />
-        <meshBasicMaterial color={0xffffff} transparent opacity={opacity * 0.5} />
+        <meshBasicMaterial color={0xffffff}  />
       </mesh>
 
       {/* PHP elephant hint */}
       <mesh position={[12, 20, 0]}>
         <sphereGeometry args={[4, 8, 8]} />
-        <meshBasicMaterial color={phpPurple} transparent opacity={opacity * 0.5} />
+        <meshBasicMaterial color={phpPurple}  />
       </mesh>
     </group>
   );
@@ -1854,13 +1854,13 @@ export function PhpFatalErrorModel({ color, opacity, isWalking, lastAttackTime }
       {/* Elephant body - zombified */}
       <mesh ref={bodyRef} position={[0, 15, 0]}>
         <sphereGeometry args={[12, 12, 12]} />
-        <meshBasicMaterial color={zombieGray} transparent opacity={opacity} />
+        <meshBasicMaterial color={zombieGray}  />
       </mesh>
 
       {/* Head */}
       <mesh position={[0, 25, 8]}>
         <sphereGeometry args={[8, 12, 12]} />
-        <meshBasicMaterial color={zombieGray} transparent opacity={opacity} />
+        <meshBasicMaterial color={zombieGray}  />
       </mesh>
 
       {/* Trunk */}
@@ -1868,7 +1868,7 @@ export function PhpFatalErrorModel({ color, opacity, isWalking, lastAttackTime }
         {[0, 1, 2, 3].map((i) => (
           <mesh key={`trunk-${i}`} position={[0, -i * 3, i * 2]}>
             <sphereGeometry args={[2.5 - i * 0.3, 8, 8]} />
-            <meshBasicMaterial color={zombieGray} transparent opacity={opacity} />
+            <meshBasicMaterial color={zombieGray}  />
           </mesh>
         ))}
       </group>
@@ -1894,17 +1894,17 @@ export function PhpFatalErrorModel({ color, opacity, isWalking, lastAttackTime }
       {/* Ears */}
       <mesh position={[-10, 25, 5]}>
         <circleGeometry args={[5, 16]} />
-        <meshBasicMaterial color={zombieGray} transparent opacity={opacity} side={THREE.DoubleSide} />
+        <meshBasicMaterial color={zombieGray}  side={THREE.DoubleSide} />
       </mesh>
       <mesh position={[10, 25, 5]}>
         <circleGeometry args={[5, 16]} />
-        <meshBasicMaterial color={zombieGray} transparent opacity={opacity} side={THREE.DoubleSide} />
+        <meshBasicMaterial color={zombieGray}  side={THREE.DoubleSide} />
       </mesh>
 
       {/* "FATAL" text */}
       <mesh position={[0, 40, 0]}>
         <boxGeometry args={[15, 4, 1]} />
-        <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xff0000}  />
       </mesh>
     </group>
   );
@@ -1947,7 +1947,7 @@ export function PhpUndefinedIndexModel({ color, opacity, isWalking, lastAttackTi
       {/* Array container */}
       <mesh position={[0, 15, -2]}>
         <boxGeometry args={[45, 12, 2]} />
-        <meshBasicMaterial color={phpPurple} transparent opacity={opacity} />
+        <meshBasicMaterial color={phpPurple}  />
       </mesh>
 
       {/* Array slots */}
@@ -1973,28 +1973,28 @@ export function PhpUndefinedIndexModel({ color, opacity, isWalking, lastAttackTi
       {[0, 1, 2, 3, 4, 5, 6].map((i) => (
         <mesh key={`idx-${i}`} position={[(i - 3) * 6, 25, 0]}>
           <boxGeometry args={[3, 3, 1]} />
-          <meshBasicMaterial color={0xffffff} transparent opacity={opacity * 0.7} />
+          <meshBasicMaterial color={0xffffff}  />
         </mesh>
       ))}
 
       {/* "?" marks on missing indices */}
       <mesh position={[-6, 15, 3]}>
         <boxGeometry args={[2, 4, 1]} />
-        <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xff0000}  />
       </mesh>
       <mesh position={[12, 15, 3]}>
         <boxGeometry args={[2, 4, 1]} />
-        <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xff0000}  />
       </mesh>
 
       {/* Brackets */}
       <mesh position={[-25, 15, 0]}>
         <boxGeometry args={[2, 14, 3]} />
-        <meshBasicMaterial color={phpPurple} transparent opacity={opacity} />
+        <meshBasicMaterial color={phpPurple}  />
       </mesh>
       <mesh position={[25, 15, 0]}>
         <boxGeometry args={[2, 14, 3]} />
-        <meshBasicMaterial color={phpPurple} transparent opacity={opacity} />
+        <meshBasicMaterial color={phpPurple}  />
       </mesh>
     </group>
   );

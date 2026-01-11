@@ -61,7 +61,7 @@ interface MonsterProps {
 }
 
 // Bug Monster - Insect-like creature with 6 legs and antennae
-export function BugModel({ color, opacity, isWalking, lastAttackTime }: MonsterProps) {
+export function BugModel({ color, isWalking, lastAttackTime }: MonsterProps) {
   const groupRef = useRef<THREE.Group>(null);
   const legsRef = useRef<THREE.Group[]>([]);
   const antennaeRef = useRef<THREE.Group[]>([]);
@@ -69,16 +69,16 @@ export function BugModel({ color, opacity, isWalking, lastAttackTime }: MonsterP
   const lastAttackRef = useRef<number | null>(null);
   const attackPhaseRef = useRef(0);
 
-  // Memoized materials - only recreated when color/opacity change
+  // Memoized materials - solid for WebGPU compatibility
   const materials = useMemo(() => {
     const darkColor = new THREE.Color(color).multiplyScalar(0.6).getHex();
     return {
-      body: getSharedMaterial(color, { transparent: opacity < 1, opacity }),
-      dark: getSharedMaterial(darkColor, { transparent: opacity < 1, opacity }),
-      eye: getSharedMaterial(0xff0000, { transparent: opacity < 1, opacity }),
-      antennaTip: getSharedMaterial(0xffff00, { transparent: opacity < 1, opacity }),
+      body: getSharedMaterial(color),
+      dark: getSharedMaterial(darkColor),
+      eye: getSharedMaterial(0xff0000),
+      antennaTip: getSharedMaterial(0xffff00),
     };
-  }, [color, opacity]);
+  }, [color]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -162,21 +162,21 @@ export function BugModel({ color, opacity, isWalking, lastAttackTime }: MonsterP
 }
 
 // AI Hallucination - Ethereal floating entity with fragments
-export function AIHallucinationModel({ color, opacity, isWalking: _isWalking, lastAttackTime }: MonsterProps) {
+export function AIHallucinationModel({ color, isWalking: _isWalking, lastAttackTime }: MonsterProps) {
   const groupRef = useRef<THREE.Group>(null);
   const fragmentsRef = useRef<THREE.Mesh[]>([]);
   const ringRef = useRef<THREE.Mesh>(null);
   const floatPhaseRef = useRef(Math.random() * Math.PI * 2);
   const lastAttackRef = useRef<number | null>(null);
 
-  // Memoized materials
+  // Memoized materials - solid for WebGPU compatibility
   const materials = useMemo(() => ({
-    coreWireframe: getSharedMaterial(color, { transparent: true, opacity: opacity * 0.7, wireframe: true }),
-    coreSolid: getSharedMaterial(color, { transparent: true, opacity: opacity * 0.5 }),
-    ring: getSharedMaterial(color, { transparent: true, opacity: opacity * 0.6 }),
-    fragment: getSharedMaterial(color, { transparent: true, opacity: opacity * 0.8 }),
+    coreWireframe: getSharedMaterial(color, { wireframe: true }),
+    coreSolid: getSharedMaterial(new THREE.Color(color).multiplyScalar(0.7).getHex()),
+    ring: getSharedMaterial(new THREE.Color(color).multiplyScalar(0.8).getHex()),
+    fragment: getSharedMaterial(color),
     eye: SHARED_MATERIALS.magenta,
-  }), [color, opacity]);
+  }), [color]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -216,7 +216,7 @@ export function AIHallucinationModel({ color, opacity, isWalking: _isWalking, la
   });
 
   return (
-    <group ref={groupRef} position={[0, 20, 0]}>
+    <group ref={groupRef} position={[0, 10, 0]}>
       {/* Core - icosahedron */}
       <mesh geometry={AI_GEOMETRIES.core} material={materials.coreWireframe} />
       <mesh geometry={AI_GEOMETRIES.core} scale={0.8} material={materials.coreSolid} />
@@ -241,7 +241,7 @@ export function AIHallucinationModel({ color, opacity, isWalking: _isWalking, la
 }
 
 // Manager - Business suit with briefcase
-export function ManagerModel({ color, opacity, isWalking, lastAttackTime }: MonsterProps) {
+export function ManagerModel({ color, isWalking, lastAttackTime }: MonsterProps) {
   const groupRef = useRef<THREE.Group>(null);
   const leftArmRef = useRef<THREE.Group>(null);
   const rightArmRef = useRef<THREE.Group>(null);
@@ -251,15 +251,15 @@ export function ManagerModel({ color, opacity, isWalking, lastAttackTime }: Mons
   const lastAttackRef = useRef<number | null>(null);
   const attackPhaseRef = useRef(1);
 
-  // Memoized materials
+  // Memoized materials - solid for WebGPU compatibility
   const materials = useMemo(() => ({
-    suit: getSharedMaterial(0x1a1a2e, { transparent: opacity < 1, opacity }),
-    shirt: getSharedMaterial(0xffffff, { transparent: opacity < 1, opacity }),
-    skin: getSharedMaterial(0xffdbac, { transparent: opacity < 1, opacity }),
-    tie: getSharedMaterial(color, { transparent: opacity < 1, opacity }),
-    glasses: getSharedMaterial(0x222222, { transparent: opacity < 1, opacity }),
-    briefcase: getSharedMaterial(0x8b4513, { transparent: opacity < 1, opacity }),
-  }), [color, opacity]);
+    suit: getSharedMaterial(0x1a1a2e),
+    shirt: getSharedMaterial(0xffffff),
+    skin: getSharedMaterial(0xffdbac),
+    tie: getSharedMaterial(color),
+    glasses: getSharedMaterial(0x222222),
+    briefcase: getSharedMaterial(0x8b4513),
+  }), [color]);
 
   useFrame((_, delta) => {
     // Walking animation
@@ -334,7 +334,7 @@ export function ManagerModel({ color, opacity, isWalking, lastAttackTime }: Mons
 }
 
 // Boss - Demonic entity with horns and multiple arms
-export function BossModel({ color, opacity, isWalking, lastAttackTime }: MonsterProps) {
+export function BossModel({ color, isWalking, lastAttackTime }: MonsterProps) {
   const groupRef = useRef<THREE.Group>(null);
   const armsRef = useRef<THREE.Group[]>([]);
   const walkPhaseRef = useRef(0);
@@ -342,16 +342,16 @@ export function BossModel({ color, opacity, isWalking, lastAttackTime }: Monster
   const attackPhaseRef = useRef(1);
   const pulseRef = useRef(0);
 
-  // Memoized materials
+  // Memoized materials - solid for WebGPU compatibility
   const materials = useMemo(() => {
     const darkColor = new THREE.Color(color).multiplyScalar(0.4).getHex();
     return {
-      body: getSharedMaterial(color, { transparent: opacity < 1, opacity }),
-      dark: getSharedMaterial(darkColor, { transparent: opacity < 1, opacity }),
-      eye: getSharedMaterial(0xff0000, { transparent: opacity < 1, opacity }),
-      horn: getSharedMaterial(0x222222, { transparent: opacity < 1, opacity }),
+      body: getSharedMaterial(color),
+      dark: getSharedMaterial(darkColor),
+      eye: getSharedMaterial(0xff0000),
+      horn: getSharedMaterial(0x222222),
     };
-  }, [color, opacity]);
+  }, [color]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -436,27 +436,26 @@ export function BossModel({ color, opacity, isWalking, lastAttackTime }: Monster
 }
 
 // Unexplained Bug - Glitchy, impossible geometry
-export function UnexplainedBugModel({ color, opacity, isWalking: _isWalking, lastAttackTime }: MonsterProps) {
+export function UnexplainedBugModel({ color, isWalking: _isWalking, lastAttackTime }: MonsterProps) {
   const groupRef = useRef<THREE.Group>(null);
   const partsRef = useRef<THREE.Mesh[]>([]);
   const glitchPhaseRef = useRef(0);
   const lastAttackRef = useRef<number | null>(null);
 
-  // Memoized materials - stable opacities per part
+  // Memoized materials - solid for WebGPU compatibility
   const materials = useMemo(() => {
-    const opacities = [0.7, 0.8, 0.75, 0.85, 0.6, 0.9]; // Fixed instead of random
     return {
       parts: [
-        getSharedMaterial(color, { transparent: true, opacity: opacity * opacities[0], wireframe: true }),
-        getSharedMaterial(0xff00ff, { transparent: true, opacity: opacity * opacities[1] }),
-        getSharedMaterial(0x00ffff, { transparent: true, opacity: opacity * opacities[2], wireframe: true }),
-        getSharedMaterial(color, { transparent: true, opacity: opacity * opacities[3] }),
-        getSharedMaterial(0xffff00, { transparent: true, opacity: opacity * opacities[4], wireframe: true }),
-        getSharedMaterial(0xff00ff, { transparent: true, opacity: opacity * opacities[5] }),
+        getSharedMaterial(color, { wireframe: true }),
+        getSharedMaterial(0xff00ff),
+        getSharedMaterial(0x00ffff, { wireframe: true }),
+        getSharedMaterial(color),
+        getSharedMaterial(0xffff00, { wireframe: true }),
+        getSharedMaterial(0xff00ff),
       ],
-      question: getSharedMaterial(0xffffff, { transparent: true, opacity }),
+      question: getSharedMaterial(0xffffff),
     };
-  }, [color, opacity]);
+  }, [color]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;

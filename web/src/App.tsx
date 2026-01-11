@@ -26,12 +26,20 @@ function App() {
   const [joinError, setJoinError] = useState<string | null>(null);
   const currentPlayerId = useGameStore((s) => s.currentPlayerId);
   const setCurrentPlayer = useGameStore((s) => s.setCurrentPlayer);
+  const setStreamInfo = useGameStore((s) => s.setStreamInfo);
+  const streamInfo = useGameStore((s) => s.streamInfo);
 
-  // S2 stream - always active, never unmounted during login/logout
-  useS2Stream({ enabled: true });
+  // S2 stream - uses individual stream when authenticated, global stream for spectators
+  useS2Stream({
+    enabled: true,
+    streamName: streamInfo?.streamName,
+    readToken: streamInfo?.readToken ?? undefined,
+  });
 
   const handleLogout = async () => {
     setJoinError(null);
+    setStreamInfo(null); // Clear stream info on logout
+    setCurrentPlayer(null);
     await signOut();
   };
 
@@ -72,6 +80,15 @@ function App() {
       const data = await res.json();
       if (data.playerId) {
         setCurrentPlayer(data.playerId);
+        // Save stream info for individual player stream
+        if (data.stream) {
+          setStreamInfo({
+            streamName: data.stream.streamName,
+            basin: data.stream.basin,
+            baseUrl: data.stream.baseUrl,
+            readToken: data.stream.readToken,
+          });
+        }
       }
     } catch (err) {
       console.error('Failed to join game:', err);

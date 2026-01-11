@@ -20,6 +20,7 @@ import {
   type EquippableItem,
 } from './ItemPreviewComponents';
 import { MonsterModel, type MonsterType } from './MonsterModels';
+import type { EntityType } from '../stores/gameStore';
 
 // Ghost effect constants
 const GHOST_DURATION = 4500; // ms - ghost rises for most of respawn time
@@ -144,7 +145,7 @@ const MONSTER_COLORS: Record<string, number> = {
 const MONSTER_HEIGHTS: Record<string, number> = {
   // Original monsters (based on actual model geometry analysis)
   bug: 25,           // Antennae top at ~22-25
-  aihallucination: 45, // Floats at Y=20, core radius 8, ring +12 = ~40-45
+  aihallucination: 22, // Floats at Y=10, core radius 8, float +3 = ~21
   manager: 52,       // Head at Y=40, box height 10 = top at 45-50
   boss: 70,          // Horns at Y=56, cone extends up = ~65-70
   unexplainedbug: 35, // Parts scatter up to ~30-35
@@ -265,47 +266,7 @@ const MONSTER_SCALES: Record<string, number> = {
 // All monster type keys for type checking
 const MONSTER_TYPE_KEYS = Object.keys(MONSTER_COLORS);
 
-type EntityType = 'player' | 'npc' | 'bug' | 'aihallucination' | 'manager' | 'boss' | 'unexplainedbug' |
-  // JavaScript
-  'jsundefined' | 'jsnan' | 'jscallbackhell' |
-  // Python
-  'pyindentationerror' | 'pynonetype' | 'pyimporterror' |
-  // Java
-  'javanullpointer' | 'javaclassnotfound' | 'javaoutofmemory' |
-  // C#
-  'csnullreference' | 'csstackoverflow' | 'csinvalidcast' |
-  // C/C++
-  'csegfault' | 'cstackoverflow' | 'cmemoryleak' |
-  // TypeScript
-  'tstypeerror' | 'tsany' | 'tsreadonly' |
-  // PHP
-  'phppaamayim' | 'phpfatalerror' | 'phpundefinedindex' |
-  // Go
-  'gonilpanic' | 'godeadlock' | 'goimportcycle' |
-  // Rust
-  'rustborrowchecker' | 'rustpanic' | 'rustlifetimeerror' |
-  // Ruby
-  'rubynomethoderror' | 'rubyloaderror' | 'rubysyntaxerror' |
-  // Swift
-  'swiftfoundnil' | 'swiftforceunwrap' | 'swiftindexoutofrange' |
-  // Kotlin
-  'kotlinnullpointer' | 'kotlinclasscast' | 'kotlinuninitialized' |
-  // Scala
-  'scalamatcherror' | 'scalaabstractmethod' | 'scalastackoverflow' |
-  // R
-  'revalerror' | 'robjectnotfound' | 'rsubscriptoutofbounds' |
-  // SQL
-  'sqldeadlock' | 'sqlsyntaxerror' | 'sqltimeout' |
-  // Bash
-  'bashcommandnotfound' | 'bashpermissiondenied' | 'bashcoredumped' |
-  // Perl
-  'perluninitialized' | 'perlsyntaxerror' | 'perlcantlocate' |
-  // Lua
-  'luaindexnil' | 'luabadargument' | 'luastackoverflow' |
-  // Dart
-  'dartnullcheck' | 'dartrangeerror' | 'dartnosuchmethod' |
-  // Elixir
-  'elixirfunctionclause' | 'elixirargumenterror' | 'elixirkeyerror';
+// EntityType is imported from gameStore (single source of truth)
 
 interface PlayerProps {
   position: [number, number, number];
@@ -398,17 +359,17 @@ function DeathGhost({ startTime }: { startTime: number }) {
   return (
     <Billboard>
       <mesh ref={meshRef} position={[0, 40, 0]}>
-        {/* Simple ghost shape: circle for head + trapezoid body */}
+        {/* Simple ghost shape: circle for head + trapezoid body - solid colors for WebGPU */}
         <group>
           {/* Head */}
           <mesh position={[0, 6, 0]}>
             <circleGeometry args={[6, 16]} />
-            <meshBasicMaterial color={0xffffff} transparent opacity={0.7} side={THREE.DoubleSide} />
+            <meshBasicMaterial color={0xdddddd} side={THREE.DoubleSide} />
           </mesh>
           {/* Body - wavy bottom */}
           <mesh position={[0, -2, 0]}>
             <planeGeometry args={[12, 12]} />
-            <meshBasicMaterial color={0xffffff} transparent opacity={0.6} side={THREE.DoubleSide} />
+            <meshBasicMaterial color={0xcccccc} side={THREE.DoubleSide} />
           </mesh>
           {/* Eyes */}
           <mesh position={[-2.5, 7, 0.1]}>
@@ -438,54 +399,44 @@ function Head({ avatarTexture, isNpc }: { avatarTexture: THREE.Texture | null; i
     );
   }
 
-  // Players: glass head with avatar
-  // Use depthTest={false} with very low opacity to minimize overlap visual issues
+  // Players: solid cyan head with avatar on front (WebGPU compatible - no transparency)
   return (
     <group position={[0, BODY_HEIGHT + HEAD_SIZE / 2, 0]}>
-      {/* Glass head cube */}
+      {/* Solid head cube */}
       <mesh renderOrder={1}>
         <boxGeometry args={[HEAD_SIZE, HEAD_SIZE, HEAD_SIZE]} />
-        <meshBasicMaterial
-          color={0x00ffff}
-          transparent
-          opacity={0.15}
-          side={THREE.FrontSide}
-          depthTest={false}
-          depthWrite={false}
-        />
+        <meshBasicMaterial color={0x00cccc} />
       </mesh>
       {/* Avatar on front face */}
       {avatarTexture && (
         <mesh position={[0, 0, HEAD_SIZE / 2 + 0.1]} renderOrder={2}>
           <planeGeometry args={[HEAD_SIZE, HEAD_SIZE]} />
-          <meshBasicMaterial map={avatarTexture} transparent depthTest={false} depthWrite={false} />
+          <meshBasicMaterial map={avatarTexture} />
         </mesh>
       )}
     </group>
   );
 }
 
-// Body/torso component
-function Body({ color, opacity }: { color: number; opacity: number }) {
+// Body/torso component - solid for WebGPU
+function Body({ color }: { color: number }) {
   return (
     <mesh position={[0, BODY_HEIGHT / 2, 0]} geometry={SHARED_GEOMETRIES.body}>
-      <meshBasicMaterial color={color} transparent={opacity < 1} opacity={opacity} />
+      <meshBasicMaterial color={color} />
     </mesh>
   );
 }
 
-// Arm component - EVENT-DRIVEN animation
+// Arm component - EVENT-DRIVEN animation - solid for WebGPU
 // Only swings when lastAttackTime changes (actual attack happened)
 function Arm({
   side,
   color,
-  opacity,
   lastAttackTime,
   children,
 }: {
   side: 'left' | 'right';
   color: number;
-  opacity: number;
   lastAttackTime: number | null;
   children?: React.ReactNode;
 }) {
@@ -538,7 +489,7 @@ function Arm({
     <group ref={armRef} position={[xOffset, BODY_HEIGHT, 0]}>
       {/* Single arm mesh - pivots from shoulder */}
       <mesh position={[0, -ARM_HEIGHT / 2, 0]} geometry={SHARED_GEOMETRIES.arm}>
-        <meshBasicMaterial color={color} transparent={opacity < 1} opacity={opacity} />
+        <meshBasicMaterial color={color} />
       </mesh>
       {/* Item held in hand */}
       {children}
@@ -546,18 +497,16 @@ function Arm({
   );
 }
 
-// Leg component - manages its own animation phase for smooth animation
+// Leg component - manages its own animation phase for smooth animation - solid for WebGPU
 function Leg({
   side,
   color,
   isWalking,
-  opacity,
   animationSpeed,
 }: {
   side: 'left' | 'right';
   color: number;
   isWalking: boolean;
-  opacity: number;
   animationSpeed: number;
 }) {
   const legRef = useRef<THREE.Group>(null);
@@ -586,7 +535,7 @@ function Leg({
     <group ref={legRef} position={[xOffset, 0, 0]}>
       {/* Single leg mesh - pivots from hip */}
       <mesh position={[0, -LEG_HEIGHT / 2, 0]} geometry={SHARED_GEOMETRIES.leg}>
-        <meshBasicMaterial color={legColor} transparent={opacity < 1} opacity={opacity} />
+        <meshBasicMaterial color={legColor} />
       </mesh>
     </group>
   );
@@ -662,14 +611,12 @@ export function Player({
   // velocidadeAtaque affects combat, not walk animation
   const animationSpeed = 8;
 
-  const [opacity, setOpacity] = useState(1);
   const [ghostStartTime, setGhostStartTime] = useState<number | null>(null);
   const wasDeadRef = useRef(false);
+  const deathScaleRef = useRef(1); // Track death scale for smooth animation
 
   // Death effect - trigger ghost when transitioning to dead
   useEffect(() => {
-    setOpacity(isDead ? 0.3 : 1);
-
     // Trigger ghost when player dies (transition from alive to dead)
     if (isDead && !wasDeadRef.current) {
       setGhostStartTime(Date.now());
@@ -683,18 +630,24 @@ export function Player({
     wasDeadRef.current = isDead;
   }, [isDead]);
 
-  // Main animation loop - only handles death animation now
-  // Leg animations are handled internally by each Leg component
+  // Main animation loop - handles death fall and scale animations
   useFrame(() => {
     if (!groupRef.current) return;
 
-    // Death fall animation
-    if (isDead) {
-      const targetRotation = -Math.PI / 2;
-      groupRef.current.rotation.x += (targetRotation - groupRef.current.rotation.x) * 0.1;
-    } else {
-      groupRef.current.rotation.x *= 0.9;
-    }
+    // Death/revive scale animation (WebGPU compatible - no transparency)
+    const targetDeathScale = isDead ? 0.5 : 1;
+    const lerpSpeed = isDead ? 0.08 : 0.12; // Faster revive than death
+    deathScaleRef.current += (targetDeathScale - deathScaleRef.current) * lerpSpeed;
+
+    // Apply scale (base scale * death modifier)
+    const finalScale = scale * deathScaleRef.current;
+    groupRef.current.scale.set(scale, finalScale, scale);
+
+    // Death fall animation - rotate to lie down
+    const targetRotation = isDead ? -Math.PI / 2 : 0;
+    const currentRotation = groupRef.current.rotation.x;
+    const rotationLerpSpeed = isDead ? 0.08 : 0.15;
+    groupRef.current.rotation.x += (targetRotation - currentRotation) * rotationLerpSpeed;
   });
 
   // Height offset for HP bar based on monster type
@@ -705,7 +658,7 @@ export function Player({
     : HEAD_SIZE + BODY_HEIGHT + LEG_HEIGHT + (20 / scale);
 
   return (
-    <group position={position} ref={groupRef} scale={[scale, scale, scale]}>
+    <group position={position} ref={groupRef}>
       {/* Name and HP as 3D Billboard */}
       <Billboard position={[0, hpBarHeight, 0]} follow={true}>
         {/* HP Bar background */}
@@ -750,7 +703,7 @@ export function Player({
         <MonsterModel
           type={type as MonsterType}
           color={color}
-          opacity={opacity}
+          opacity={1}
           isWalking={isWalking}
           lastAttackTime={lastAttackTime}
         />
@@ -790,7 +743,7 @@ export function Player({
             )}
 
             {/* Body/Torso */}
-            <Body color={color} opacity={opacity} />
+            <Body color={color} />
 
             {/* Shirt/Hoodie on body */}
             {camisetaItem && (
@@ -801,7 +754,6 @@ export function Player({
             <Arm
               side="left"
               color={color}
-              opacity={opacity}
               lastAttackTime={lastAttackTime}
             >
               {/* Keyboard in left hand */}
@@ -812,7 +764,6 @@ export function Player({
             <Arm
               side="right"
               color={color}
-              opacity={opacity}
               lastAttackTime={lastAttackTime}
             >
               {/* Notebook in right hand */}
@@ -843,29 +794,27 @@ export function Player({
               side="left"
               color={color}
               isWalking={isWalking}
-              opacity={opacity}
               animationSpeed={animationSpeed}
             />
             <Leg
               side="right"
               color={color}
               isWalking={isWalking}
-              opacity={opacity}
               animationSpeed={animationSpeed}
             />
           </group>
         </>
       )}
 
-      {/* Shadow on ground - renderOrder -1 ensures it renders before transparent objects */}
+      {/* Shadow on ground - solid dark gray for WebGPU */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.1, 0]} renderOrder={-1} geometry={SHARED_GEOMETRIES.shadow}>
-        <meshBasicMaterial color={0x000000} transparent opacity={isDead ? 0.1 : 0.3} depthWrite={false} />
+        <meshBasicMaterial color={isDead ? 0x444444 : 0x333333} />
       </mesh>
 
-      {/* Current player indicator ring */}
+      {/* Current player indicator ring - solid white for WebGPU */}
       {isCurrentPlayer && !isDead && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.2, 0]} renderOrder={-1} geometry={SHARED_GEOMETRIES.ring}>
-          <meshBasicMaterial color={0xffffff} transparent opacity={0.5} depthWrite={false} />
+          <meshBasicMaterial color={0xcccccc} />
         </mesh>
       )}
 

@@ -1,5 +1,6 @@
 using GitWorld.Api.Auth;
 using GitWorld.Api.Core;
+using GitWorld.Api.Core.Scripting;
 using GitWorld.Api.Core.Systems;
 using GitWorld.Api.Data;
 using GitWorld.Api.GitHub;
@@ -36,6 +37,10 @@ builder.Services.AddHttpClient<IS2Publisher, S2Publisher>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(s2Config.TimeoutSeconds);
 });
+builder.Services.AddHttpClient<IS2TokenService, S2TokenService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 
 // Memory Cache (para GitHub)
 builder.Services.AddMemoryCache();
@@ -56,7 +61,11 @@ builder.Services.AddScoped<IItemService, ItemService>();
 
 // Game services
 builder.Services.AddSingleton<World>();
-builder.Services.AddSingleton<GameLoop>();
+builder.Services.AddSingleton<ScriptExecutor>();
+builder.Services.AddSingleton<GameLoop>(sp => new GameLoop(
+    sp.GetRequiredService<World>(),
+    sp.GetRequiredService<ScriptExecutor>()
+));
 builder.Services.AddSingleton<MovementSystem>();
 
 // Clerk JWT Validation
@@ -173,6 +182,29 @@ try
         db.SaveChanges();
         Console.WriteLine($"[Database] Seeded {items.Count} items");
     }
+    else
+    {
+        // Fix items with Price = 0 (migration added column but existing items have 0)
+        var itemsWithZeroPrice = db.Items.Where(i => i.Price == 0).ToList();
+        if (itemsWithZeroPrice.Count > 0)
+        {
+            var tierPrices = new Dictionary<string, int>
+            {
+                { "F", 50 }, { "D", 150 }, { "C", 400 },
+                { "B", 1000 }, { "A", 2500 }, { "S", 5000 }
+            };
+
+            foreach (var item in itemsWithZeroPrice)
+            {
+                if (tierPrices.TryGetValue(item.Tier, out var price))
+                {
+                    item.Price = price;
+                }
+            }
+            db.SaveChanges();
+            Console.WriteLine($"[Database] Updated prices for {itemsWithZeroPrice.Count} items");
+        }
+    }
 }
 catch (Exception ex)
 {
@@ -208,22 +240,94 @@ gameLoop.OnTick += (tick, world) =>
         _ = Task.Run(async () => { streamReady = await s2Publisher.EnsureStreamExistsAsync(s2Config.StreamName); });
     }
 
-    // Broadcast game state every 2 ticks (~100ms)
+    // Use GetEventsSince instead of DrainEvents to not interfere with SSE clients
+    var combatEvents = gameLoop.CombatSystem.EventQueue.GetEventsSince(lastS2BroadcastTick);
+    var activeEvent = gameLoop.EventSystem.CurrentEvent;
+    var rewardEvents = gameLoop.ProgressionSystem.GetAndClearRewardEvents();
+    var levelUpEvents = gameLoop.ProgressionSystem.GetAndClearLevelUpEvents();
+    lastS2BroadcastTick = tick;
+
+    // Broadcast to individual player streams with ADAPTIVE FREQUENCY
+    // Each player gets updates at different rates based on activity level:
+    // - Combat: every 2 ticks (100ms) - 10 updates/s
+    // - Moving: every 4 ticks (200ms) - 5 updates/s
+    // - Idle: every 10 ticks (500ms) - 2 updates/s
+    var onlineSessions = world.PlayerSessions.ToList();
+    var nearbyEntityIds = new HashSet<Guid>(); // Track nearby entity IDs for event filtering
+
+    foreach (var session in onlineSessions)
+    {
+        var playerEntity = world.GetEntity(session.EntityId);
+        if (playerEntity == null) continue;
+
+        // Determine activity level based on entity state
+        var newActivityLevel = playerEntity.State switch
+        {
+            GitWorld.Api.Core.EntityState.Attacking => PlayerActivityLevel.Combat,
+            _ when playerEntity.TargetEntityId.HasValue => PlayerActivityLevel.Combat,
+            GitWorld.Api.Core.EntityState.Moving => PlayerActivityLevel.Moving,
+            _ => PlayerActivityLevel.Idle
+        };
+        session.ActivityLevel = newActivityLevel;
+
+        // Determine broadcast interval based on activity level
+        var broadcastInterval = session.ActivityLevel switch
+        {
+            PlayerActivityLevel.Combat => 2,   // 100ms - full speed for combat
+            PlayerActivityLevel.Moving => 4,   // 200ms - moderate for movement
+            PlayerActivityLevel.Idle => 10,    // 500ms - slow for idle
+            _ => 2
+        };
+
+        // Skip this player if not enough ticks have passed since last broadcast
+        if ((tick - session.LastBroadcastTick) < broadcastInterval)
+            continue;
+
+        session.LastBroadcastTick = tick;
+
+        // Get entities within player's vision radius (includes self)
+        var nearbyEntities = world.GetEntitiesInRange(playerEntity.X, playerEntity.Y, GameConstants.RaioBroadcast)
+            .Append(playerEntity)
+            .ToList();
+
+        // Build set of nearby entity IDs for filtering events
+        nearbyEntityIds.Clear();
+        foreach (var e in nearbyEntities)
+            nearbyEntityIds.Add(e.Id);
+
+        // Filter combat events: include if attacker OR target is nearby (so player sees all nearby combat)
+        var playerCombatEvents = combatEvents?
+            .Where(e => nearbyEntityIds.Contains(e.AttackerId) || nearbyEntityIds.Contains(e.TargetId))
+            .ToList();
+
+        // Rewards are personal - only player's own rewards
+        var playerRewardEvents = rewardEvents?
+            .Where(r => r.PlayerId == session.PlayerId)
+            .ToList();
+
+        // Level ups: include if player is nearby (for killfeed/notifications)
+        var playerLevelUpEvents = levelUpEvents?
+            .Where(l => nearbyEntityIds.Contains(l.PlayerId))
+            .ToList();
+
+        var streamName = session.StreamName;
+        // Use delta updates for individual player streams
+        // Full state every 100 ticks (~5 seconds) for sync, delta updates otherwise
+        var forceFullState = tick % 100 == 0;
+        _ = Task.Run(() => s2Publisher.BroadcastDeltaGameStateAsync(tick, session.PlayerId, nearbyEntities, forceFullState, playerCombatEvents, activeEvent, playerRewardEvents, playerLevelUpEvents, streamName));
+    }
+
+    // Broadcast to global stream every 2 ticks for spectators (non-authenticated users)
+    // Spectators always get full speed since they're watching the action
     if (tick % 2 == 0)
     {
-        // Use GetEventsSince instead of DrainEvents to not interfere with SSE clients
-        var combatEvents = gameLoop.CombatSystem.EventQueue.GetEventsSince(lastS2BroadcastTick);
-        var activeEvent = gameLoop.EventSystem.CurrentEvent;
-        var rewardEvents = gameLoop.ProgressionSystem.GetAndClearRewardEvents();
-        var levelUpEvents = gameLoop.ProgressionSystem.GetAndClearLevelUpEvents();
-        lastS2BroadcastTick = tick;
         _ = Task.Run(() => s2Publisher.BroadcastGameStateAsync(tick, world.Entities, combatEvents, activeEvent, rewardEvents, levelUpEvents));
+    }
 
-        // Periodically clean old events (keep last 10 seconds = 200 ticks)
-        if (tick % 200 == 0)
-        {
-            gameLoop.CombatSystem.EventQueue.ClearOlderThan(tick - 200);
-        }
+    // Periodically clean old events (keep last 10 seconds = 200 ticks)
+    if (tick % 200 == 0)
+    {
+        gameLoop.CombatSystem.EventQueue.ClearOlderThan(tick - 200);
     }
 
     // Persist player positions every 200 ticks (~10 seconds)
@@ -392,10 +496,13 @@ try
         world.UnstickEntity(entity);
 
         // Load equipped items from database
-        var equippedItems = db.PlayerItems
+        var equippedPlayerItems = db.PlayerItems
             .Include(pi => pi.Item)
             .Where(pi => pi.PlayerId == player.Id && pi.IsEquipped)
             .Where(pi => pi.ExpiresAt == null || pi.ExpiresAt > DateTime.UtcNow)
+            .ToList();
+
+        var equippedItems = equippedPlayerItems
             .Select(pi => new GitWorld.Api.Core.EquippedItemInfo
             {
                 Name = pi.Item.Name,
@@ -404,6 +511,23 @@ try
             })
             .ToList();
         entity.EquippedItems = equippedItems;
+
+        // Apply item bonuses to stats
+        foreach (var pi in equippedPlayerItems)
+        {
+            entity.MaxHp += pi.Item.HpBonus;
+            entity.Dano += pi.Item.DanoBonus;
+            entity.Armadura += pi.Item.ArmaduraBonus;
+            entity.Critico += pi.Item.CriticoBonus;
+            entity.Evasao += pi.Item.EvasaoBonus;
+            entity.VelocidadeAtaque += pi.Item.VelocidadeAtaqueBonus;
+            entity.VelocidadeMovimento += pi.Item.VelocidadeMovimentoBonus;
+        }
+        entity.CurrentHp = Math.Min(entity.CurrentHp, entity.MaxHp);
+
+        // Load scripting settings
+        entity.CustomScript = player.CustomScript;
+        entity.ScriptEnabled = player.ScriptEnabled;
 
         // Create session for the player
         var streamName = $"player-{player.Id}";
@@ -583,7 +707,7 @@ app.MapGet("/profile/linked-accounts", async (HttpContext context, IClerkJwtVali
 }).WithName("GetLinkedAccounts");
 
 // POST /game/join - Join the game (authenticated via Clerk)
-app.MapPost("/game/join", async (HttpContext context, World world, IStatsService statsService, AppDbContext db, S2Config config, IClerkJwtValidator clerkValidator) =>
+app.MapPost("/game/join", async (HttpContext context, World world, IStatsService statsService, AppDbContext db, S2Config config, IClerkJwtValidator clerkValidator, IS2TokenService s2TokenService) =>
 {
     try
     {
@@ -631,6 +755,9 @@ app.MapPost("/game/join", async (HttpContext context, World world, IStatsService
                         .ToListAsync();
                     existingEntity.EquippedItems = existingEquippedItems;
 
+                    // Generate read token for player's stream
+                    var existingReadToken = await s2TokenService.CreatePlayerReadTokenAsync(existingSession.PlayerId);
+
                     return Results.Ok(new JoinResponse(
                         existingSession.PlayerId,
                         existingSession.EntityId,
@@ -638,7 +765,7 @@ app.MapPost("/game/join", async (HttpContext context, World world, IStatsService
                         existingEntity.Reino,
                         existingEntity.X,
                         existingEntity.Y,
-                        new StreamInfo(existingSession.StreamName, config.Basin, config.BaseUrl)
+                        new StreamInfo(existingSession.StreamName, config.Basin, config.BaseUrl, existingReadToken)
                     ));
                 }
             }
@@ -759,18 +886,39 @@ app.MapPost("/game/join", async (HttpContext context, World world, IStatsService
         // Use displayUsername (GitHub username if available) for avatar display
         var entity = world.AddEntity(player.Id, displayUsername, sharedStats, playerStats.Reino, player.Elo, player.Vitorias, player.Derrotas, player.Level, player.Exp, player.Gold);
 
-        // Load equipped items from database
-        var equippedItems = await db.PlayerItems
+        // Load equipped items from database and apply bonuses
+        var equippedPlayerItems = await db.PlayerItems
             .Include(pi => pi.Item)
             .Where(pi => pi.PlayerId == player.Id && pi.IsEquipped)
+            .Where(pi => pi.ExpiresAt == null || pi.ExpiresAt > DateTime.UtcNow)
+            .ToListAsync();
+
+        var equippedItems = equippedPlayerItems
             .Select(pi => new GitWorld.Api.Core.EquippedItemInfo
             {
                 Name = pi.Item.Name,
                 Category = pi.Item.Category,
                 Tier = pi.Item.Tier
             })
-            .ToListAsync();
+            .ToList();
         entity.EquippedItems = equippedItems;
+
+        // Apply item bonuses to stats
+        foreach (var pi in equippedPlayerItems)
+        {
+            entity.MaxHp += pi.Item.HpBonus;
+            entity.Dano += pi.Item.DanoBonus;
+            entity.Armadura += pi.Item.ArmaduraBonus;
+            entity.Critico += pi.Item.CriticoBonus;
+            entity.Evasao += pi.Item.EvasaoBonus;
+            entity.VelocidadeAtaque += pi.Item.VelocidadeAtaqueBonus;
+            entity.VelocidadeMovimento += pi.Item.VelocidadeMovimentoBonus;
+        }
+        entity.CurrentHp = entity.MaxHp; // Full HP on join
+
+        // Load scripting settings
+        entity.CustomScript = player.CustomScript;
+        entity.ScriptEnabled = player.ScriptEnabled;
 
         // Auto-move player towards NPC at center (0, 0)
         entity.SetTarget(0, 0);
@@ -791,6 +939,9 @@ app.MapPost("/game/join", async (HttpContext context, World world, IStatsService
         // Ensure player stream exists
         _ = Task.Run(async () => await s2Publisher.EnsureStreamExistsAsync(streamName));
 
+        // Generate read token for player's stream
+        var readToken = await s2TokenService.CreatePlayerReadTokenAsync(player.Id);
+
         return Results.Ok(new JoinResponse(
             player.Id,
             entity.Id,
@@ -798,7 +949,7 @@ app.MapPost("/game/join", async (HttpContext context, World world, IStatsService
             playerStats.Reino,
             entity.X,
             entity.Y,
-            new StreamInfo(streamName, config.Basin, config.BaseUrl)
+            new StreamInfo(streamName, config.Basin, config.BaseUrl, readToken)
         ));
     }
     catch (Exception ex)
@@ -808,7 +959,7 @@ app.MapPost("/game/join", async (HttpContext context, World world, IStatsService
 }).WithName("JoinGame");
 
 // GET /game/player/{id} - Get player info for reconnect
-app.MapGet("/game/player/{id}", async (Guid id, World world, AppDbContext db, S2Config config) =>
+app.MapGet("/game/player/{id}", async (Guid id, World world, AppDbContext db, S2Config config, IS2TokenService s2TokenService) =>
 {
     var player = await db.Players.FindAsync(id);
     if (player == null)
@@ -822,6 +973,9 @@ app.MapGet("/game/player/{id}", async (Guid id, World world, AppDbContext db, S2
     if (entity == null)
         return Results.NotFound(new { error = "Entity not found", playerId = id });
 
+    // Generate read token for player's stream
+    var readToken = await s2TokenService.CreatePlayerReadTokenAsync(player.Id);
+
     return Results.Ok(new JoinResponse(
         player.Id,
         session.EntityId,
@@ -829,7 +983,7 @@ app.MapGet("/game/player/{id}", async (Guid id, World world, AppDbContext db, S2
         player.Reino,
         entity.X,
         entity.Y,
-        new StreamInfo(session.StreamName, config.Basin, config.BaseUrl)
+        new StreamInfo(session.StreamName, config.Basin, config.BaseUrl, readToken)
     ));
 }).WithName("GetPlayer");
 
@@ -1155,7 +1309,7 @@ app.MapPost("/player/items/{playerItemId}/equip", async (HttpContext context, II
     if (!success)
         return Results.BadRequest(new { error = "Failed to equip item" });
 
-    // Update entity's equipped items in World
+    // Update entity's equipped items and stats in World
     var entity = world.GetEntity(player.Id);
     if (entity != null)
     {
@@ -1170,6 +1324,17 @@ app.MapPost("/player/items/{playerItemId}/equip", async (HttpContext context, II
             })
             .ToListAsync();
         entity.EquippedItems = equippedItems;
+
+        // Recalculate combat stats: base + bonuses
+        var bonuses = await itemService.GetPlayerBonusesAsync(player.Id);
+        entity.MaxHp = player.HpMax + bonuses.Hp;
+        entity.Dano = player.Dano + bonuses.Dano;
+        entity.Armadura = player.Armadura + bonuses.Armadura;
+        entity.Critico = player.Critico + bonuses.Critico;
+        entity.Evasao = player.Evasao + bonuses.Evasao;
+        entity.VelocidadeAtaque = player.VelocidadeAtaque + bonuses.VelocidadeAtaque;
+        entity.VelocidadeMovimento = player.VelocidadeMovimento + bonuses.VelocidadeMovimento;
+        Console.WriteLine($"[Items] {player.GitHubLogin} stats updated - Dano:{entity.Dano} Arm:{entity.Armadura} Crit:{entity.Critico} Eva:{entity.Evasao}");
     }
 
     return Results.Ok(new { equipped = true, playerItemId });
@@ -1195,7 +1360,7 @@ app.MapPost("/player/items/{playerItemId}/unequip", async (HttpContext context, 
     if (!success)
         return Results.BadRequest(new { error = "Failed to unequip item" });
 
-    // Update entity's equipped items in World
+    // Update entity's equipped items and stats in World
     var entity = world.GetEntity(player.Id);
     if (entity != null)
     {
@@ -1210,6 +1375,17 @@ app.MapPost("/player/items/{playerItemId}/unequip", async (HttpContext context, 
             })
             .ToListAsync();
         entity.EquippedItems = equippedItems;
+
+        // Recalculate combat stats: base + bonuses
+        var bonuses = await itemService.GetPlayerBonusesAsync(player.Id);
+        entity.MaxHp = player.HpMax + bonuses.Hp;
+        entity.Dano = player.Dano + bonuses.Dano;
+        entity.Armadura = player.Armadura + bonuses.Armadura;
+        entity.Critico = player.Critico + bonuses.Critico;
+        entity.Evasao = player.Evasao + bonuses.Evasao;
+        entity.VelocidadeAtaque = player.VelocidadeAtaque + bonuses.VelocidadeAtaque;
+        entity.VelocidadeMovimento = player.VelocidadeMovimento + bonuses.VelocidadeMovimento;
+        Console.WriteLine($"[Items] {player.GitHubLogin} stats updated - Dano:{entity.Dano} Arm:{entity.Armadura} Crit:{entity.Critico} Eva:{entity.Evasao}");
     }
 
     return Results.Ok(new { equipped = false, playerItemId });
@@ -1276,9 +1452,13 @@ app.MapGet("/debug/entities-equipped", (World world) =>
     return Results.Ok(entities);
 }).WithName("DebugEntitiesEquipped");
 
-// DEBUG: Spawn a specific monster type for testing
-app.MapPost("/debug/spawn-monster", (World world, string type, float? x, float? y) =>
+// Admin: Spawn a specific monster type
+app.MapPost("/admin/spawn-monster", (HttpContext ctx, World world, string type, float? x, float? y) =>
 {
+    var adminKey = "gw-admin-2026-x7k9m";
+    var providedKey = ctx.Request.Headers["X-Admin-Key"].FirstOrDefault();
+    if (providedKey != adminKey) return Results.Unauthorized();
+
     if (!Enum.TryParse<GitWorld.Api.Core.EntityType>(type, true, out var entityType))
     {
         return Results.BadRequest(new { error = $"Unknown monster type: {type}" });
@@ -1296,11 +1476,15 @@ app.MapPost("/debug/spawn-monster", (World world, string type, float? x, float? 
         x = monster.X,
         y = monster.Y
     });
-}).WithName("DebugSpawnMonster");
+}).WithName("AdminSpawnMonster");
 
-// DEBUG: Spawn ALL monster types in a grid for visual testing
-app.MapPost("/debug/spawn-all-monsters", (World world) =>
+// Admin: Spawn ALL monster types in a grid
+app.MapPost("/admin/spawn-all-monsters", (HttpContext ctx, World world) =>
 {
+    var adminKey = "gw-admin-2026-x7k9m";
+    var providedKey = ctx.Request.Headers["X-Admin-Key"].FirstOrDefault();
+    if (providedKey != adminKey) return Results.Unauthorized();
+
     var allTypes = Enum.GetValues<GitWorld.Api.Core.EntityType>()
         .Where(t => t != GitWorld.Api.Core.EntityType.Player && t != GitWorld.Api.Core.EntityType.NPC && t != GitWorld.Api.Core.EntityType.Neutral)
         .ToList();
@@ -1316,12 +1500,12 @@ app.MapPost("/debug/spawn-all-monsters", (World world) =>
         var type = allTypes[i];
         var col = i % cols;
         var row = i / cols;
-        var x = startX + col * spacing;
-        var y = startY + row * spacing;
+        var xPos = startX + col * spacing;
+        var yPos = startY + row * spacing;
 
         try
         {
-            var monster = world.AddMonster(type, x, y);
+            var monster = world.AddMonster(type, xPos, yPos);
             spawned.Add(new
             {
                 type = type.ToString().ToLowerInvariant(),
@@ -1337,7 +1521,86 @@ app.MapPost("/debug/spawn-all-monsters", (World world) =>
     }
 
     return Results.Ok(new { count = spawned.Count, monsters = spawned });
-}).WithName("DebugSpawnAllMonsters");
+}).WithName("AdminSpawnAllMonsters");
+
+// Admin: Clear all monsters (dead or alive)
+app.MapPost("/admin/clear-monsters", (HttpContext ctx, World world, bool? deadOnly) =>
+{
+    var adminKey = "gw-admin-2026-x7k9m";
+    var providedKey = ctx.Request.Headers["X-Admin-Key"].FirstOrDefault();
+    if (providedKey != adminKey) return Results.Unauthorized();
+
+    var monsterTypes = Enum.GetValues<GitWorld.Api.Core.EntityType>()
+        .Where(t => t != GitWorld.Api.Core.EntityType.Player && t != GitWorld.Api.Core.EntityType.NPC && t != GitWorld.Api.Core.EntityType.Neutral)
+        .ToHashSet();
+
+    var monstersToRemove = world.Entities
+        .Where(e => monsterTypes.Contains(e.Type))
+        .Where(e => deadOnly != true || e.State == GitWorld.Api.Core.EntityState.Dead)
+        .Select(e => e.Id)
+        .ToList();
+
+    foreach (var id in monstersToRemove)
+    {
+        world.RemoveEntity(id);
+    }
+
+    return Results.Ok(new { removed = monstersToRemove.Count, deadOnly = deadOnly ?? false });
+}).WithName("AdminClearMonsters");
+
+// Admin: Spawn fake players for stress testing
+app.MapPost("/admin/spawn-fake-players", (HttpContext ctx, World world, int count = 100) =>
+{
+    var adminKey = "gw-admin-2026-x7k9m";
+    var providedKey = ctx.Request.Headers["X-Admin-Key"].FirstOrDefault();
+    if (providedKey != adminKey) return Results.Unauthorized();
+
+    var reinos = new[] { "JavaScript", "Python", "Java", "CSharp", "C", "TypeScript", "Go", "Rust", "Ruby", "PHP" };
+    var spawned = new List<object>();
+    var random = new Random();
+
+    for (int i = 0; i < count; i++)
+    {
+        var reino = reinos[i % reinos.Length];
+        var stats = new GitWorld.Shared.PlayerStats(
+            Hp: 100 + random.Next(0, 200),
+            Dano: 10 + random.Next(0, 30),
+            VelocidadeAtaque: 50 + random.Next(0, 50),
+            VelocidadeMovimento: 80 + random.Next(0, 40),
+            Critico: 5 + random.Next(0, 15),
+            Evasao: 5 + random.Next(0, 10),
+            Armadura: 5 + random.Next(0, 15)
+        );
+
+        var playerId = Guid.NewGuid();
+        var playerName = $"StressTest_{i:D4}";
+
+        var entity = world.AddEntity(playerId, playerName, stats, reino);
+        spawned.Add(new { id = entity.Id, name = playerName, reino, x = entity.X, y = entity.Y });
+    }
+
+    return Results.Ok(new { count = spawned.Count, players = spawned.Take(10), message = $"Spawned {count} fake players" });
+}).WithName("AdminSpawnFakePlayers");
+
+// Admin: Clear all fake stress test players
+app.MapPost("/admin/clear-fake-players", (HttpContext ctx, World world) =>
+{
+    var adminKey = "gw-admin-2026-x7k9m";
+    var providedKey = ctx.Request.Headers["X-Admin-Key"].FirstOrDefault();
+    if (providedKey != adminKey) return Results.Unauthorized();
+
+    var fakePlayerIds = world.Entities
+        .Where(e => e.GithubLogin.StartsWith("StressTest_"))
+        .Select(e => e.Id)
+        .ToList();
+
+    foreach (var id in fakePlayerIds)
+    {
+        world.RemoveEntity(id);
+    }
+
+    return Results.Ok(new { removed = fakePlayerIds.Count });
+}).WithName("AdminClearFakePlayers");
 
 // Admin: Reset all player ELOs
 app.MapPost("/admin/reset-elo", async (HttpContext ctx, AppDbContext db, World world) =>
@@ -1358,6 +1621,238 @@ app.MapPost("/admin/reset-elo", async (HttpContext ctx, AppDbContext db, World w
     await db.SaveChangesAsync();
     return Results.Ok(new { message = $"Reset ELO for {players.Count} players" });
 }).WithName("ResetAllElo");
+
+// ============================================================================
+// SCRIPTING ENDPOINTS
+// ============================================================================
+
+// Get player's current script
+app.MapGet("/player/script", async (HttpContext context, AppDbContext db, IClerkJwtValidator clerkValidator) =>
+{
+    var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+        return Results.Unauthorized();
+
+    var token = authHeader.Substring(7);
+    var clerkUser = await clerkValidator.ValidateTokenAsync(token);
+    if (clerkUser == null || string.IsNullOrEmpty(clerkUser.Username))
+        return Results.Unauthorized();
+
+    var player = await db.Players.FirstOrDefaultAsync(p => p.GitHubLogin.ToLower() == clerkUser.Username.ToLower());
+    if (player == null) return Results.NotFound(new { error = "Player not found" });
+
+    return Results.Ok(new
+    {
+        script = player.CustomScript ?? DefaultScript.Code,
+        enabled = player.ScriptEnabled,
+        updatedAt = player.ScriptUpdatedAt,
+        isDefault = string.IsNullOrEmpty(player.CustomScript)
+    });
+}).WithName("GetPlayerScript");
+
+// Save player's script
+app.MapPost("/player/script", async (HttpContext context, AppDbContext db, IClerkJwtValidator clerkValidator, ScriptExecutor scriptExecutor, World world, ScriptRequest request) =>
+{
+    var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+        return Results.Unauthorized();
+
+    var token = authHeader.Substring(7);
+    var clerkUser = await clerkValidator.ValidateTokenAsync(token);
+    if (clerkUser == null || string.IsNullOrEmpty(clerkUser.Username))
+        return Results.Unauthorized();
+
+    var player = await db.Players.FirstOrDefaultAsync(p => p.GitHubLogin.ToLower() == clerkUser.Username.ToLower());
+    if (player == null) return Results.NotFound(new { error = "Player not found" });
+
+    // Validate script syntax
+    var (isValid, error) = scriptExecutor.ValidateScript(request.Script);
+    if (!isValid)
+    {
+        return Results.BadRequest(new { error = error });
+    }
+
+    // Save script to database
+    player.CustomScript = request.Script;
+    player.ScriptUpdatedAt = DateTime.UtcNow;
+    await db.SaveChangesAsync();
+
+    // Update entity in memory (if player is online)
+    var entity = world.GetEntity(player.Id);
+    if (entity != null)
+    {
+        entity.CustomScript = request.Script;
+    }
+
+    // Clear cache so new script takes effect
+    scriptExecutor.InvalidateCache(player.Id);
+
+    return Results.Ok(new
+    {
+        message = "Script saved successfully",
+        updatedAt = player.ScriptUpdatedAt
+    });
+}).WithName("SavePlayerScript");
+
+// Validate a script without saving
+app.MapPost("/player/script/validate", (ScriptExecutor scriptExecutor, ScriptRequest request) =>
+{
+    var (isValid, error) = scriptExecutor.ValidateScript(request.Script);
+    return Results.Ok(new { isValid, error });
+}).WithName("ValidateScript");
+
+// Enable/disable custom script
+app.MapPost("/player/script/toggle", async (HttpContext context, AppDbContext db, IClerkJwtValidator clerkValidator, ScriptExecutor scriptExecutor, World world, ScriptToggleRequest request) =>
+{
+    var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+        return Results.Unauthorized();
+
+    var token = authHeader.Substring(7);
+    var clerkUser = await clerkValidator.ValidateTokenAsync(token);
+    if (clerkUser == null || string.IsNullOrEmpty(clerkUser.Username))
+        return Results.Unauthorized();
+
+    var player = await db.Players.FirstOrDefaultAsync(p => p.GitHubLogin.ToLower() == clerkUser.Username.ToLower());
+    if (player == null) return Results.NotFound(new { error = "Player not found" });
+
+    // If enabling, validate that script is valid first
+    if (request.Enabled && !string.IsNullOrEmpty(player.CustomScript))
+    {
+        var (isValid, error) = scriptExecutor.ValidateScript(player.CustomScript);
+        if (!isValid)
+        {
+            return Results.BadRequest(new { error = $"Cannot enable invalid script: {error}" });
+        }
+    }
+
+    player.ScriptEnabled = request.Enabled;
+    await db.SaveChangesAsync();
+
+    // Update entity in memory (if player is online)
+    var entity = world.GetEntity(player.Id);
+    if (entity != null)
+    {
+        entity.ScriptEnabled = request.Enabled;
+    }
+
+    // Reset errors when toggling
+    scriptExecutor.ResetErrors(player.Id);
+
+    return Results.Ok(new
+    {
+        enabled = player.ScriptEnabled,
+        message = request.Enabled ? "Custom script enabled" : "Default behavior enabled"
+    });
+}).WithName("TogglePlayerScript");
+
+// Get script status (errors, disabled, etc)
+app.MapGet("/player/script/status", async (HttpContext context, AppDbContext db, IClerkJwtValidator clerkValidator, ScriptExecutor scriptExecutor) =>
+{
+    var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+        return Results.Unauthorized();
+
+    var token = authHeader.Substring(7);
+    var clerkUser = await clerkValidator.ValidateTokenAsync(token);
+    if (clerkUser == null || string.IsNullOrEmpty(clerkUser.Username))
+        return Results.Unauthorized();
+
+    var player = await db.Players.FirstOrDefaultAsync(p => p.GitHubLogin.ToLower() == clerkUser.Username.ToLower());
+    if (player == null) return Results.NotFound(new { error = "Player not found" });
+
+    var errorCount = scriptExecutor.GetErrorCount(player.Id);
+    var isDisabled = scriptExecutor.IsDisabled(player.Id);
+
+    return Results.Ok(new
+    {
+        enabled = player.ScriptEnabled,
+        hasCustomScript = !string.IsNullOrEmpty(player.CustomScript),
+        errorCount,
+        isDisabled,
+        disabledReason = isDisabled ? "Too many errors (max 10)" : null
+    });
+}).WithName("GetScriptStatus");
+
+// Reset script to default
+app.MapPost("/player/script/reset", async (HttpContext context, AppDbContext db, IClerkJwtValidator clerkValidator, ScriptExecutor scriptExecutor, World world) =>
+{
+    var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+        return Results.Unauthorized();
+
+    var token = authHeader.Substring(7);
+    var clerkUser = await clerkValidator.ValidateTokenAsync(token);
+    if (clerkUser == null || string.IsNullOrEmpty(clerkUser.Username))
+        return Results.Unauthorized();
+
+    var player = await db.Players.FirstOrDefaultAsync(p => p.GitHubLogin.ToLower() == clerkUser.Username.ToLower());
+    if (player == null) return Results.NotFound(new { error = "Player not found" });
+
+    player.CustomScript = null;
+    player.ScriptEnabled = false;
+    player.ScriptUpdatedAt = null;
+    await db.SaveChangesAsync();
+
+    // Update entity in memory (if player is online)
+    var entity = world.GetEntity(player.Id);
+    if (entity != null)
+    {
+        entity.CustomScript = null;
+        entity.ScriptEnabled = false;
+    }
+
+    scriptExecutor.InvalidateCache(player.Id);
+    scriptExecutor.ResetErrors(player.Id);
+
+    return Results.Ok(new { message = "Script reset to default" });
+}).WithName("ResetPlayerScript");
+
+// Get default script code (for reference)
+app.MapGet("/player/script/default", () =>
+{
+    return Results.Ok(new { script = DefaultScript.Code });
+}).WithName("GetDefaultScript");
+
+// Get script API documentation
+app.MapGet("/player/script/docs", () =>
+{
+    return Results.Ok(new
+    {
+        variables = new
+        {
+            self = "Your player's data (id, x, y, hp, maxHp, level, elo, dano, etc.)",
+            enemies = "Array of enemies in vision range",
+            allies = "Array of allies in vision range",
+            monsters = "Array of monsters in vision range",
+            players = "Array of other players in vision range",
+            @event = "Current event info { active, type, monstersRemaining }",
+            tick = "Current server tick",
+            attackRange = "Attack range constant"
+        },
+        functions = new
+        {
+            moveTo = "moveTo(x, y) - Move to coordinates",
+            moveToEntity = "moveToEntity(entity) - Move towards entity",
+            attack = "attack(entity) - Attack entity",
+            attackNearest = "attackNearest() - Attack nearest enemy",
+            flee = "flee() - Run away from enemies",
+            stop = "stop() - Stop all actions",
+            getDistance = "getDistance(entity) - Get distance to entity",
+            isInAttackRange = "isInAttackRange(entity) - Check if in range",
+            getNearestEnemy = "getNearestEnemy() - Get nearest enemy",
+            getNearestAlly = "getNearestAlly() - Get nearest ally",
+            getNearestMonster = "getNearestMonster() - Get nearest monster",
+            getNearestPlayer = "getNearestPlayer() - Get nearest player",
+            getEntitiesInRange = "getEntitiesInRange(range) - Get entities in range",
+            log = "log(message) - Debug log (max 10/tick)",
+            random = "random() - Random 0-1",
+            randomRange = "randomRange(min, max) - Random in range"
+        },
+        entityProperties = new[] { "id", "name", "type", "x", "y", "hp", "maxHp", "level", "elo", "dano", "armadura", "critico", "evasao", "velocidadeAtaque", "velocidadeMovimento", "estado", "reino", "isMonster", "isPlayer", "isAlly", "isEnemy" },
+        example = DefaultScript.Code
+    });
+}).WithName("GetScriptDocs");
 
 // Ensure graceful shutdown
 var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();

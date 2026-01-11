@@ -1,3 +1,4 @@
+using GitWorld.Api.Core.Scripting;
 using GitWorld.Api.Core.Systems;
 using GitWorld.Shared;
 
@@ -13,6 +14,7 @@ public class GameLoop : IDisposable
     private readonly CombatSystem _combatSystem;
     private readonly AISystem _aiSystem;
     private readonly PlayerBehaviorSystem _playerBehaviorSystem;
+    private readonly PlayerScriptSystem _playerScriptSystem;
     private readonly HealthBehaviorSystem _healthBehaviorSystem;
     private readonly EventSystem _eventSystem;
     private readonly ProgressionSystem _progressionSystem;
@@ -34,19 +36,23 @@ public class GameLoop : IDisposable
     public EventSystem EventSystem => _eventSystem;
     public ProgressionSystem ProgressionSystem => _progressionSystem;
 
-    public GameLoop(World world)
+    public GameLoop(World world, ScriptExecutor scriptExecutor)
     {
         _world = world;
         _movementSystem = new MovementSystem(world);
         _combatSystem = new CombatSystem(world);
         _aiSystem = new AISystem(world, _combatSystem);
         _playerBehaviorSystem = new PlayerBehaviorSystem(world);
+        _playerScriptSystem = new PlayerScriptSystem(world, scriptExecutor);
         _healthBehaviorSystem = new HealthBehaviorSystem(world);
         _eventSystem = new EventSystem(world);
         _progressionSystem = new ProgressionSystem(world);
 
         // Wire up EventSystem to PlayerBehaviorSystem for monster priority
         _playerBehaviorSystem.SetEventSystem(_eventSystem);
+
+        // Wire up EventSystem to PlayerScriptSystem for event info
+        _playerScriptSystem.SetEventSystem(_eventSystem);
 
         // Wire up CombatSystem to ProgressionSystem for XP/Gold rewards
         _combatSystem.OnMonsterKill += (monster, killer) =>
@@ -153,7 +159,12 @@ public class GameLoop : IDisposable
             // Skip if player is fleeing to safety
             if (entity.Type == EntityType.Player && !isFleeing)
             {
-                _playerBehaviorSystem.Update(entity, _currentTick);
+                // Try custom script first; if it fails or is disabled, use default behavior
+                var scriptExecuted = _playerScriptSystem.Update(entity, _currentTick);
+                if (!scriptExecuted)
+                {
+                    _playerBehaviorSystem.Update(entity, _currentTick);
+                }
             }
 
             // Process movement for all entities

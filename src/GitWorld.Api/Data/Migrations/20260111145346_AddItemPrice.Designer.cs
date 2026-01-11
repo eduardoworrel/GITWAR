@@ -3,6 +3,7 @@ using System;
 using GitWorld.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GitWorld.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260111145346_AddItemPrice")]
+    partial class AddItemPrice
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -175,9 +178,6 @@ namespace GitWorld.Api.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("critico");
 
-                    b.Property<string>("CustomScript")
-                        .HasColumnType("text");
-
                     b.Property<int>("Dano")
                         .HasColumnType("integer")
                         .HasColumnName("dano");
@@ -243,12 +243,6 @@ namespace GitWorld.Api.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("reino");
-
-                    b.Property<bool>("ScriptEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("ScriptUpdatedAt")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()

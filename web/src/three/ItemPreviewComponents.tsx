@@ -499,7 +499,7 @@ export function CamisetaPreview({ itemName }: ItemPreviewProps) {
     <group>
       <mesh position={[0, BODY_HEIGHT / 2, BODY_DEPTH / 2 + 0.6]}>
         <boxGeometry args={[BODY_WIDTH + 1, BODY_HEIGHT, 0.5]} />
-        <meshBasicMaterial color={color} transparent opacity={0.9} />
+        <meshBasicMaterial color={color} />
       </mesh>
       {isGitHub && (
         <mesh position={[0, BODY_HEIGHT / 2 + 2, BODY_DEPTH / 2 + 1]}>
@@ -510,7 +510,7 @@ export function CamisetaPreview({ itemName }: ItemPreviewProps) {
       {isHoodie && (
         <mesh position={[0, BODY_HEIGHT + 2, -1]}>
           <boxGeometry args={[8, 5, 4]} />
-          <meshBasicMaterial color={color} transparent opacity={0.8} />
+          <meshBasicMaterial color={color} />
         </mesh>
       )}
     </group>
@@ -545,11 +545,11 @@ export function BebidaPreview({ itemName, tier }: ItemPreviewProps) {
               <>
                 <mesh>
                   <boxGeometry args={[3.5, 5, 3.5]} />
-                  <meshBasicMaterial color="#87CEEB" transparent opacity={0.4} />
+                  <meshBasicMaterial color="#87CEEB" />
                 </mesh>
                 <mesh position={[0, -0.5, 0]}>
                   <boxGeometry args={[3, 3.5, 3]} />
-                  <meshBasicMaterial color="#1a0f0a" transparent opacity={0.85} />
+                  <meshBasicMaterial color="#1a0f0a" />
                 </mesh>
                 <mesh position={[0.8, 1, 0.8]} rotation={[0.1, 0, 0.1]}>
                   <boxGeometry args={[0.4, 6, 0.4]} />
@@ -637,7 +637,7 @@ export function BebidaPreview({ itemName, tier }: ItemPreviewProps) {
             </mesh>
             <mesh position={[0, -0.5, 0]}>
               <boxGeometry args={[2.7, 3.5, 2.7]} />
-              <meshBasicMaterial color="#ff00ff" transparent opacity={0.7} />
+              <meshBasicMaterial color="#cc00cc" />
             </mesh>
             <mesh position={[0, 3, 0]}>
               <boxGeometry args={[3.2, 0.8, 3.2]} />
@@ -677,16 +677,16 @@ export function IDEPreview({ itemName, tier }: ItemPreviewProps) {
     <group position={[25, BODY_HEIGHT / 2 + LEG_HEIGHT + 20, 35]} rotation={[0.1, -0.3, 0]}>
       <mesh>
         <boxGeometry args={[18, 12, 0.4]} />
-        <meshBasicMaterial color="#222222" transparent opacity={0.9} />
+        <meshBasicMaterial color="#222222" />
       </mesh>
       <mesh position={[0, 0, 0.25]}>
         <boxGeometry args={[17, 11, 0.1]} />
-        <meshBasicMaterial color={bgColor} transparent opacity={0.8} />
+        <meshBasicMaterial color={bgColor} />
       </mesh>
       {[-4, -2, 0, 2, 4].map((y, i) => (
         <mesh key={i} position={[-3 + (i % 3) * 1.5, y, 0.4]}>
           <boxGeometry args={[5 + (i % 2) * 3, 0.5, 0.1]} />
-          <meshBasicMaterial color={accentColor} transparent opacity={0.75} />
+          <meshBasicMaterial color={accentColor} />
         </mesh>
       ))}
       <pointLight color={accentColor} intensity={0.5} distance={30} />
@@ -889,7 +889,7 @@ export function ComidaPreview({ itemName }: ItemPreviewProps) {
             </mesh>
             <mesh position={[0, 1.5, 0]}>
               <boxGeometry args={[3, 1.2, 3]} />
-              <meshBasicMaterial color="#c9a66b" transparent opacity={0.9} />
+              <meshBasicMaterial color="#c9a66b" />
             </mesh>
             <mesh position={[-0.5, 2, 0.3]}>
               <boxGeometry args={[0.3, 0.8, 2]} />
@@ -972,7 +972,7 @@ export function AcessorioPreview({ itemName, tier }: ItemPreviewProps) {
           </mesh>
           <mesh position={[0, 0.3, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <boxGeometry args={[14.5, 10.5, 0.2]} />
-            <meshBasicMaterial color="#ff00ff" transparent opacity={0.9} />
+            <meshBasicMaterial color="#dd00dd" />
           </mesh>
           <mesh position={[6.8, 0.4, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <boxGeometry args={[0.6, 9.5, 0.2]} />

@@ -49,7 +49,7 @@ export function GoNilPanicModel({ color, opacity, isWalking, lastAttackTime }: E
       {/* Gopher body - zombified */}
       <mesh ref={bodyRef} position={[0, 12, 0]}>
         <capsuleGeometry args={[8, 10, 8, 16]} />
-        <meshBasicMaterial color={zombieGreen} transparent opacity={opacity} />
+        <meshBasicMaterial color={zombieGreen}  />
       </mesh>
 
       {/* Big zombie eyes */}
@@ -82,17 +82,17 @@ export function GoNilPanicModel({ color, opacity, isWalking, lastAttackTime }: E
       {/* Ears */}
       <mesh position={[-6, 25, 0]}>
         <sphereGeometry args={[3, 8, 8]} />
-        <meshBasicMaterial color={zombieGreen} transparent opacity={opacity} />
+        <meshBasicMaterial color={zombieGreen}  />
       </mesh>
       <mesh position={[6, 25, 0]}>
         <sphereGeometry args={[3, 8, 8]} />
-        <meshBasicMaterial color={zombieGreen} transparent opacity={opacity} />
+        <meshBasicMaterial color={zombieGreen}  />
       </mesh>
 
       {/* "nil" text */}
       <mesh position={[0, 30, 0]}>
         <boxGeometry args={[10, 4, 1]} />
-        <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xff0000}  />
       </mesh>
 
       {/* Teeth */}
@@ -135,12 +135,12 @@ export function GoDeadlockModel({ color, opacity, isWalking, lastAttackTime }: E
       <group position={[-8, 12, 0]} rotation={[0, Math.PI / 2, 0]}>
         <mesh>
           <capsuleGeometry args={[5, 6, 8, 16]} />
-          <meshBasicMaterial color={goBlue} transparent opacity={opacity} />
+          <meshBasicMaterial color={goBlue}  />
         </mesh>
         {/* Arms reaching */}
         <mesh position={[0, 3, 6]} rotation={[0.5, 0, 0]}>
           <capsuleGeometry args={[1.5, 6, 4, 8]} />
-          <meshBasicMaterial color={goBlue} transparent opacity={opacity} />
+          <meshBasicMaterial color={goBlue}  />
         </mesh>
       </group>
 
@@ -148,25 +148,25 @@ export function GoDeadlockModel({ color, opacity, isWalking, lastAttackTime }: E
       <group position={[8, 12, 0]} rotation={[0, -Math.PI / 2, 0]}>
         <mesh>
           <capsuleGeometry args={[5, 6, 8, 16]} />
-          <meshBasicMaterial color={goBlue} transparent opacity={opacity} />
+          <meshBasicMaterial color={goBlue}  />
         </mesh>
         {/* Arms reaching */}
         <mesh position={[0, 3, 6]} rotation={[0.5, 0, 0]}>
           <capsuleGeometry args={[1.5, 6, 4, 8]} />
-          <meshBasicMaterial color={goBlue} transparent opacity={opacity} />
+          <meshBasicMaterial color={goBlue}  />
         </mesh>
       </group>
 
       {/* Chain/lock between them */}
       <mesh position={[0, 15, 0]}>
         <torusGeometry args={[5, 1, 8, 16]} />
-        <meshBasicMaterial color={0x888888} transparent opacity={opacity} />
+        <meshBasicMaterial color={0x888888}  />
       </mesh>
 
       {/* "DEADLOCK" text */}
       <mesh position={[0, 28, 0]}>
         <boxGeometry args={[18, 4, 1]} />
-        <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xff0000}  />
       </mesh>
     </group>
   );
@@ -217,7 +217,7 @@ export function GoImportCycleModel({ color, opacity, isWalking, lastAttackTime }
             position={[Math.cos(angle) * radius, Math.sin(angle) * radius, 0]}
           >
             <sphereGeometry args={[3 - (i === 0 ? 0 : i * 0.1), 8, 8]} />
-            <meshBasicMaterial color={goBlue} transparent opacity={opacity} />
+            <meshBasicMaterial color={goBlue}  />
           </mesh>
         );
       })}
@@ -225,13 +225,13 @@ export function GoImportCycleModel({ color, opacity, isWalking, lastAttackTime }
       {/* Head eating tail */}
       <mesh position={[12, 0, 0]}>
         <coneGeometry args={[4, 6, 8]} />
-        <meshBasicMaterial color={goBlue} transparent opacity={opacity} />
+        <meshBasicMaterial color={goBlue}  />
       </mesh>
 
       {/* Arrow showing cycle */}
       <mesh position={[0, 0, 5]} rotation={[0, 0, phaseRef.current]}>
         <torusGeometry args={[8, 0.5, 8, 16, Math.PI * 1.5]} />
-        <meshBasicMaterial color={0xffaa00} transparent opacity={opacity * 0.5} />
+        <meshBasicMaterial color={0xffaa00}  />
       </mesh>
     </group>
   );
@@ -277,28 +277,28 @@ export function RustBorrowCheckerModel({ color, opacity, isWalking, lastAttackTi
       {/* Crab body */}
       <mesh position={[0, 10, 0]}>
         <sphereGeometry args={[10, 12, 8]} />
-        <meshBasicMaterial color={rustOrange} transparent opacity={opacity} />
+        <meshBasicMaterial color={rustOrange}  />
       </mesh>
 
       {/* Shell pattern */}
       <mesh position={[0, 12, 5]}>
         <boxGeometry args={[12, 8, 2]} />
-        <meshBasicMaterial color={rustBrown} transparent opacity={opacity} />
+        <meshBasicMaterial color={rustBrown}  />
       </mesh>
 
       {/* Left claw */}
       <group ref={leftClawRef} position={[-15, 10, 5]}>
         <mesh>
           <boxGeometry args={[8, 4, 3]} />
-          <meshBasicMaterial color={rustOrange} transparent opacity={opacity} />
+          <meshBasicMaterial color={rustOrange}  />
         </mesh>
         <mesh position={[-5, 3, 0]} rotation={[0, 0, 0.5]}>
           <boxGeometry args={[6, 2, 2]} />
-          <meshBasicMaterial color={rustOrange} transparent opacity={opacity} />
+          <meshBasicMaterial color={rustOrange}  />
         </mesh>
         <mesh position={[-5, -1, 0]} rotation={[0, 0, -0.3]}>
           <boxGeometry args={[6, 2, 2]} />
-          <meshBasicMaterial color={rustOrange} transparent opacity={opacity} />
+          <meshBasicMaterial color={rustOrange}  />
         </mesh>
       </group>
 
@@ -306,15 +306,15 @@ export function RustBorrowCheckerModel({ color, opacity, isWalking, lastAttackTi
       <group ref={rightClawRef} position={[15, 10, 5]}>
         <mesh>
           <boxGeometry args={[8, 4, 3]} />
-          <meshBasicMaterial color={rustOrange} transparent opacity={opacity} />
+          <meshBasicMaterial color={rustOrange}  />
         </mesh>
         <mesh position={[5, 3, 0]} rotation={[0, 0, -0.5]}>
           <boxGeometry args={[6, 2, 2]} />
-          <meshBasicMaterial color={rustOrange} transparent opacity={opacity} />
+          <meshBasicMaterial color={rustOrange}  />
         </mesh>
         <mesh position={[5, -1, 0]} rotation={[0, 0, 0.3]}>
           <boxGeometry args={[6, 2, 2]} />
-          <meshBasicMaterial color={rustOrange} transparent opacity={opacity} />
+          <meshBasicMaterial color={rustOrange}  />
         </mesh>
       </group>
 
@@ -337,7 +337,7 @@ export function RustBorrowCheckerModel({ color, opacity, isWalking, lastAttackTi
             rotation={[0, 0, side * 0.5]}
           >
             <cylinderGeometry args={[1, 0.5, 8, 6]} />
-            <meshBasicMaterial color={rustOrange} transparent opacity={opacity} />
+            <meshBasicMaterial color={rustOrange}  />
           </mesh>
         ))
       )}
@@ -401,7 +401,7 @@ export function RustPanicModel({ color, opacity, isWalking, lastAttackTime }: Er
             position={[Math.cos(angle) * 5, 15, Math.sin(angle) * 5]}
           >
             <tetrahedronGeometry args={[4]} />
-            <meshBasicMaterial color={rustOrange} transparent opacity={opacity} />
+            <meshBasicMaterial color={rustOrange}  />
           </mesh>
         );
       })}
@@ -409,13 +409,13 @@ export function RustPanicModel({ color, opacity, isWalking, lastAttackTime }: Er
       {/* Central explosion */}
       <mesh position={[0, 15, 0]}>
         <icosahedronGeometry args={[6, 0]} />
-        <meshBasicMaterial color={0xff4400} transparent opacity={opacity * 0.8} />
+        <meshBasicMaterial color={0xff4400}  />
       </mesh>
 
       {/* "panic!" text */}
       <mesh position={[0, 30, 0]}>
         <boxGeometry args={[14, 4, 1]} />
-        <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xff0000}  />
       </mesh>
 
       {/* Exclamation marks */}
@@ -423,11 +423,11 @@ export function RustPanicModel({ color, opacity, isWalking, lastAttackTime }: Er
         <group key={`excl-${i}`} position={[(i - 1) * 8, 25, 5]}>
           <mesh position={[0, 2, 0]}>
             <boxGeometry args={[2, 5, 1]} />
-            <meshBasicMaterial color={0xffff00} transparent opacity={opacity} />
+            <meshBasicMaterial color={0xffff00}  />
           </mesh>
           <mesh position={[0, -2, 0]}>
             <boxGeometry args={[2, 2, 1]} />
-            <meshBasicMaterial color={0xffff00} transparent opacity={opacity} />
+            <meshBasicMaterial color={0xffff00}  />
           </mesh>
         </group>
       ))}
@@ -474,7 +474,7 @@ export function RustLifetimeErrorModel({ color, opacity, isWalking, lastAttackTi
       {/* Old weathered crab body */}
       <mesh position={[0, 10, 0]}>
         <sphereGeometry args={[8, 10, 8]} />
-        <meshBasicMaterial color={oldRust} transparent opacity={opacity} />
+        <meshBasicMaterial color={oldRust}  />
       </mesh>
 
       {/* Cracks on shell */}
@@ -485,7 +485,7 @@ export function RustLifetimeErrorModel({ color, opacity, isWalking, lastAttackTi
           rotation={[0, 0, (i - 1) * 0.3]}
         >
           <boxGeometry args={[0.5, 5, 0.5]} />
-          <meshBasicMaterial color={0x333333} transparent opacity={opacity} />
+          <meshBasicMaterial color={0x333333}  />
         </mesh>
       ))}
 
@@ -494,26 +494,26 @@ export function RustLifetimeErrorModel({ color, opacity, isWalking, lastAttackTi
         {/* Top glass */}
         <mesh position={[0, 5, 0]}>
           <coneGeometry args={[4, 6, 8]} />
-          <meshBasicMaterial color={0xaaddff} transparent opacity={opacity * 0.5} />
+          <meshBasicMaterial color={0xaaddff}  />
         </mesh>
         {/* Bottom glass */}
         <mesh position={[0, -5, 0]} rotation={[Math.PI, 0, 0]}>
           <coneGeometry args={[4, 6, 8]} />
-          <meshBasicMaterial color={0xaaddff} transparent opacity={opacity * 0.5} />
+          <meshBasicMaterial color={0xaaddff}  />
         </mesh>
         {/* Sand */}
         <mesh ref={sandRef} position={[0, 0, 0]}>
           <cylinderGeometry args={[0.5, 0.5, 8, 8]} />
-          <meshBasicMaterial color={0xdaa520} transparent opacity={opacity} />
+          <meshBasicMaterial color={0xdaa520}  />
         </mesh>
         {/* Frame */}
         <mesh position={[0, 8, 0]}>
           <boxGeometry args={[10, 1, 3]} />
-          <meshBasicMaterial color={0x8b4513} transparent opacity={opacity} />
+          <meshBasicMaterial color={0x8b4513}  />
         </mesh>
         <mesh position={[0, -8, 0]}>
           <boxGeometry args={[10, 1, 3]} />
-          <meshBasicMaterial color={0x8b4513} transparent opacity={opacity} />
+          <meshBasicMaterial color={0x8b4513}  />
         </mesh>
       </group>
 
@@ -530,7 +530,7 @@ export function RustLifetimeErrorModel({ color, opacity, isWalking, lastAttackTi
       {/* 'a lifetime annotation */}
       <mesh position={[12, 15, 0]}>
         <boxGeometry args={[4, 6, 1]} />
-        <meshBasicMaterial color={rustOrange} transparent opacity={opacity} />
+        <meshBasicMaterial color={rustOrange}  />
       </mesh>
     </group>
   );
@@ -585,7 +585,7 @@ export function RubyNoMethodErrorModel({ color, opacity, isWalking, lastAttackTi
       {/* Cracked ruby gem */}
       <mesh ref={gemRef}>
         <octahedronGeometry args={[12, 0]} />
-        <meshBasicMaterial color={darkRuby} transparent opacity={opacity * 0.7} />
+        <meshBasicMaterial color={darkRuby}  />
       </mesh>
 
       {/* Cracks */}
@@ -597,18 +597,18 @@ export function RubyNoMethodErrorModel({ color, opacity, isWalking, lastAttackTi
           rotation={[0.3, 0, (i - 1.5) * 0.5]}
         >
           <boxGeometry args={[1, 8, 0.5]} />
-          <meshBasicMaterial color={0x000000} transparent opacity={opacity} />
+          <meshBasicMaterial color={0x000000}  />
         </mesh>
       ))}
 
       {/* "?" where method should be */}
       <mesh position={[0, 0, 15]}>
         <boxGeometry args={[4, 8, 1]} />
-        <meshBasicMaterial color={0xffffff} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xffffff}  />
       </mesh>
       <mesh position={[0, -6, 15]}>
         <boxGeometry args={[2, 2, 1]} />
-        <meshBasicMaterial color={0xffffff} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xffffff}  />
       </mesh>
 
       {/* Dull surface - no shine */}
@@ -657,47 +657,47 @@ export function RubyLoadErrorModel({ color, opacity, isWalking, lastAttackTime }
       {/* Broken rails */}
       <mesh position={[-8, 2, 0]}>
         <boxGeometry args={[30, 2, 2]} />
-        <meshBasicMaterial color={railColor} transparent opacity={opacity} />
+        <meshBasicMaterial color={railColor}  />
       </mesh>
       <mesh position={[8, 2, 0]}>
         <boxGeometry args={[30, 2, 2]} />
-        <meshBasicMaterial color={railColor} transparent opacity={opacity} />
+        <meshBasicMaterial color={railColor}  />
       </mesh>
 
       {/* Broken section */}
       <mesh position={[0, 2, 0]} rotation={[0, 0, 0.3]}>
         <boxGeometry args={[10, 2, 2]} />
-        <meshBasicMaterial color={railColor} transparent opacity={opacity} />
+        <meshBasicMaterial color={railColor}  />
       </mesh>
 
       {/* Railway ties */}
       {[-2, -1, 0, 1, 2].map((i) => (
         <mesh key={`tie-${i}`} position={[0, 0, i * 6]} rotation={[0, Math.PI / 2, 0]}>
           <boxGeometry args={[20, 1, 3]} />
-          <meshBasicMaterial color={0x8b4513} transparent opacity={opacity} />
+          <meshBasicMaterial color={0x8b4513}  />
         </mesh>
       ))}
 
       {/* Derailed train */}
       <mesh ref={trainRef} position={[5, 10, 0]} rotation={[0, 0, 0.4]}>
         <boxGeometry args={[12, 8, 20]} />
-        <meshBasicMaterial color={rubyRed} transparent opacity={opacity} />
+        <meshBasicMaterial color={rubyRed}  />
       </mesh>
 
       {/* Wheels */}
       <mesh position={[0, 5, -8]}>
         <cylinderGeometry args={[3, 3, 2, 16]} />
-        <meshBasicMaterial color={0x333333} transparent opacity={opacity} />
+        <meshBasicMaterial color={0x333333}  />
       </mesh>
       <mesh position={[0, 5, 8]}>
         <cylinderGeometry args={[3, 3, 2, 16]} />
-        <meshBasicMaterial color={0x333333} transparent opacity={opacity} />
+        <meshBasicMaterial color={0x333333}  />
       </mesh>
 
       {/* "LoadError" sign */}
       <mesh position={[0, 25, 0]}>
         <boxGeometry args={[18, 4, 1]} />
-        <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xff0000}  />
       </mesh>
     </group>
   );
@@ -757,11 +757,11 @@ export function RubySyntaxErrorModel({ color, opacity, isWalking, lastAttackTime
       {/* Syntax symbols floating */}
       <mesh position={[0, 15, 0]}>
         <boxGeometry args={[3, 6, 1]} />
-        <meshBasicMaterial color={0xffffff} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xffffff}  />
       </mesh>
       <mesh position={[6, 15, 0]} rotation={[0, 0, Math.PI / 4]}>
         <boxGeometry args={[3, 1, 1]} />
-        <meshBasicMaterial color={0xffffff} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xffffff}  />
       </mesh>
     </group>
   );
@@ -809,19 +809,19 @@ export function SwiftFoundNilModel({ color, opacity, isWalking, lastAttackTime }
       {/* Bird body */}
       <mesh position={[0, 0, 0]} rotation={[0.3, 0, 0]}>
         <capsuleGeometry args={[4, 8, 8, 16]} />
-        <meshBasicMaterial color={swiftOrange} transparent opacity={opacity} />
+        <meshBasicMaterial color={swiftOrange}  />
       </mesh>
 
       {/* Head */}
       <mesh position={[0, 8, 4]}>
         <sphereGeometry args={[4, 12, 12]} />
-        <meshBasicMaterial color={swiftOrange} transparent opacity={opacity} />
+        <meshBasicMaterial color={swiftOrange}  />
       </mesh>
 
       {/* Beak */}
       <mesh position={[0, 7, 8]} rotation={[-0.3, 0, 0]}>
         <coneGeometry args={[1.5, 4, 8]} />
-        <meshBasicMaterial color={0xffaa00} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xffaa00}  />
       </mesh>
 
       {/* Transparent wings - fading */}
@@ -831,7 +831,7 @@ export function SwiftFoundNilModel({ color, opacity, isWalking, lastAttackTime }
         rotation={[0, 0, 0.5]}
       >
         <boxGeometry args={[10, 2, 8]} />
-        <meshBasicMaterial color={swiftOrange} transparent opacity={opacity * 0.3} />
+        <meshBasicMaterial color={swiftOrange}  />
       </mesh>
       <mesh
         ref={(el) => { if (el) wingsRef.current[1] = el; }}
@@ -839,7 +839,7 @@ export function SwiftFoundNilModel({ color, opacity, isWalking, lastAttackTime }
         rotation={[0, 0, -0.5]}
       >
         <boxGeometry args={[10, 2, 8]} />
-        <meshBasicMaterial color={swiftOrange} transparent opacity={opacity * 0.3} />
+        <meshBasicMaterial color={swiftOrange}  />
       </mesh>
 
       {/* Dizzy eyes */}
@@ -855,7 +855,7 @@ export function SwiftFoundNilModel({ color, opacity, isWalking, lastAttackTime }
       {/* "nil" text */}
       <mesh position={[0, 18, 0]}>
         <boxGeometry args={[8, 3, 1]} />
-        <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xff0000}  />
       </mesh>
     </group>
   );
@@ -909,23 +909,23 @@ export function SwiftForceUnwrapModel({ color, opacity, isWalking, lastAttackTim
       {/* Gift box */}
       <mesh position={[0, 5, 0]}>
         <boxGeometry args={[16, 10, 16]} />
-        <meshBasicMaterial color={swiftOrange} transparent opacity={opacity} />
+        <meshBasicMaterial color={swiftOrange}  />
       </mesh>
 
       {/* Ribbon */}
       <mesh position={[0, 5, 0]}>
         <boxGeometry args={[3, 11, 17]} />
-        <meshBasicMaterial color={0xffffff} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xffffff}  />
       </mesh>
       <mesh position={[0, 5, 0]}>
         <boxGeometry args={[17, 11, 3]} />
-        <meshBasicMaterial color={0xffffff} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xffffff}  />
       </mesh>
 
       {/* Exploding lid */}
       <mesh ref={lidRef} position={[0, 20, 0]}>
         <boxGeometry args={[17, 3, 17]} />
-        <meshBasicMaterial color={swiftOrange} transparent opacity={opacity} />
+        <meshBasicMaterial color={swiftOrange}  />
       </mesh>
 
       {/* Flying contents - errors */}
@@ -935,18 +935,18 @@ export function SwiftForceUnwrapModel({ color, opacity, isWalking, lastAttackTim
           ref={(el) => { if (el) contentsRef.current[i] = el; }}
         >
           <octahedronGeometry args={[3]} />
-          <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+          <meshBasicMaterial color={0xff0000}  />
         </mesh>
       ))}
 
       {/* "!" mark */}
       <mesh position={[0, 35, 0]}>
         <boxGeometry args={[3, 10, 2]} />
-        <meshBasicMaterial color={0xffff00} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xffff00}  />
       </mesh>
       <mesh position={[0, 27, 0]}>
         <boxGeometry args={[3, 3, 2]} />
-        <meshBasicMaterial color={0xffff00} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xffff00}  />
       </mesh>
     </group>
   );
@@ -985,11 +985,11 @@ export function SwiftIndexOutOfRangeModel({ color, opacity, isWalking, lastAttac
       {/* Boundary walls */}
       <mesh position={[-25, 15, 0]}>
         <boxGeometry args={[2, 30, 20]} />
-        <meshBasicMaterial color={0xff0000} transparent opacity={opacity * 0.5} />
+        <meshBasicMaterial color={0xff0000}  />
       </mesh>
       <mesh position={[25, 15, 0]}>
         <boxGeometry args={[2, 30, 20]} />
-        <meshBasicMaterial color={0xff0000} transparent opacity={opacity * 0.5} />
+        <meshBasicMaterial color={0xff0000}  />
       </mesh>
 
       {/* Index numbers on floor */}
@@ -1008,23 +1008,23 @@ export function SwiftIndexOutOfRangeModel({ color, opacity, isWalking, lastAttac
       <group ref={birdRef} position={[0, 15, 0]}>
         <mesh>
           <coneGeometry args={[4, 12, 8]} />
-          <meshBasicMaterial color={swiftOrange} transparent opacity={opacity} />
+          <meshBasicMaterial color={swiftOrange}  />
         </mesh>
         {/* Wings */}
         <mesh position={[-6, 0, 0]} rotation={[0, 0, 0.5]}>
           <boxGeometry args={[8, 1, 4]} />
-          <meshBasicMaterial color={swiftOrange} transparent opacity={opacity} />
+          <meshBasicMaterial color={swiftOrange}  />
         </mesh>
         <mesh position={[6, 0, 0]} rotation={[0, 0, -0.5]}>
           <boxGeometry args={[8, 1, 4]} />
-          <meshBasicMaterial color={swiftOrange} transparent opacity={opacity} />
+          <meshBasicMaterial color={swiftOrange}  />
         </mesh>
       </group>
 
       {/* "[X]" text */}
       <mesh position={[0, 32, 0]}>
         <boxGeometry args={[12, 4, 1]} />
-        <meshBasicMaterial color={0xff0000} transparent opacity={opacity} />
+        <meshBasicMaterial color={0xff0000}  />
       </mesh>
     </group>
   );

@@ -37,6 +37,11 @@ public class Player
     public int Exp { get; set; } = 0;
     public int Gold { get; set; } = 0;
 
+    // Scripting
+    public string? CustomScript { get; set; }          // User's custom JavaScript code
+    public bool ScriptEnabled { get; set; } = false;   // Whether to use custom script
+    public DateTime? ScriptUpdatedAt { get; set; }     // Last script update time
+
     // Metadata
     public DateTime LastGitHubSync { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

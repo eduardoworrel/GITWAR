@@ -112,7 +112,7 @@ function DamageText({ damage }: { damage: DamageNumber }) {
 }
 
 // Max distance to show floating damage (squared for performance)
-const MAX_EVENT_DISTANCE_SQ = 800 * 800;
+const MAX_EVENT_DISTANCE_SQ = 250 * 250;
 
 export function FloatingDamage() {
   const combatEvents = useGameStore((s) => s.combatEvents);

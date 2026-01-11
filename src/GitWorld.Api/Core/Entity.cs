@@ -119,7 +119,21 @@ public enum EntityType
     // === Elixir Errors ===
     ElixirFunctionClause, // Poção com receita errada
     ElixirArgumentError,  // Frasco com ingredientes incompatíveis
-    ElixirKeyError        // Mapa de alquimia sem chave
+    ElixirKeyError,       // Mapa de alquimia sem chave
+
+    // === AI/ML Errors (AI Invasion Event) ===
+    AIVanishingGradient,  // Gradientes desaparecendo - fantasma matemático evaporando
+    AIExplodingGradient,  // Gradientes explodindo - núcleo instável com números voando
+    AIDyingRelu,          // Neurônios mortos - cérebro robótico com partes apagadas
+    AIOverfitting,        // Decoreba - robô com espelho, só repete o que vê
+    AIUnderfitting,       // Burro demais - robô simplório ignorando padrões
+    AIModeCollapse,       // GAN colapsado - clones idênticos saindo de máquina
+    AICatastrophicForgetting, // Esquecimento - robô com memória vazando
+    AIDataLeakage,        // Vazamento de dados - tubos com dados escapando
+    AICudaOutOfMemory,    // GPU sem memória - chip derretendo/fumando
+    AIBiasVariance,       // Trade-off - balança desequilibrada com cérebros
+    AIDeadNeuron,         // Neurônio morto - célula cerebral apagada/cinza
+    AINaNLoss             // Loss explodiu - display com "NaN" e faíscas
 }
 
 // Minimal equipped item info for broadcasting
@@ -177,6 +191,10 @@ public class Entity
 
     // Equipped items (for visual display)
     public List<EquippedItemInfo> EquippedItems { get; set; } = new();
+
+    // Scripting
+    public string? CustomScript { get; set; }
+    public bool ScriptEnabled { get; set; } = false;
 
     // Damage tracking for reward distribution (only for monsters)
     // Key: Attacker Entity ID, Value: Total damage dealt

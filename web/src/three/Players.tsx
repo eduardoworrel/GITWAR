@@ -13,6 +13,7 @@ const projScreenMatrix = new THREE.Matrix4();
 const boundingSphere = new THREE.Sphere();
 const CULLING_RADIUS = 150; // Entity bounding sphere radius
 const CULLING_UPDATE_FRAMES = 5; // Update culling every N frames
+const MAX_RENDER_DISTANCE_SQ = 300 * 300; // Max distance to render entities (squared)
 
 // Shared geometry for click hitbox
 const HITBOX_GEOMETRY = new THREE.CylinderGeometry(15, 15, 50, 8);
@@ -31,6 +32,8 @@ function InterpolatedPlayerMesh({ player, isCurrentPlayer, equippedItems = [] }:
   const setSelectedPlayerForMenu = useGameStore((s) => s.setSelectedPlayerForMenu);
   const players = useGameStore((s) => s.players);
   const lastRotationRef = useRef(0);
+  // Smoothed position to eliminate jitter
+  const smoothedPosRef = useRef<{ x: number; z: number } | null>(null);
 
   // Only allow clicking on players (not monsters)
   const isClickable = player.type === 'player' || player.type === undefined;
@@ -65,11 +68,26 @@ function InterpolatedPlayerMesh({ player, isCurrentPlayer, equippedItems = [] }:
     }
 
     if (pos) {
-      groupRef.current.position.x = pos.x;
-      groupRef.current.position.z = pos.y;
+      // Initialize smoothed position on first frame
+      if (!smoothedPosRef.current) {
+        smoothedPosRef.current = { x: pos.x, z: pos.y };
+      }
+
+      // Smooth the position to eliminate micro-jitter from interpolation discontinuities
+      // Higher factor = more responsive but more jitter, lower = smoother but more lag
+      const smoothFactor = 0.25;
+      smoothedPosRef.current.x += (pos.x - smoothedPosRef.current.x) * smoothFactor;
+      smoothedPosRef.current.z += (pos.y - smoothedPosRef.current.z) * smoothFactor;
+
+      groupRef.current.position.x = smoothedPosRef.current.x;
+      groupRef.current.position.z = smoothedPosRef.current.z;
 
       // Calculate rotation based on movement direction or nearest enemy
       let targetRotation = lastRotationRef.current;
+
+      // Use smoothed position for rotation calculations
+      const myX = smoothedPosRef.current.x;
+      const myZ = smoothedPosRef.current.z;
 
       if (player.estado === 'attacking') {
         // When attacking, find nearest enemy and face them
@@ -84,8 +102,8 @@ function InterpolatedPlayerMesh({ player, isCurrentPlayer, equippedItems = [] }:
           const otherPos = getInterpolatedPosition(other.id);
           if (!otherPos) return;
 
-          const dx = otherPos.x - pos.x;
-          const dy = otherPos.y - pos.y;
+          const dx = otherPos.x - myX;
+          const dy = otherPos.y - myZ;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
           if (dist < nearestDist) {
@@ -97,15 +115,15 @@ function InterpolatedPlayerMesh({ player, isCurrentPlayer, equippedItems = [] }:
         if (nearestEnemyId) {
           const enemyPos = getInterpolatedPosition(nearestEnemyId);
           if (enemyPos) {
-            const dx = enemyPos.x - pos.x;
-            const dz = enemyPos.y - pos.y;
+            const dx = enemyPos.x - myX;
+            const dz = enemyPos.y - myZ;
             targetRotation = Math.atan2(dx, dz);
           }
         }
       } else if (player.estado === 'moving') {
         // When moving, face movement direction
-        const dx = player.targetX - pos.x;
-        const dz = player.targetY - pos.y;
+        const dx = player.targetX - myX;
+        const dz = player.targetY - myZ;
         const dist = Math.sqrt(dx * dx + dz * dz);
 
         if (dist > 1) {
@@ -191,6 +209,11 @@ export function Players() {
 
     const newVisible = new Set<string>();
 
+    // Get current player position for distance culling
+    const currentPlayerPos = useGameStore.getState().currentPlayerPos;
+    const myX = currentPlayerPos?.x ?? 0;
+    const myZ = currentPlayerPos?.y ?? 0;
+
     players.forEach((player) => {
       // Always show current player
       if (player.id === currentPlayerId) {
@@ -201,6 +224,12 @@ export function Players() {
       // Get interpolated position for culling check
       const pos = getInterpolatedPosition(player.id);
       if (!pos) return;
+
+      // Distance culling - skip entities too far from current player
+      const dx = pos.x - myX;
+      const dz = pos.y - myZ;
+      const distSq = dx * dx + dz * dz;
+      if (distSq > MAX_RENDER_DISTANCE_SQ) return;
 
       // Check if in frustum
       boundingSphere.center.set(pos.x, 50, pos.y);

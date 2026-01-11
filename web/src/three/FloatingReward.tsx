@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { useGameStore } from '../stores/gameStore';
 
 // Max distance to show floating rewards (squared for performance)
-const MAX_EVENT_DISTANCE_SQ = 800 * 800;
+const MAX_EVENT_DISTANCE_SQ = 250 * 250;
 
 interface RewardNumber {
   id: string;

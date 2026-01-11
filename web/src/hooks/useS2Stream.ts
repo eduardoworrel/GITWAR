@@ -87,6 +87,7 @@ interface GameStatePayload {
   tick: number;
   timestamp?: number;
   serverVersion?: string;
+  isFullState?: boolean; // true = full state (replace all), false = delta (merge changes)
   entidades?: EntityPayload[];
   entities?: EntityPayload[];
   eventos?: EventPayload[];
@@ -97,15 +98,20 @@ interface GameStatePayload {
 
 interface UseS2StreamOptions {
   enabled?: boolean;
+  streamName?: string; // Individual player stream name
+  readToken?: string; // Read token for individual stream
 }
 
-let eventIdCounter = 0;
-
 export function useS2Stream(options: UseS2StreamOptions = {}) {
-  const { enabled = true } = options;
+  const { enabled = true, streamName: customStreamName, readToken: customReadToken } = options;
+
+  // Determine which stream to use (individual or global)
+  const effectiveStreamName = customStreamName || S2_STREAM;
+  const effectiveToken = customReadToken || S2_TOKEN;
 
   // Store selectors
   const setPlayers = useGameStore((s) => s.setPlayers);
+  const updatePlayersPartial = useGameStore((s) => s.updatePlayersPartial);
   const addCombatEvents = useGameStore((s) => s.addCombatEvents);
   const addRewardEvents = useGameStore((s) => s.addRewardEvents);
   const addLevelUpEvents = useGameStore((s) => s.addLevelUpEvents);
@@ -131,44 +137,82 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
     return typeStr.toLowerCase() as EntityType;
   }, []);
 
-  // Process entities
-  const processEntities = useCallback((entities: EntityPayload[]) => {
+  // Process entities - handles both full state and delta updates
+  const processEntities = useCallback((entities: EntityPayload[], isFullState: boolean = true) => {
     if (entities.length === 0) return;
 
-    const players: Player[] = entities.map((e) => ({
-      id: e.id,
-      githubLogin: e.login || e.githubLogin || 'Unknown',
-      x: e.x,
-      y: e.y,
-      hp: e.hp ?? e.currentHp ?? 100,
-      maxHp: e.hpMax ?? e.maxHp ?? 100,
-      reino: e.reino,
-      type: parseEntityType(e.type),
-      estado: e.estado || e.state || 'idle',
-      velocidadeAtaque: e.velocidadeAtaque ?? 50,
-      elo: e.elo ?? 1000,
-      vitorias: e.vitorias ?? 0,
-      derrotas: e.derrotas ?? 0,
-      dano: e.dano ?? 20,
-      critico: e.critico ?? 10,
-      evasao: e.evasao ?? 5,
-      armadura: e.armadura ?? 10,
-      velocidadeMovimento: e.velocidadeMovimento ?? 50,
-      level: e.level ?? 1,
-      exp: e.exp ?? 0,
-      gold: e.gold ?? 0,
-      equippedItems: e.equippedItems ?? undefined,
-    }));
+    if (isFullState) {
+      // Full state: replace all entities
+      const players: Player[] = entities.map((e) => ({
+        id: e.id,
+        githubLogin: e.login || e.githubLogin || 'Unknown',
+        x: e.x,
+        y: e.y,
+        hp: e.hp ?? e.currentHp ?? 100,
+        maxHp: e.hpMax ?? e.maxHp ?? 100,
+        reino: e.reino,
+        type: parseEntityType(e.type),
+        estado: e.estado || e.state || 'idle',
+        velocidadeAtaque: e.velocidadeAtaque ?? 50,
+        elo: e.elo ?? 1000,
+        vitorias: e.vitorias ?? 0,
+        derrotas: e.derrotas ?? 0,
+        dano: e.dano ?? 20,
+        critico: e.critico ?? 10,
+        evasao: e.evasao ?? 5,
+        armadura: e.armadura ?? 10,
+        velocidadeMovimento: e.velocidadeMovimento ?? 50,
+        level: e.level ?? 1,
+        exp: e.exp ?? 0,
+        gold: e.gold ?? 0,
+        equippedItems: e.equippedItems ?? undefined,
+      }));
+      setPlayers(players);
+    } else {
+      // Delta update: merge only changed fields
+      const partials: Partial<Player & { id: string }>[] = entities.map((e) => {
+        const partial: Partial<Player & { id: string }> = { id: e.id };
 
-    setPlayers(players);
-  }, [setPlayers, parseEntityType]);
+        // Only include fields that are present in the delta
+        if (e.login !== undefined || e.githubLogin !== undefined)
+          partial.githubLogin = e.login || e.githubLogin;
+        if (e.x !== undefined) partial.x = e.x;
+        if (e.y !== undefined) partial.y = e.y;
+        if (e.hp !== undefined || e.currentHp !== undefined)
+          partial.hp = e.hp ?? e.currentHp;
+        if (e.hpMax !== undefined || e.maxHp !== undefined)
+          partial.maxHp = e.hpMax ?? e.maxHp;
+        if (e.reino !== undefined) partial.reino = e.reino;
+        if (e.type !== undefined) partial.type = parseEntityType(e.type);
+        if (e.estado !== undefined || e.state !== undefined)
+          partial.estado = e.estado || e.state;
+        if (e.velocidadeAtaque !== undefined) partial.velocidadeAtaque = e.velocidadeAtaque;
+        if (e.elo !== undefined) partial.elo = e.elo;
+        if (e.vitorias !== undefined) partial.vitorias = e.vitorias;
+        if (e.derrotas !== undefined) partial.derrotas = e.derrotas;
+        if (e.dano !== undefined) partial.dano = e.dano;
+        if (e.critico !== undefined) partial.critico = e.critico;
+        if (e.evasao !== undefined) partial.evasao = e.evasao;
+        if (e.armadura !== undefined) partial.armadura = e.armadura;
+        if (e.velocidadeMovimento !== undefined) partial.velocidadeMovimento = e.velocidadeMovimento;
+        if (e.level !== undefined) partial.level = e.level;
+        if (e.exp !== undefined) partial.exp = e.exp;
+        if (e.gold !== undefined) partial.gold = e.gold;
+        if (e.equippedItems !== undefined) partial.equippedItems = e.equippedItems ?? undefined;
+
+        return partial;
+      });
+      updatePlayersPartial(partials);
+    }
+  }, [setPlayers, updatePlayersPartial, parseEntityType]);
 
   // Process events
   const processEvents = useCallback((events: EventPayload[]) => {
     if (!events || events.length === 0) return;
 
     const combatEvents: CombatEvent[] = events.map((e) => ({
-      id: `${e.tick}-${e.attackerId}-${e.targetId}-${eventIdCounter++}`,
+      // Deterministic ID for deduplication (no counter)
+      id: `${e.tick}-${e.type}-${e.attackerId}-${e.targetId}-${e.damage ?? 0}`,
       type: e.type as CombatEventType,
       tick: e.tick,
       timestamp: e.timestamp,
@@ -189,7 +233,8 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
     if (!rewards || rewards.length === 0) return;
 
     const rewardEvents: RewardEvent[] = rewards.map((r) => ({
-      id: `reward-${r.tick}-${r.playerId}-${eventIdCounter++}`,
+      // Deterministic ID for deduplication
+      id: `reward-${r.tick}-${r.playerId}-${r.expGained}-${r.goldGained}`,
       playerId: r.playerId,
       x: r.x,
       y: r.y,
@@ -210,7 +255,8 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
     if (!levelUps || levelUps.length === 0) return;
 
     const levelUpEvents: LevelUpEvent[] = levelUps.map((l) => ({
-      id: `levelup-${l.tick}-${l.playerId}-${eventIdCounter++}`,
+      // Deterministic ID for deduplication
+      id: `levelup-${l.tick}-${l.playerId}-${l.oldLevel}-${l.newLevel}`,
       playerId: l.playerId,
       playerName: l.playerName,
       oldLevel: l.oldLevel,
@@ -229,7 +275,9 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
     lastMessageTimeRef.current = Date.now();
 
     const entities = payload.entidades || payload.entities || [];
-    processEntities(entities);
+    // Default to full state if not specified (backwards compatible with global stream)
+    const isFullState = payload.isFullState !== false;
+    processEntities(entities, isFullState);
 
     if (payload.eventos && payload.eventos.length > 0) {
       processEvents(payload.eventos);
@@ -286,7 +334,8 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
   const connectToS2 = useCallback(async () => {
     if (isConnectingRef.current) return;
 
-    if (!S2_TOKEN) {
+    // Use effective token (individual player token or global token)
+    if (!effectiveToken) {
       await connectViaProxy();
       return;
     }
@@ -298,9 +347,9 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
     abortControllerRef.current = controller;
 
     try {
-      const s2 = new S2({ accessToken: S2_TOKEN });
+      const s2 = new S2({ accessToken: effectiveToken });
       const basin = s2.basin(S2_BASIN);
-      const stream = basin.stream(S2_STREAM);
+      const stream = basin.stream(effectiveStreamName);
       const readSession = await stream.readSession({
         start: { from: { tailOffset: 1 }, clamp: true },
       });
@@ -347,7 +396,7 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
       isConnectingRef.current = false;
       connectViaProxyRef.current();
     }
-  }, [processPayload, handleConnected, handleDisconnected]);
+  }, [processPayload, handleConnected, handleDisconnected, effectiveToken, effectiveStreamName]);
 
   /**
    * Fallback: Connect via backend proxy (original implementation)
@@ -424,8 +473,25 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
   const handleDisconnectedRef = useRef(handleDisconnected);
   handleDisconnectedRef.current = handleDisconnected;
 
+  // Track stream changes to force reconnection
+  const prevStreamNameRef = useRef(effectiveStreamName);
+  const prevTokenRef = useRef(effectiveToken);
+
   useEffect(() => {
     if (!enabled) return;
+
+    // Check if stream or token changed - force reconnection
+    const streamChanged = prevStreamNameRef.current !== effectiveStreamName;
+    const tokenChanged = prevTokenRef.current !== effectiveToken;
+    if (streamChanged || tokenChanged) {
+      console.log(`[S2 Stream] Switching to stream: ${effectiveStreamName}`);
+      prevStreamNameRef.current = effectiveStreamName;
+      prevTokenRef.current = effectiveToken;
+      // Abort current connection and reconnect
+      abortControllerRef.current?.abort();
+      isConnectingRef.current = false;
+      wasDisconnectedRef.current = false;
+    }
 
     cleanupIntervalRef.current = window.setInterval(() => clearOldEvents(), 500);
 
@@ -454,5 +520,5 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
         clearInterval(heartbeatCheckRef.current);
       }
     };
-  }, [enabled, clearOldEvents]);
+  }, [enabled, clearOldEvents, effectiveStreamName, effectiveToken]);
 }

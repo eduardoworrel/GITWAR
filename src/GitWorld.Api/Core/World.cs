@@ -169,6 +169,20 @@ public class World
             EntityType.ElixirArgumentError => (ToPlayerStats(MonsterStats.ElixirArgumentError), "ArgumentError"),
             EntityType.ElixirKeyError => (ToPlayerStats(MonsterStats.ElixirKeyError), "KeyError"),
 
+            // === AI/ML Errors ===
+            EntityType.AIVanishingGradient => (ToPlayerStats(MonsterStats.AIVanishingGradient), "Vanishing Gradient"),
+            EntityType.AIExplodingGradient => (ToPlayerStats(MonsterStats.AIExplodingGradient), "Exploding Gradient"),
+            EntityType.AIDyingRelu => (ToPlayerStats(MonsterStats.AIDyingRelu), "Dying ReLU"),
+            EntityType.AIOverfitting => (ToPlayerStats(MonsterStats.AIOverfitting), "Overfitting"),
+            EntityType.AIUnderfitting => (ToPlayerStats(MonsterStats.AIUnderfitting), "Underfitting"),
+            EntityType.AIModeCollapse => (ToPlayerStats(MonsterStats.AIModeCollapse), "Mode Collapse"),
+            EntityType.AICatastrophicForgetting => (ToPlayerStats(MonsterStats.AICatastrophicForgetting), "Catastrophic Forgetting"),
+            EntityType.AIDataLeakage => (ToPlayerStats(MonsterStats.AIDataLeakage), "Data Leakage"),
+            EntityType.AICudaOutOfMemory => (ToPlayerStats(MonsterStats.AICudaOutOfMemory), "CUDA OOM"),
+            EntityType.AIBiasVariance => (ToPlayerStats(MonsterStats.AIBiasVariance), "Bias-Variance"),
+            EntityType.AIDeadNeuron => (ToPlayerStats(MonsterStats.AIDeadNeuron), "Dead Neuron"),
+            EntityType.AINaNLoss => (ToPlayerStats(MonsterStats.AINaNLoss), "NaN Loss"),
+
             _ => throw new ArgumentException($"Invalid monster type: {type}")
         };
     }

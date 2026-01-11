@@ -41,7 +41,11 @@ export type EntityType = 'player' | 'npc' | 'bug' | 'aihallucination' | 'manager
   // Dart
   'dartnullcheck' | 'dartrangeerror' | 'dartnosuchmethod' |
   // Elixir
-  'elixirfunctionclause' | 'elixirargumenterror' | 'elixirkeyerror';
+  'elixirfunctionclause' | 'elixirargumenterror' | 'elixirkeyerror' |
+  // AI/ML Errors
+  'aivanishinggradient' | 'aiexplodinggradient' | 'aidyingrelu' | 'aioverfitting' |
+  'aiunderfitting' | 'aimodecollapse' | 'aicatastrophicforgetting' | 'aidataleakage' |
+  'aicudaoutofmemory' | 'aibiasvariance' | 'aideadneuron' | 'ainanloss';
 
 // Item system types
 export interface ItemStats {
@@ -170,6 +174,14 @@ export interface LevelUpEvent {
 export type CameraMode = 'follow' | 'free' | 'drone';
 export type ConnectionStatus = 'connected' | 'disconnected' | 'reconnecting';
 
+// Stream info from server
+export interface StreamInfo {
+  streamName: string;
+  basin: string;
+  baseUrl: string;
+  readToken?: string | null;
+}
+
 // Selected player for radial menu
 export interface SelectedPlayerForMenu {
   id: string;
@@ -190,6 +202,8 @@ interface GameState {
   activeEvent: ActiveEvent | null; // Current active event
   connectionStatus: ConnectionStatus; // Server connection status
   showReconnectedModal: boolean; // Show modal after reconnection
+  // Stream info for individual player streams
+  streamInfo: StreamInfo | null;
   // Item system
   shopItems: Item[];
   inventory: PlayerItem[];
@@ -199,11 +213,13 @@ interface GameState {
   radialMenuScreenPos: { x: number; y: number } | null;
   setCameraMode: (mode: CameraMode) => void;
   setCurrentPlayer: (id: string | null) => void;
+  setStreamInfo: (info: StreamInfo | null) => void;
   setCurrentPlayerPos: (pos: { x: number; y: number } | null) => void;
   setCurrentPlayerRotation: (rotation: number) => void;
   updatePlayer: (player: Player) => void;
   removePlayer: (id: string) => void;
   setPlayers: (players: Player[]) => void;
+  updatePlayersPartial: (partials: Partial<Player & { id: string }>[]) => void;
   setFrameTime: (time: number) => void;
   getInterpolatedPosition: (id: string) => { x: number; y: number } | null;
   addCombatEvents: (events: CombatEvent[]) => void;
@@ -244,6 +260,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   activeEvent: null,
   connectionStatus: 'connected',
   showReconnectedModal: false,
+  // Stream info
+  streamInfo: null,
   // Item system
   shopItems: [],
   inventory: [],
@@ -253,6 +271,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   radialMenuScreenPos: null,
 
   setCameraMode: (mode) => set({ cameraMode: mode }),
+
+  setStreamInfo: (info) => set({ streamInfo: info }),
 
   setActiveEvent: (event) => set({ activeEvent: event }),
 
@@ -359,6 +379,74 @@ export const useGameStore = create<GameState>((set, get) => ({
       return { players: newPlayers };
     }),
 
+  // Merge partial updates (delta updates) with existing player state
+  updatePlayersPartial: (partials) =>
+    set((state) => {
+      const newPlayers = new Map(state.players);
+      const now = Date.now();
+
+      for (const partial of partials) {
+        if (!partial.id) continue;
+
+        const existing = newPlayers.get(partial.id);
+        if (existing) {
+          // Merge partial with existing state
+          const hasPositionChange = partial.x !== undefined || partial.y !== undefined;
+
+          if (hasPositionChange) {
+            // Handle position updates with interpolation
+            const newX = partial.x ?? existing.targetX;
+            const newY = partial.y ?? existing.targetY;
+
+            // Check for teleport
+            const dx = Math.abs(newX - existing.targetX);
+            const dy = Math.abs(newY - existing.targetY);
+            const isTeleport = dx > 500 || dy > 500;
+
+            // Was dead, now alive
+            const wasDeadNowAlive = existing.estado === 'dead' && partial.estado && partial.estado !== 'dead';
+
+            if (wasDeadNowAlive || isTeleport) {
+              newPlayers.set(partial.id, {
+                ...existing,
+                ...partial,
+                x: newX,
+                y: newY,
+                targetX: newX,
+                targetY: newY,
+                lastUpdateTime: now,
+              } as InterpolatedPlayer);
+            } else {
+              // Calculate current interpolated position
+              const elapsed = now - existing.lastUpdateTime;
+              const t = Math.min(1, elapsed / INTERPOLATION_DURATION_MS);
+              const currentX = lerp(existing.x, existing.targetX, t);
+              const currentY = lerp(existing.y, existing.targetY, t);
+
+              newPlayers.set(partial.id, {
+                ...existing,
+                ...partial,
+                x: currentX,
+                y: currentY,
+                targetX: newX,
+                targetY: newY,
+                lastUpdateTime: now,
+              } as InterpolatedPlayer);
+            }
+          } else {
+            // No position change, just merge other fields
+            newPlayers.set(partial.id, {
+              ...existing,
+              ...partial,
+            } as InterpolatedPlayer);
+          }
+        }
+        // Note: We don't add new players from partials - they should come from full state
+      }
+
+      return { players: newPlayers };
+    }),
+
   getInterpolatedPosition: (id) => {
     const state = get();
     const player = state.players.get(id);
@@ -369,7 +457,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     // This avoids triggering Zustand re-renders by not depending on frameTime state
     const now = Date.now();
     const elapsed = now - player.lastUpdateTime;
-    const t = elapsed / INTERPOLATION_DURATION_MS;
+    // Clamp t to [0, 1] to prevent overshoot and jitter
+    const t = Math.min(1, Math.max(0, elapsed / INTERPOLATION_DURATION_MS));
 
     return {
       x: lerp(player.x, player.targetX, t),
@@ -380,27 +469,39 @@ export const useGameStore = create<GameState>((set, get) => ({
   addCombatEvents: (events) =>
     set((state) => {
       const now = Date.now();
-      const newEvents = events.map((e) => ({ ...e, createdAt: now }));
+      // Filter out duplicates by ID
+      const existingIds = new Set(state.combatEvents.map((e) => e.id));
+      const uniqueNewEvents = events
+        .filter((e) => !existingIds.has(e.id))
+        .map((e) => ({ ...e, createdAt: now }));
       // Keep max 50 events
-      const allEvents = [...state.combatEvents, ...newEvents].slice(-50);
+      const allEvents = [...state.combatEvents, ...uniqueNewEvents].slice(-50);
       return { combatEvents: allEvents };
     }),
 
   addRewardEvents: (events) =>
     set((state) => {
       const now = Date.now();
-      const newEvents = events.map((e) => ({ ...e, createdAt: now }));
+      // Filter out duplicates by ID
+      const existingIds = new Set(state.rewardEvents.map((e) => e.id));
+      const uniqueNewEvents = events
+        .filter((e) => !existingIds.has(e.id))
+        .map((e) => ({ ...e, createdAt: now }));
       // Keep max 30 reward events
-      const allEvents = [...state.rewardEvents, ...newEvents].slice(-30);
+      const allEvents = [...state.rewardEvents, ...uniqueNewEvents].slice(-30);
       return { rewardEvents: allEvents };
     }),
 
   addLevelUpEvents: (events) =>
     set((state) => {
       const now = Date.now();
-      const newEvents = events.map((e) => ({ ...e, createdAt: now }));
+      // Filter out duplicates by ID
+      const existingIds = new Set(state.levelUpEvents.map((e) => e.id));
+      const uniqueNewEvents = events
+        .filter((e) => !existingIds.has(e.id))
+        .map((e) => ({ ...e, createdAt: now }));
       // Keep max 10 level up events
-      const allEvents = [...state.levelUpEvents, ...newEvents].slice(-10);
+      const allEvents = [...state.levelUpEvents, ...uniqueNewEvents].slice(-10);
       return { levelUpEvents: allEvents };
     }),
 

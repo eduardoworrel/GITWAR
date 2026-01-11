@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@clerk/clerk-react';
 import { useGameStore, type InterpolatedPlayer, type PlayerItem, type Item } from '../stores/gameStore';
 import { getCorReino } from '../three/constants';
+import { ScriptEditor } from './ScriptEditor';
 
 const reinoColors: Record<string, string> = {
   Python: '#3776AB',
@@ -2358,7 +2359,7 @@ function PlayerPreview3D({ reino, githubLogin, estado, previewItem }: PlayerPrev
   );
 }
 
-type TabType = 'shop' | 'attributes';
+type TabType = 'shop' | 'attributes' | 'script';
 
 export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps) {
   const { t } = useTranslation();
@@ -2383,7 +2384,7 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
   // Persist active tab in localStorage
   const [activeTab, setActiveTabState] = useState<TabType>(() => {
     const saved = localStorage.getItem('playerModal_activeTab');
-    return (saved === 'shop' || saved === 'attributes') ? saved : 'shop';
+    return (saved === 'shop' || saved === 'attributes' || saved === 'script') ? saved : 'shop';
   });
   const setActiveTab = (tab: TabType) => {
     localStorage.setItem('playerModal_activeTab', tab);
@@ -2402,7 +2403,9 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
   useEffect(() => {
     if (!isOwnPlayer) return;
 
-    const hasCachedData = shopItems.length > 0;
+    // Get current cache state directly from store to avoid stale closure
+    const currentShopItems = useGameStore.getState().shopItems;
+    const hasCachedData = currentShopItems.length > 0;
 
     const fetchData = async () => {
       try {
@@ -2418,7 +2421,7 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
           setShopItems(items);
         }
 
-        // Fetch player inventory
+        // Fetch player inventory (ignore errors - player may not exist yet)
         const token = await getToken();
         if (token) {
           const invRes = await fetch('/api/player/inventory', {
@@ -2678,13 +2681,36 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
             >
               {t('ui.attributes', 'Atributos')}
             </button>
+            <button
+              onClick={() => setActiveTab('script')}
+              style={{
+                padding: '12px 16px',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: activeTab === 'script' ? `2px solid ${reinoColor}` : '2px solid transparent',
+                color: activeTab === 'script' ? 'white' : 'rgba(255,255,255,0.5)',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              {t('ui.script', 'Script')}
+            </button>
           </div>
         )}
 
         {/* Content - fixed minHeight to prevent size changes between tabs */}
-        <div style={{ padding: '14px 18px', flex: 1, overflow: 'auto', minHeight: '220px' }}>
+        <div style={{ padding: '14px 18px', flex: 1, overflow: 'auto', minHeight: activeTab === 'script' && isOwnPlayer ? '450px' : '220px' }}>
+          {/* Script tab content (only for own player) */}
+          {isOwnPlayer && activeTab === 'script' && (
+            <div style={{ height: '420px' }}>
+              <ScriptEditor reinoColor={reinoColor} />
+            </div>
+          )}
+
           {/* Shop tab content (only for own player) */}
-          {isOwnPlayer && activeTab === 'shop' ? (
+          {isOwnPlayer && activeTab === 'shop' && (
             <div style={{ minHeight: '180px' }}>
               {/* Gold display header */}
               <div style={{
@@ -2996,7 +3022,10 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
                 </>
               )}
             </div>
-          ) : (
+          )}
+
+          {/* Attributes tab content (shown when not own player OR when attributes tab is active) */}
+          {(activeTab === 'attributes' || !isOwnPlayer) && (
             <>
               {/* ELO and W/L - compact */}
               <div

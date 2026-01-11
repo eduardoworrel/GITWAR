@@ -1,9 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import './UserProfileModal.css';
 
 type Provider = 'github' | 'gitlab' | 'huggingface';
+
+// localStorage cache keys
+const CACHE_KEYS = {
+  linkedAccounts: 'userProfile_linkedAccounts',
+  providerData: (provider: Provider) => `userProfile_data_${provider}`,
+  activeProvider: 'userProfile_activeProvider',
+};
+
+// Cache TTL: 5 minutes for background refresh (can be used in the future)
+// const CACHE_TTL = 5 * 60 * 1000;
 
 interface LinkedAccount {
   provider: Provider;
@@ -81,22 +91,103 @@ const PROVIDER_TO_STRATEGY: Record<Provider, OAuthStrategy> = {
   huggingface: 'oauth_huggingface',
 };
 
+// Cache helper functions
+interface CachedData<T> {
+  data: T;
+  timestamp: number;
+}
+
+function getFromCache<T>(key: string): T | null {
+  try {
+    const cached = localStorage.getItem(key);
+    if (!cached) return null;
+    const parsed: CachedData<T> = JSON.parse(cached);
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+function setToCache<T>(key: string, data: T): void {
+  try {
+    const cached: CachedData<T> = { data, timestamp: Date.now() };
+    localStorage.setItem(key, JSON.stringify(cached));
+  } catch {
+    // localStorage might be full or unavailable
+  }
+}
+
+// isCacheStale can be used in the future to only refresh if cache is old
+// function isCacheStale(key: string): boolean {
+//   try {
+//     const cached = localStorage.getItem(key);
+//     if (!cached) return true;
+//     const parsed = JSON.parse(cached);
+//     return Date.now() - parsed.timestamp > CACHE_TTL;
+//   } catch {
+//     return true;
+//   }
+// }
+
 export function UserProfileModal({ username, onClose }: UserProfileModalProps) {
   const { t } = useTranslation();
   const { getToken } = useAuth();
   const { user } = useUser();
-  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
-  const [activeProvider, setActiveProvider] = useState<Provider>('github');
-  const [data, setData] = useState<ProviderData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadingAccounts, setLoadingAccounts] = useState(true);
+
+  // Initialize state from cache
+  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>(() => {
+    return getFromCache<LinkedAccount[]>(CACHE_KEYS.linkedAccounts) || [];
+  });
+
+  const [activeProvider, setActiveProviderState] = useState<Provider>(() => {
+    const cached = localStorage.getItem(CACHE_KEYS.activeProvider);
+    return (cached === 'github' || cached === 'gitlab' || cached === 'huggingface') ? cached : 'github';
+  });
+
+  // Cache provider data per provider
+  const [providerDataCache, setProviderDataCache] = useState<Record<Provider, ProviderData | null>>(() => ({
+    github: getFromCache<ProviderData>(CACHE_KEYS.providerData('github')),
+    gitlab: getFromCache<ProviderData>(CACHE_KEYS.providerData('gitlab')),
+    huggingface: getFromCache<ProviderData>(CACHE_KEYS.providerData('huggingface')),
+  }));
+
+  const data = providerDataCache[activeProvider];
+
+  // Only show loading if we have no cached data
+  const cachedAccounts = getFromCache<LinkedAccount[]>(CACHE_KEYS.linkedAccounts);
+  const cachedProviderData = getFromCache<ProviderData>(CACHE_KEYS.providerData(activeProvider));
+  const [loading, setLoading] = useState(!cachedProviderData);
+  const [loadingAccounts, setLoadingAccounts] = useState(!cachedAccounts || cachedAccounts.length === 0);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch linked accounts
+  // Persist active provider to localStorage
+  const setActiveProvider = useCallback((provider: Provider) => {
+    localStorage.setItem(CACHE_KEYS.activeProvider, provider);
+    setActiveProviderState(provider);
+  }, []);
+
+  // Fetch linked accounts - use cache first, then refresh in background
   useEffect(() => {
+    const cachedData = getFromCache<LinkedAccount[]>(CACHE_KEYS.linkedAccounts);
+    const hasCachedData = cachedData && cachedData.length > 0;
+
+    // If we have cached data, use it immediately and don't show loading
+    if (hasCachedData) {
+      setLinkedAccounts(cachedData);
+      setLoadingAccounts(false);
+      // Set active provider from cache if not already set
+      const cachedProvider = localStorage.getItem(CACHE_KEYS.activeProvider) as Provider | null;
+      if (!cachedProvider && cachedData.length > 0) {
+        setActiveProvider(cachedData[0].provider);
+      }
+    }
+
     const fetchLinkedAccounts = async () => {
       try {
-        setLoadingAccounts(true);
+        // Only show loading if we have no cached data
+        if (!hasCachedData) {
+          setLoadingAccounts(true);
+        }
         const token = await getToken();
         const apiUrl = import.meta.env.VITE_API_URL || '';
         const response = await fetch(`${apiUrl}/api/profile/linked-accounts`, {
@@ -107,41 +198,58 @@ export function UserProfileModal({ username, onClose }: UserProfileModalProps) {
         if (response.ok) {
           const accounts = await response.json();
           // Map provider number to string
-          const mapped = accounts.map((acc: { provider: number; username: string; avatarUrl?: string }) => ({
+          const mapped: LinkedAccount[] = accounts.map((acc: { provider: number; username: string; avatarUrl?: string }) => ({
             provider: acc.provider === 0 ? 'github' : acc.provider === 1 ? 'gitlab' : 'huggingface',
             username: acc.username,
             avatarUrl: acc.avatarUrl,
           }));
           setLinkedAccounts(mapped);
-          // Set active to first linked account
-          if (mapped.length > 0) {
+          // Save to cache
+          setToCache(CACHE_KEYS.linkedAccounts, mapped);
+          // Set active to first linked account only if no cached provider
+          const cachedProvider = localStorage.getItem(CACHE_KEYS.activeProvider) as Provider | null;
+          if (!cachedProvider && mapped.length > 0) {
             setActiveProvider(mapped[0].provider);
           }
         }
       } catch (err) {
         console.error('Failed to fetch linked accounts:', err);
-        // Fallback to showing GitHub tab with provided username
-        setLinkedAccounts([{ provider: 'github', username }]);
+        // Only fallback if we have no cached data
+        if (!hasCachedData) {
+          setLinkedAccounts([{ provider: 'github', username }]);
+        }
       } finally {
         setLoadingAccounts(false);
       }
     };
 
     fetchLinkedAccounts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getToken, username]);
 
-  // Fetch provider data when active provider changes
+  // Fetch provider data when active provider changes - use cache first
   useEffect(() => {
-    const fetchProviderData = async () => {
-      const account = linkedAccounts.find(a => a.provider === activeProvider);
-      if (!account) {
-        setData(null);
-        setLoading(false);
-        return;
-      }
+    const account = linkedAccounts.find(a => a.provider === activeProvider);
+    if (!account) {
+      setLoading(false);
+      return;
+    }
 
+    const cacheKey = CACHE_KEYS.providerData(activeProvider);
+    const cachedData = providerDataCache[activeProvider];
+    const hasCachedData = !!cachedData;
+
+    // If we have cached data, show it immediately
+    if (hasCachedData) {
+      setLoading(false);
+    }
+
+    const fetchProviderData = async () => {
       try {
-        setLoading(true);
+        // Only show loading if we have no cached data
+        if (!hasCachedData) {
+          setLoading(true);
+        }
         setError(null);
         const apiUrl = import.meta.env.VITE_API_URL || '';
         const response = await fetch(`${apiUrl}/api/${activeProvider}/${account.username}/raw`);
@@ -149,10 +257,14 @@ export function UserProfileModal({ username, onClose }: UserProfileModalProps) {
           throw new Error(`Failed to fetch ${activeProvider} data`);
         }
         const result = await response.json();
-        setData(result);
+        // Update cache
+        setProviderDataCache(prev => ({ ...prev, [activeProvider]: result }));
+        setToCache(cacheKey, result);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
-        setData(null);
+        // Only show error if we have no cached data
+        if (!hasCachedData) {
+          setError(err instanceof Error ? err.message : 'Unknown error');
+        }
       } finally {
         setLoading(false);
       }
@@ -161,6 +273,7 @@ export function UserProfileModal({ username, onClose }: UserProfileModalProps) {
     if (!loadingAccounts && linkedAccounts.length > 0) {
       fetchProviderData();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeProvider, linkedAccounts, loadingAccounts]);
 
   const handleBackdropClick = (e: React.MouseEvent) => {

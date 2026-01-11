@@ -142,7 +142,7 @@ public static class MonsterStats
     public static readonly (int Hp, int Dano, int VelAtaque, int VelMov, int Crit, int Evasao, int Armadura) Manager =
         (3000, 35, 40, 25, 15, 5, 25);
     public static readonly (int Hp, int Dano, int VelAtaque, int VelMov, int Crit, int Evasao, int Armadura) Boss =
-        (30000, 100, 70, 40, 35, 15, 40);
+        (60000, 100, 70, 40, 35, 15, 40);
     public static readonly (int Hp, int Dano, int VelAtaque, int VelMov, int Crit, int Evasao, int Armadura) UnexplainedBug =
         (30000, 30, 10, 20, 5, 5, 15);
 
@@ -365,4 +365,42 @@ public static class MonsterStats
     // KeyError - chave perdida
     public static readonly (int Hp, int Dano, int VelAtaque, int VelMov, int Crit, int Evasao, int Armadura) ElixirKeyError =
         (750, 24, 42, 58, 20, 25, 6);
+
+    // === AI/ML Errors (AI Invasion) ===
+    // VanishingGradient - fantasmagórico, evasivo, desaparece
+    public static readonly (int Hp, int Dano, int VelAtaque, int VelMov, int Crit, int Evasao, int Armadura) AIVanishingGradient =
+        (600, 15, 30, 65, 10, 45, 0);
+    // ExplodingGradient - instável, alto dano, explosivo
+    public static readonly (int Hp, int Dano, int VelAtaque, int VelMov, int Crit, int Evasao, int Armadura) AIExplodingGradient =
+        (1200, 80, 60, 55, 40, 10, 5);
+    // DyingRelu - neurônios morrendo, fica mais fraco
+    public static readonly (int Hp, int Dano, int VelAtaque, int VelMov, int Crit, int Evasao, int Armadura) AIDyingRelu =
+        (1500, 30, 35, 40, 15, 20, 15);
+    // Overfitting - decorou tudo, TANQUE mas previsível
+    public static readonly (int Hp, int Dano, int VelAtaque, int VelMov, int Crit, int Evasao, int Armadura) AIOverfitting =
+        (3500, 45, 50, 30, 25, 5, 25);
+    // Underfitting - simplório, fraco em tudo
+    public static readonly (int Hp, int Dano, int VelAtaque, int VelMov, int Crit, int Evasao, int Armadura) AIUnderfitting =
+        (500, 12, 25, 50, 5, 15, 5);
+    // ModeCollapse - GAN quebrado, gera clones
+    public static readonly (int Hp, int Dano, int VelAtaque, int VelMov, int Crit, int Evasao, int Armadura) AIModeCollapse =
+        (1800, 35, 45, 45, 20, 20, 15);
+    // CatastrophicForgetting - esquece tudo, médio
+    public static readonly (int Hp, int Dano, int VelAtaque, int VelMov, int Crit, int Evasao, int Armadura) AICatastrophicForgetting =
+        (1400, 28, 40, 50, 18, 22, 12);
+    // DataLeakage - vantagem injusta, alto crítico
+    public static readonly (int Hp, int Dano, int VelAtaque, int VelMov, int Crit, int Evasao, int Armadura) AIDataLeakage =
+        (1000, 50, 55, 60, 50, 30, 8);
+    // CudaOutOfMemory - GPU derretendo, MEGA TANQUE, muito lento
+    public static readonly (int Hp, int Dano, int VelAtaque, int VelMov, int Crit, int Evasao, int Armadura) AICudaOutOfMemory =
+        (5000, 60, 20, 15, 15, 0, 40);
+    // BiasVariance - balança desequilibrada, balanceado
+    public static readonly (int Hp, int Dano, int VelAtaque, int VelMov, int Crit, int Evasao, int Armadura) AIBiasVariance =
+        (1600, 38, 42, 48, 22, 22, 18);
+    // DeadNeuron - neurônio morto, zumbi lento
+    public static readonly (int Hp, int Dano, int VelAtaque, int VelMov, int Crit, int Evasao, int Armadura) AIDeadNeuron =
+        (2000, 20, 20, 25, 5, 5, 30);
+    // NaNLoss - loss explodiu, caótico, alto dano
+    public static readonly (int Hp, int Dano, int VelAtaque, int VelMov, int Crit, int Evasao, int Armadura) AINaNLoss =
+        (800, 70, 65, 70, 45, 25, 0);
 }

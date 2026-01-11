@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Text;
@@ -6,13 +7,186 @@ using System.Text.Json.Serialization;
 
 namespace GitWorld.Api.Stream;
 
+/// <summary>
+/// Tracks entity state per player to enable delta updates.
+/// Only sends fields that changed since last broadcast.
+/// </summary>
+public class EntityStateTracker
+{
+    // Per-player snapshots: playerId -> entityId -> snapshot
+    private readonly ConcurrentDictionary<Guid, ConcurrentDictionary<Guid, EntitySnapshot>> _playerSnapshots = new();
+
+    public record EntitySnapshot(
+        float X, float Y, int Hp, int HpMax, string Estado, Guid? AlvoId,
+        int Level, int Exp, int Gold, int EquippedItemsHash
+    );
+
+    /// <summary>
+    /// Calculates which fields changed for this entity since last broadcast to this player.
+    /// Returns a delta payload with only changed fields, or null if nothing changed.
+    /// </summary>
+    public EntityPayload? GetDelta(Guid playerId, GitWorld.Api.Core.Entity entity)
+    {
+        var snapshots = _playerSnapshots.GetOrAdd(playerId, _ => new ConcurrentDictionary<Guid, EntitySnapshot>());
+
+        var equippedHash = entity.EquippedItems.Count > 0
+            ? string.Join(",", entity.EquippedItems.Select(i => i.Name)).GetHashCode()
+            : 0;
+
+        var newSnapshot = new EntitySnapshot(
+            entity.X, entity.Y, entity.CurrentHp, entity.MaxHp,
+            entity.State.ToString().ToLowerInvariant(),
+            entity.TargetEntityId, entity.Level, entity.Exp, entity.Gold, equippedHash
+        );
+
+        if (!snapshots.TryGetValue(entity.Id, out var oldSnapshot))
+        {
+            // First time seeing this entity - return full state
+            snapshots[entity.Id] = newSnapshot;
+            return CreateFullPayload(entity);
+        }
+
+        // Compare and build delta
+        var delta = new EntityPayload { Id = entity.Id };
+        bool hasChanges = false;
+
+        // Position (most frequent changes)
+        if (Math.Abs(oldSnapshot.X - newSnapshot.X) > 0.1f || Math.Abs(oldSnapshot.Y - newSnapshot.Y) > 0.1f)
+        {
+            delta.X = newSnapshot.X;
+            delta.Y = newSnapshot.Y;
+            hasChanges = true;
+        }
+
+        // HP
+        if (oldSnapshot.Hp != newSnapshot.Hp || oldSnapshot.HpMax != newSnapshot.HpMax)
+        {
+            delta.Hp = newSnapshot.Hp;
+            delta.HpMax = newSnapshot.HpMax;
+            hasChanges = true;
+        }
+
+        // State
+        if (oldSnapshot.Estado != newSnapshot.Estado)
+        {
+            delta.Estado = newSnapshot.Estado;
+            hasChanges = true;
+        }
+
+        // Target
+        if (oldSnapshot.AlvoId != newSnapshot.AlvoId)
+        {
+            delta.AlvoId = newSnapshot.AlvoId;
+            hasChanges = true;
+        }
+
+        // Progression
+        if (oldSnapshot.Level != newSnapshot.Level)
+        {
+            delta.Level = newSnapshot.Level;
+            hasChanges = true;
+        }
+        if (oldSnapshot.Exp != newSnapshot.Exp)
+        {
+            delta.Exp = newSnapshot.Exp;
+            hasChanges = true;
+        }
+        if (oldSnapshot.Gold != newSnapshot.Gold)
+        {
+            delta.Gold = newSnapshot.Gold;
+            hasChanges = true;
+        }
+
+        // Equipped items (compare hash)
+        if (oldSnapshot.EquippedItemsHash != newSnapshot.EquippedItemsHash)
+        {
+            delta.EquippedItems = entity.EquippedItems.Count > 0
+                ? entity.EquippedItems.Select(i => new EquippedItemPayload
+                {
+                    Name = i.Name,
+                    Category = i.Category,
+                    Tier = i.Tier
+                }).ToList()
+                : null;
+            hasChanges = true;
+        }
+
+        // Update snapshot
+        snapshots[entity.Id] = newSnapshot;
+
+        return hasChanges ? delta : null;
+    }
+
+    /// <summary>
+    /// Creates a full payload with all fields for an entity.
+    /// Used for new entities or periodic full sync.
+    /// </summary>
+    public EntityPayload CreateFullPayload(GitWorld.Api.Core.Entity entity)
+    {
+        return new EntityPayload
+        {
+            Id = entity.Id,
+            Login = entity.GithubLogin,
+            X = entity.X,
+            Y = entity.Y,
+            Hp = entity.CurrentHp,
+            HpMax = entity.MaxHp,
+            Estado = entity.State.ToString().ToLowerInvariant(),
+            Reino = entity.Reino,
+            AlvoId = entity.TargetEntityId,
+            Type = entity.Type.ToString().ToLowerInvariant(),
+            VelocidadeAtaque = entity.VelocidadeAtaque,
+            VelocidadeMovimento = entity.VelocidadeMovimento,
+            Elo = entity.Elo,
+            Vitorias = entity.Vitorias,
+            Derrotas = entity.Derrotas,
+            Dano = entity.Dano,
+            Critico = entity.Critico,
+            Evasao = entity.Evasao,
+            Armadura = entity.Armadura,
+            Level = entity.Level,
+            Exp = entity.Exp,
+            Gold = entity.Gold,
+            EquippedItems = entity.EquippedItems.Count > 0
+                ? entity.EquippedItems.Select(i => new EquippedItemPayload
+                {
+                    Name = i.Name,
+                    Category = i.Category,
+                    Tier = i.Tier
+                }).ToList()
+                : null
+        };
+    }
+
+    /// <summary>
+    /// Clears all snapshots for a player (on disconnect/cleanup).
+    /// </summary>
+    public void ClearPlayer(Guid playerId)
+    {
+        _playerSnapshots.TryRemove(playerId, out _);
+    }
+
+    /// <summary>
+    /// Clears a specific entity from a player's snapshots.
+    /// </summary>
+    public void ClearEntity(Guid playerId, Guid entityId)
+    {
+        if (_playerSnapshots.TryGetValue(playerId, out var snapshots))
+        {
+            snapshots.TryRemove(entityId, out _);
+        }
+    }
+}
+
 public interface IS2Publisher
 {
     Task<bool> CreateStreamAsync(string streamName);
     Task<bool> AppendAsync(string streamName, object data);
     Task<bool> AppendGameStateAsync(Guid userId, GameStatePayload state);
-    Task<bool> BroadcastGameStateAsync(long tick, IEnumerable<GitWorld.Api.Core.Entity> entities, IEnumerable<GitWorld.Api.Core.CombatEvent>? combatEvents = null, GitWorld.Api.Core.Systems.EventInfo? activeEvent = null, IEnumerable<GitWorld.Api.Core.RewardEvent>? rewardEvents = null, IEnumerable<GitWorld.Api.Core.LevelUpEvent>? levelUpEvents = null);
+    Task<bool> BroadcastGameStateAsync(long tick, IEnumerable<GitWorld.Api.Core.Entity> entities, IEnumerable<GitWorld.Api.Core.CombatEvent>? combatEvents = null, GitWorld.Api.Core.Systems.EventInfo? activeEvent = null, IEnumerable<GitWorld.Api.Core.RewardEvent>? rewardEvents = null, IEnumerable<GitWorld.Api.Core.LevelUpEvent>? levelUpEvents = null, string? streamName = null);
+    Task<bool> BroadcastDeltaGameStateAsync(long tick, Guid playerId, IEnumerable<GitWorld.Api.Core.Entity> entities, bool forceFullState, IEnumerable<GitWorld.Api.Core.CombatEvent>? combatEvents = null, GitWorld.Api.Core.Systems.EventInfo? activeEvent = null, IEnumerable<GitWorld.Api.Core.RewardEvent>? rewardEvents = null, IEnumerable<GitWorld.Api.Core.LevelUpEvent>? levelUpEvents = null, string? streamName = null);
     Task<bool> EnsureStreamExistsAsync(string streamName);
+    EntityStateTracker StateTracker { get; }
     bool IsAvailable { get; }
 }
 
@@ -28,8 +202,10 @@ public class S2Publisher : IS2Publisher
     private int _consecutiveFailures = 0;
     private const int MaxConsecutiveFailures = 5;
     private readonly string _basinBaseUrl;
+    private readonly EntityStateTracker _stateTracker = new();
 
     public bool IsAvailable => _isAvailable;
+    public EntityStateTracker StateTracker => _stateTracker;
 
     public S2Publisher(HttpClient httpClient, S2Config config, ILogger<S2Publisher> logger)
     {
@@ -238,7 +414,7 @@ public class S2Publisher : IS2Publisher
         return await AppendAsync(streamName, state);
     }
 
-    public async Task<bool> BroadcastGameStateAsync(long tick, IEnumerable<GitWorld.Api.Core.Entity> entities, IEnumerable<GitWorld.Api.Core.CombatEvent>? combatEvents = null, GitWorld.Api.Core.Systems.EventInfo? activeEvent = null, IEnumerable<GitWorld.Api.Core.RewardEvent>? rewardEvents = null, IEnumerable<GitWorld.Api.Core.LevelUpEvent>? levelUpEvents = null)
+    public async Task<bool> BroadcastGameStateAsync(long tick, IEnumerable<GitWorld.Api.Core.Entity> entities, IEnumerable<GitWorld.Api.Core.CombatEvent>? combatEvents = null, GitWorld.Api.Core.Systems.EventInfo? activeEvent = null, IEnumerable<GitWorld.Api.Core.RewardEvent>? rewardEvents = null, IEnumerable<GitWorld.Api.Core.LevelUpEvent>? levelUpEvents = null, string? streamName = null)
     {
         if (!ShouldRetry())
             return false;
@@ -325,11 +501,111 @@ public class S2Publisher : IS2Publisher
                     : null
             };
 
-            return await AppendAsync(_config.StreamName, payload);
+            return await AppendAsync(streamName ?? _config.StreamName, payload);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Error broadcasting game state at tick {Tick}", tick);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Broadcasts game state with delta updates - only sends changed fields.
+    /// forceFullState = true sends all fields (use periodically for sync).
+    /// </summary>
+    public async Task<bool> BroadcastDeltaGameStateAsync(long tick, Guid playerId, IEnumerable<GitWorld.Api.Core.Entity> entities, bool forceFullState, IEnumerable<GitWorld.Api.Core.CombatEvent>? combatEvents = null, GitWorld.Api.Core.Systems.EventInfo? activeEvent = null, IEnumerable<GitWorld.Api.Core.RewardEvent>? rewardEvents = null, IEnumerable<GitWorld.Api.Core.LevelUpEvent>? levelUpEvents = null, string? streamName = null)
+    {
+        if (!ShouldRetry())
+            return false;
+
+        try
+        {
+            List<EntityPayload> entityPayloads;
+
+            if (forceFullState)
+            {
+                // Full state - send all fields for all entities
+                entityPayloads = entities.Select(e => _stateTracker.CreateFullPayload(e)).ToList();
+            }
+            else
+            {
+                // Delta update - only send changed fields
+                entityPayloads = new List<EntityPayload>();
+                foreach (var entity in entities)
+                {
+                    var delta = _stateTracker.GetDelta(playerId, entity);
+                    if (delta != null)
+                    {
+                        entityPayloads.Add(delta);
+                    }
+                }
+            }
+
+            // If no entities changed and no events, skip broadcast
+            var hasEvents = (combatEvents?.Any() ?? false) ||
+                           (rewardEvents?.Any() ?? false) ||
+                           (levelUpEvents?.Any() ?? false);
+
+            if (entityPayloads.Count == 0 && !hasEvents && !forceFullState)
+            {
+                return true; // Nothing to send
+            }
+
+            var payload = new GameStatePayload
+            {
+                Tick = tick,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                IsFullState = forceFullState,
+                Entidades = entityPayloads,
+                Eventos = combatEvents?.Select(e => new GameEventPayload
+                {
+                    Type = e.Type.ToString().ToLowerInvariant(),
+                    Tick = e.Tick,
+                    Timestamp = e.Timestamp,
+                    AttackerId = e.AttackerId,
+                    AttackerName = e.AttackerName,
+                    TargetId = e.TargetId,
+                    TargetName = e.TargetName,
+                    Damage = e.Damage,
+                    IsCritical = e.IsCritical
+                }).ToList() ?? new List<GameEventPayload>(),
+                Rewards = rewardEvents?.Select(r => new RewardEventPayload
+                {
+                    PlayerId = r.PlayerId,
+                    X = r.X,
+                    Y = r.Y,
+                    ExpGained = r.ExpGained,
+                    GoldGained = r.GoldGained,
+                    LeveledUp = r.LeveledUp,
+                    NewLevel = r.NewLevel,
+                    Source = r.Source,
+                    Tick = r.Tick
+                }).ToList() ?? new List<RewardEventPayload>(),
+                LevelUps = levelUpEvents?.Select(l => new LevelUpEventPayload
+                {
+                    PlayerId = l.PlayerId,
+                    PlayerName = l.PlayerName,
+                    OldLevel = l.OldLevel,
+                    NewLevel = l.NewLevel,
+                    X = l.X,
+                    Y = l.Y,
+                    Tick = l.Tick
+                }).ToList() ?? new List<LevelUpEventPayload>(),
+                ActiveEvent = activeEvent != null && activeEvent.Type != GitWorld.Api.Core.Systems.EventType.None
+                    ? new ActiveEventPayload
+                    {
+                        Type = activeEvent.Type.ToString().ToLowerInvariant(),
+                        MonstersRemaining = activeEvent.MonstersRemaining
+                    }
+                    : null
+            };
+
+            return await AppendAsync(streamName ?? _config.StreamName, payload);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error broadcasting delta game state at tick {Tick}", tick);
             return false;
         }
     }
@@ -360,6 +636,12 @@ public class GameStatePayload
     public long Tick { get; set; }
     public long Timestamp { get; set; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     public string ServerVersion { get; set; } = CurrentServerVersion;
+    /// <summary>
+    /// True if this is a full state update with all fields.
+    /// False if this is a delta update with only changed fields.
+    /// Frontend should merge delta updates with existing state.
+    /// </summary>
+    public bool IsFullState { get; set; } = true;
     public EntityPayload? Player { get; set; }
     public List<EntityPayload> Entidades { get; set; } = new();
     public List<GameEventPayload> Eventos { get; set; } = new();

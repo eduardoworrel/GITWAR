@@ -6,6 +6,7 @@ import { useGameStore } from '../stores/gameStore';
 import { PlayerModal } from './PlayerModal';
 import { CalendarModal } from './CalendarModal';
 import { UserProfileModal } from './UserProfileModal';
+import { ScriptEditorModal } from './ScriptEditorModal';
 
 // SVG Icons
 const DiscordIcon = () => (
@@ -48,6 +49,13 @@ const UserIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
     <circle cx="12" cy="7" r="4"/>
+  </svg>
+);
+
+const CodeIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="16 18 22 12 16 6"/>
+    <polyline points="8 6 2 12 8 18"/>
   </svg>
 );
 
@@ -100,6 +108,7 @@ export function Dock() {
   const [showShop, setShowShop] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showScriptEditor, setShowScriptEditor] = useState(false);
 
   const currentPlayerId = useGameStore((s) => s.currentPlayerId);
   const players = useGameStore((s) => s.players);
@@ -142,6 +151,13 @@ export function Dock() {
             onClick={() => setShowShop(true)}
           />
 
+          {/* Script Editor */}
+          <DockItem
+            icon={<CodeIcon />}
+            label={t('dock.script', 'Script')}
+            onClick={() => setShowScriptEditor(true)}
+          />
+
           <DockSeparator />
 
           {/* External links (right side) */}
@@ -181,6 +197,37 @@ export function Dock() {
         />,
         document.body
       )}
+
+      {/* Script Editor Modal */}
+      {showScriptEditor && currentPlayer && (
+        <ScriptEditorModal
+          reinoColor={getReinoColor(currentPlayer.reino)}
+          onClose={() => setShowScriptEditor(false)}
+        />
+      )}
     </>
   );
+}
+
+// Helper to get reino color
+const reinoColors: Record<string, string> = {
+  Python: '#3776AB',
+  JavaScript: '#F7DF1E',
+  TypeScript: '#3178C6',
+  Java: '#ED8B00',
+  CSharp: '#239120',
+  Go: '#00ADD8',
+  Rust: '#DEA584',
+  Ruby: '#CC342D',
+  PHP: '#777BB4',
+  'C++': '#00599C',
+  C: '#555555',
+  Swift: '#FA7343',
+  Kotlin: '#7F52FF',
+  Shell: '#89E051',
+  Scala: '#DC322F',
+};
+
+function getReinoColor(reino: string): string {
+  return reinoColors[reino] || '#888888';
 }

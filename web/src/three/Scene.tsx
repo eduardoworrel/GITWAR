@@ -9,6 +9,7 @@ import { FloatingReward } from './FloatingReward';
 import { LevelUpEffect } from './LevelUpEffect';
 import { CombatEffects } from './CombatEffects';
 import { RadialMenuOverlay } from '../components/RadialMenuOverlay';
+import { PerformanceStatsConnector, PerformanceMonitorUI } from '../components/PerformanceMonitor';
 import { useGameStore } from '../stores/gameStore';
 import { MAP_WIDTH, MAP_HEIGHT } from './constants';
 import { AnimationManagerProvider } from './AnimationManager';
@@ -147,6 +148,9 @@ function SceneContent() {
 
       {/* Calculate screen position for radial menu */}
       <RadialMenuPositionCalculator />
+
+      {/* Performance stats collector (F3 to show UI) */}
+      <PerformanceStatsConnector />
     </>
   );
 }
@@ -174,6 +178,8 @@ export function GameScene() {
       </Canvas>
       {/* Radial menu overlay - rendered outside Canvas */}
       <RadialMenuOverlay />
+      {/* Performance monitor UI (F3 to toggle) */}
+      <PerformanceMonitorUI />
     </>
   );
 }

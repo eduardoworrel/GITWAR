@@ -215,10 +215,62 @@ All secrets should be in `.env` file (gitignored). See `.env.example` for templa
 
 ### Events (EventSystem)
 - Monster spawning: Bug, AI Hallucination, Manager, Unexplained Bug, Boss
+- AI Invasion event spawns ML/AI error monsters (Vanishing Gradient, Exploding Gradient, etc.)
 - Monsters have health pools and drop rewards
 - Events trigger based on player activity
 
-### Items & Shop
-- Players can purchase items from shop
-- Equipped items visible on character model
-- Items affect player stats
+### Progression System (XP & Gold)
+
+**Level System:**
+- Max Level: 100
+- XP Formula: `BaseExp * (1.15 ^ level)` where BaseExp = 100
+- Stats increase per level (damage, HP, etc.)
+
+**XP Rewards per kill:**
+| Source | XP | Gold |
+|--------|------|------|
+| Bug | 10 | 5 |
+| AI Hallucination | 25 | 15 |
+| Manager | 30 | 20 |
+| Unexplained Bug | 150 | 75 |
+| Boss | 200 | 100 |
+| Player Kill | 50 (scales with level) | 25 |
+
+**Key Files:**
+- `Core/Systems/ProgressionSystem.cs` - XP/Gold/LevelUp logic
+- `GitWorld.Shared/Constants.cs` - All reward values
+
+### Item Shop & Inventory
+
+**Tier-based Pricing:**
+| Tier | Price (Gold) |
+|------|--------------|
+| F | 50 |
+| D | 150 |
+| C | 400 |
+| B | 1000 |
+| A | 2500 |
+| S | 5000 |
+
+**Item Categories:**
+- Notebook, Processador, Café, Energético, Teclado, Fone, Camiseta, IDE, Comida, Pet, Acessório
+
+**Item Stats (bonuses can be positive or negative):**
+- DanoBonus, ArmaduraBonus, HpBonus, CriticoBonus, EvasaoBonus
+- VelocidadeAtaqueBonus, VelocidadeMovimentoBonus
+
+**Duration:**
+- Permanent items: `DurationMinutes = null`
+- Temporary items: Coffee, Food, Energy drinks have `DurationMinutes` set
+
+**Key Files:**
+- `Services/ItemService.cs` - Buy, equip, unequip logic
+- `Program.cs` (lines 84-174) - Item seeding with all items
+- `Data/Entities/Item.cs`, `PlayerItem.cs` - Data models
+
+**API Endpoints:**
+- `GET /api/items` - List all shop items
+- `GET /api/inventory/{playerId}` - Player inventory
+- `POST /api/items/buy` - Purchase item
+- `POST /api/items/equip` - Equip item
+- `POST /api/items/unequip` - Unequip item

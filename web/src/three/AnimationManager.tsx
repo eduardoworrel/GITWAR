@@ -170,22 +170,22 @@ export function getSharedMaterial(
   return material;
 }
 
-// Pre-create common materials for monsters
+// Pre-create common materials for monsters - ALL SOLID for WebGPU compatibility
 export const SHARED_MATERIALS = {
   // Common colors
   white: getSharedMaterial(0xffffff),
   black: getSharedMaterial(0x000000),
   red: getSharedMaterial(0xff0000),
-  redTransparent: getSharedMaterial(0xff0000, { transparent: true, opacity: 0.8 }),
+  redTransparent: getSharedMaterial(0xcc0000), // Darker red instead of transparent
   yellow: getSharedMaterial(0xffff00),
-  yellowTransparent: getSharedMaterial(0xffff00, { transparent: true, opacity: 0.8 }),
+  yellowTransparent: getSharedMaterial(0xcccc00), // Darker yellow instead of transparent
 
   // Monster colors
   bugBrown: getSharedMaterial(0x8b4513),
   bugBrownDark: getSharedMaterial(0x533010),
   aiPurple: getSharedMaterial(0x9932cc),
-  aiPurpleTransparent: getSharedMaterial(0x9932cc, { transparent: true, opacity: 0.7 }),
-  aiPurpleWireframe: getSharedMaterial(0x9932cc, { transparent: true, opacity: 0.7, wireframe: true }),
+  aiPurpleTransparent: getSharedMaterial(0x772299), // Darker purple instead of transparent
+  aiPurpleWireframe: getSharedMaterial(0x9932cc, { wireframe: true }),
   managerBlue: getSharedMaterial(0x4169e1),
   bossRed: getSharedMaterial(0xff0000),
   bossRedDark: getSharedMaterial(0x660000),
@@ -193,7 +193,7 @@ export const SHARED_MATERIALS = {
 
   // Language colors
   jsYellow: getSharedMaterial(0xf7df1e),
-  jsYellowTransparent: getSharedMaterial(0xf7df1e, { transparent: true, opacity: 0.8 }),
+  jsYellowTransparent: getSharedMaterial(0xc4b018), // Darker yellow instead of transparent
   pythonBlue: getSharedMaterial(0x3776ab),
   pythonYellow: getSharedMaterial(0xffd43b),
   javaOrange: getSharedMaterial(0xed8b00),
@@ -208,10 +208,10 @@ export const SHARED_MATERIALS = {
   swiftOrange: getSharedMaterial(0xfa7343),
   kotlinPurple: getSharedMaterial(0x7f52ff),
 
-  // Transparent variants
-  ghostWhite: getSharedMaterial(0xffffff, { transparent: true, opacity: 0.3 }),
-  ghostGray: getSharedMaterial(0xaaaaaa, { transparent: true, opacity: 0.3 }),
-  shadowBlack: getSharedMaterial(0x000000, { transparent: true, opacity: 0.3 }),
+  // Solid variants (were transparent)
+  ghostWhite: getSharedMaterial(0xcccccc), // Light gray instead of transparent white
+  ghostGray: getSharedMaterial(0x888888), // Medium gray instead of transparent
+  shadowBlack: getSharedMaterial(0x333333), // Dark gray instead of transparent black
 
   // Suit colors
   suitDark: getSharedMaterial(0x1a1a2e),
@@ -223,15 +223,17 @@ export const SHARED_MATERIALS = {
   // Special
   magenta: getSharedMaterial(0xff00ff),
   cyan: getSharedMaterial(0x00ffff),
-  glowMagenta: getSharedMaterial(0xff00ff, { transparent: true, opacity: 0.8 }),
+  glowMagenta: getSharedMaterial(0xdd00dd), // Solid magenta instead of transparent
 };
 
-// Function to get or create a material with specific opacity
+// Function to get or create a material with specific opacity - returns solid for WebGPU
 export function getMaterialWithOpacity(baseMaterial: THREE.MeshBasicMaterial, opacity: number): THREE.MeshBasicMaterial {
   if (opacity >= 1) return baseMaterial;
 
+  // For WebGPU compatibility, darken the color instead of making it transparent
   const color = baseMaterial.color.getHex();
-  return getSharedMaterial(color, { transparent: true, opacity });
+  const darkenedColor = new THREE.Color(color).multiplyScalar(opacity).getHex();
+  return getSharedMaterial(darkenedColor);
 }
 
 // =============================================================================
