@@ -16,6 +16,9 @@ import { AnimationManagerProvider } from './AnimationManager';
 // Smooth lerp for menu position
 const menuPosRef = { x: 0, y: 0, initialized: false };
 
+// Reusable vector to avoid garbage collection
+const _worldPos = new THREE.Vector3();
+
 // Component that calculates screen position for radial menu
 // Updates DOM directly via ref to avoid React re-renders
 function RadialMenuPositionCalculator() {
@@ -42,15 +45,15 @@ function RadialMenuPositionCalculator() {
       return;
     }
 
-    // Create 3D vector at player position (above head)
-    const worldPos = new THREE.Vector3(pos.x, 70, pos.y);
+    // Set 3D vector at player position (above head) - reuse to avoid GC
+    _worldPos.set(pos.x, 70, pos.y);
 
-    // Project to normalized device coordinates
-    const ndc = worldPos.clone().project(camera);
+    // Project to normalized device coordinates (project modifies in place)
+    _worldPos.project(camera);
 
     // Convert to screen coordinates
-    const targetX = (ndc.x * 0.5 + 0.5) * size.width;
-    const targetY = (-ndc.y * 0.5 + 0.5) * size.height;
+    const targetX = (_worldPos.x * 0.5 + 0.5) * size.width;
+    const targetY = (-_worldPos.y * 0.5 + 0.5) * size.height;
 
     // Initialize or lerp to target position
     if (!menuPosRef.initialized) {

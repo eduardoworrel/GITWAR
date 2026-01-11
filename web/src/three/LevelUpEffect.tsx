@@ -4,6 +4,9 @@ import { Text, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGameStore } from '../stores/gameStore';
 
+// Max distance to show level up effects (squared for performance)
+const MAX_EVENT_DISTANCE_SQ = 800 * 800;
+
 interface LevelUpDisplay {
   id: string;
   playerId: string;
@@ -127,6 +130,11 @@ export function LevelUpEffect() {
   useEffect(() => {
     const newLevelUps: LevelUpDisplay[] = [];
 
+    // Get current player position for distance culling
+    const currentPlayerPos = useGameStore.getState().currentPlayerPos;
+    const camX = currentPlayerPos?.x ?? 0;
+    const camZ = currentPlayerPos?.y ?? 0;
+
     for (const event of levelUpEvents) {
       if (processedEventsRef.current.has(event.id)) continue;
       processedEventsRef.current.add(event.id);
@@ -135,6 +143,12 @@ export function LevelUpEffect() {
       const playerPos = getInterpolatedPosition(event.playerId);
       const x = playerPos ? playerPos.x : event.x;
       const z = playerPos ? playerPos.y : event.y;
+
+      // Distance culling - skip events too far from camera/player
+      const dx = x - camX;
+      const dz = z - camZ;
+      const distSq = dx * dx + dz * dz;
+      if (distSq > MAX_EVENT_DISTANCE_SQ) continue;
 
       newLevelUps.push({
         id: event.id,

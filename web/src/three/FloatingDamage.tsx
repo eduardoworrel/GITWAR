@@ -111,6 +111,9 @@ function DamageText({ damage }: { damage: DamageNumber }) {
   );
 }
 
+// Max distance to show floating damage (squared for performance)
+const MAX_EVENT_DISTANCE_SQ = 800 * 800;
+
 export function FloatingDamage() {
   const combatEvents = useGameStore((s) => s.combatEvents);
   const getInterpolatedPosition = useGameStore((s) => s.getInterpolatedPosition);
@@ -127,6 +130,11 @@ export function FloatingDamage() {
     const newDamages: DamageNumber[] = [];
     const now = Date.now();
 
+    // Get current player position for distance culling
+    const currentPlayerPos = useGameStore.getState().currentPlayerPos;
+    const camX = currentPlayerPos?.x ?? 0;
+    const camZ = currentPlayerPos?.y ?? 0;
+
     for (const event of eventsToProcess) {
       // Skip already processed events
       if (processedEventsRef.current.has(event.id)) continue;
@@ -138,6 +146,12 @@ export function FloatingDamage() {
       // Get target position (damage originates from target)
       const targetPos = getInterpolatedPosition(event.targetId);
       if (!targetPos) continue;
+
+      // Distance culling - skip events too far from camera/player
+      const dx = targetPos.x - camX;
+      const dz = targetPos.y - camZ;
+      const distSq = dx * dx + dz * dz;
+      if (distSq > MAX_EVENT_DISTANCE_SQ) continue;
 
       // Add random offset so multiple hits don't overlap
       const offsetX = (Math.random() - 0.5) * 1.5;
