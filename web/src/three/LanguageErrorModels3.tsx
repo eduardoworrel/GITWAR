@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { UNIT_VECTOR3 } from './optimizations';
 
 interface ErrorModelProps {
   color: number;
@@ -570,7 +571,7 @@ export function RObjectNotFoundModel({ color, opacity, isWalking, lastAttackTime
       }
     }
     if (magnifierRef.current) {
-      magnifierRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
+      magnifierRef.current.scale.lerp(UNIT_VECTOR3, 0.1);
     }
   });
 
@@ -903,7 +904,7 @@ export function SqlTimeoutModel({ color, opacity, isWalking, lastAttackTime }: E
       }
     }
     if (clockRef.current) {
-      clockRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
+      clockRef.current.scale.lerp(UNIT_VECTOR3, 0.1);
     }
   });
 
@@ -1309,7 +1310,7 @@ export function PerlSyntaxErrorModel({ color, opacity, isWalking, lastAttackTime
       });
     }
     symbolsRef.current.forEach((sym) => {
-      if (sym) sym.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
+      if (sym) sym.scale.lerp(UNIT_VECTOR3, 0.1);
     });
   });
 

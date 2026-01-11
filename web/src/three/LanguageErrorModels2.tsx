@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { UNIT_VECTOR3 } from './optimizations';
 
 interface ErrorModelProps {
   color: number;
@@ -122,7 +123,7 @@ export function GoDeadlockModel({ color, opacity, isWalking, lastAttackTime }: E
       lastAttackRef.current = lastAttackTime;
       groupRef.current.scale.setScalar(1.2);
     }
-    groupRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
+    groupRef.current.scale.lerp(UNIT_VECTOR3, 0.1);
   });
 
   const goBlue = 0x00add8;
@@ -571,7 +572,7 @@ export function RubyNoMethodErrorModel({ color, opacity, isWalking, lastAttackTi
       }
     }
     if (gemRef.current) {
-      gemRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
+      gemRef.current.scale.lerp(UNIT_VECTOR3, 0.1);
     }
   });
 
@@ -727,7 +728,7 @@ export function RubySyntaxErrorModel({ color, opacity, isWalking, lastAttackTime
       lastAttackRef.current = lastAttackTime;
       groupRef.current.scale.setScalar(1.5);
     }
-    groupRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
+    groupRef.current.scale.lerp(UNIT_VECTOR3, 0.1);
   });
 
   const rubyRed = 0xcc342d;

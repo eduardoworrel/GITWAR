@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { LanguageErrorModels } from './LanguageErrorModels';
 import { LanguageErrorModels2 } from './LanguageErrorModels2';
 import { LanguageErrorModels3 } from './LanguageErrorModels3';
+import { UNIT_VECTOR3 } from './optimizations';
 
 // Shared monster geometries - created once, reused
 const BUG_GEOMETRIES = {
@@ -205,8 +206,8 @@ export function AIHallucinationModel({ color, opacity, isWalking: _isWalking, la
       // Scale pulse effect
       groupRef.current.scale.setScalar(1.3);
     }
-    // Return to normal scale
-    groupRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
+    // Return to normal scale (using cached vector to avoid GC)
+    groupRef.current.scale.lerp(UNIT_VECTOR3, 0.1);
   });
 
   return (

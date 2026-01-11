@@ -79,87 +79,94 @@ try
     // Seed items if none exist
     if (!db.Items.Any())
     {
+        // Tier-based pricing
+        var tierPrices = new Dictionary<string, int>
+        {
+            { "F", 50 }, { "D", 150 }, { "C", 400 },
+            { "B", 1000 }, { "A", 2500 }, { "S", 5000 }
+        };
+
         var items = new List<Item>
         {
             // Notebooks
-            new() { Id = Guid.NewGuid(), Name = "ThinkPad X1", Category = "Notebook", Tier = "B", DanoBonus = 5, VelocidadeAtaqueBonus = 3 },
-            new() { Id = Guid.NewGuid(), Name = "MacBook Pro M3", Category = "Notebook", Tier = "A", DanoBonus = 10, CriticoBonus = 5, VelocidadeAtaqueBonus = 5 },
-            new() { Id = Guid.NewGuid(), Name = "Alienware X17", Category = "Notebook", Tier = "S", DanoBonus = 20, CriticoBonus = 10, VelocidadeAtaqueBonus = 8 },
-            new() { Id = Guid.NewGuid(), Name = "Razer Blade 18", Category = "Notebook", Tier = "S", DanoBonus = 25, CriticoBonus = 12, VelocidadeAtaqueBonus = 10, VisualDescription = "RGB gaming beast" },
-            new() { Id = Guid.NewGuid(), Name = "ASUS ROG Zephyrus", Category = "Notebook", Tier = "A", DanoBonus = 18, CriticoBonus = 8, VelocidadeAtaqueBonus = 7, VisualDescription = "Slim powerhouse" },
+            new() { Id = Guid.NewGuid(), Name = "ThinkPad X1", Category = "Notebook", Tier = "B", DanoBonus = 5, VelocidadeAtaqueBonus = 3, Price = tierPrices["B"] },
+            new() { Id = Guid.NewGuid(), Name = "MacBook Pro M3", Category = "Notebook", Tier = "A", DanoBonus = 10, CriticoBonus = 5, VelocidadeAtaqueBonus = 5, Price = tierPrices["A"] },
+            new() { Id = Guid.NewGuid(), Name = "Alienware X17", Category = "Notebook", Tier = "S", DanoBonus = 20, CriticoBonus = 10, VelocidadeAtaqueBonus = 8, Price = tierPrices["S"] },
+            new() { Id = Guid.NewGuid(), Name = "Razer Blade 18", Category = "Notebook", Tier = "S", DanoBonus = 25, CriticoBonus = 12, VelocidadeAtaqueBonus = 10, VisualDescription = "RGB gaming beast", Price = tierPrices["S"] },
+            new() { Id = Guid.NewGuid(), Name = "ASUS ROG Zephyrus", Category = "Notebook", Tier = "A", DanoBonus = 18, CriticoBonus = 8, VelocidadeAtaqueBonus = 7, VisualDescription = "Slim powerhouse", Price = tierPrices["A"] },
 
             // Processadores
-            new() { Id = Guid.NewGuid(), Name = "Intel i5", Category = "Processador", Tier = "C", VelocidadeAtaqueBonus = 5 },
-            new() { Id = Guid.NewGuid(), Name = "AMD Ryzen 7", Category = "Processador", Tier = "B", VelocidadeAtaqueBonus = 10, DanoBonus = 3 },
-            new() { Id = Guid.NewGuid(), Name = "Apple M3 Max", Category = "Processador", Tier = "A", VelocidadeAtaqueBonus = 15, DanoBonus = 5, CriticoBonus = 3 },
-            new() { Id = Guid.NewGuid(), Name = "AMD Ryzen 9 7950X3D", Category = "Processador", Tier = "S", VelocidadeAtaqueBonus = 25, DanoBonus = 15, CriticoBonus = 10, VisualDescription = "3D V-Cache monster" },
-            new() { Id = Guid.NewGuid(), Name = "Intel i9-14900K", Category = "Processador", Tier = "S", VelocidadeAtaqueBonus = 22, DanoBonus = 18, CriticoBonus = 8, VisualDescription = "24 cores of power" },
+            new() { Id = Guid.NewGuid(), Name = "Intel i5", Category = "Processador", Tier = "C", VelocidadeAtaqueBonus = 5, Price = tierPrices["C"] },
+            new() { Id = Guid.NewGuid(), Name = "AMD Ryzen 7", Category = "Processador", Tier = "B", VelocidadeAtaqueBonus = 10, DanoBonus = 3, Price = tierPrices["B"] },
+            new() { Id = Guid.NewGuid(), Name = "Apple M3 Max", Category = "Processador", Tier = "A", VelocidadeAtaqueBonus = 15, DanoBonus = 5, CriticoBonus = 3, Price = tierPrices["A"] },
+            new() { Id = Guid.NewGuid(), Name = "AMD Ryzen 9 7950X3D", Category = "Processador", Tier = "S", VelocidadeAtaqueBonus = 25, DanoBonus = 15, CriticoBonus = 10, VisualDescription = "3D V-Cache monster", Price = tierPrices["S"] },
+            new() { Id = Guid.NewGuid(), Name = "Intel i9-14900K", Category = "Processador", Tier = "S", VelocidadeAtaqueBonus = 22, DanoBonus = 18, CriticoBonus = 8, VisualDescription = "24 cores of power", Price = tierPrices["S"] },
 
             // Café - incluindo marcas brasileiras
-            new() { Id = Guid.NewGuid(), Name = "Café Solúvel", Category = "Café", Tier = "F", VelocidadeAtaqueBonus = 2, DurationMinutes = 30 },
-            new() { Id = Guid.NewGuid(), Name = "Espresso", Category = "Café", Tier = "D", VelocidadeAtaqueBonus = 5, CriticoBonus = 2, DurationMinutes = 60 },
-            new() { Id = Guid.NewGuid(), Name = "Cold Brew Artesanal", Category = "Café", Tier = "B", VelocidadeAtaqueBonus = 10, CriticoBonus = 5, DanoBonus = 3, DurationMinutes = 120 },
-            new() { Id = Guid.NewGuid(), Name = "Café Pilão", Category = "Café", Tier = "C", VelocidadeAtaqueBonus = 6, DanoBonus = 2, DurationMinutes = 45, VisualDescription = "Tradição brasileira" },
-            new() { Id = Guid.NewGuid(), Name = "3 Corações", Category = "Café", Tier = "C", VelocidadeAtaqueBonus = 7, CriticoBonus = 3, DurationMinutes = 50, VisualDescription = "Feito com amor" },
-            new() { Id = Guid.NewGuid(), Name = "Café Orfeu", Category = "Café", Tier = "A", VelocidadeAtaqueBonus = 12, CriticoBonus = 6, DanoBonus = 5, DurationMinutes = 90, VisualDescription = "Premium brasileiro" },
-            new() { Id = Guid.NewGuid(), Name = "Café do Ponto", Category = "Café", Tier = "D", VelocidadeAtaqueBonus = 4, DurationMinutes = 40, VisualDescription = "Clássico paulista" },
+            new() { Id = Guid.NewGuid(), Name = "Café Solúvel", Category = "Café", Tier = "F", VelocidadeAtaqueBonus = 2, DurationMinutes = 30, Price = tierPrices["F"] },
+            new() { Id = Guid.NewGuid(), Name = "Espresso", Category = "Café", Tier = "D", VelocidadeAtaqueBonus = 5, CriticoBonus = 2, DurationMinutes = 60, Price = tierPrices["D"] },
+            new() { Id = Guid.NewGuid(), Name = "Cold Brew Artesanal", Category = "Café", Tier = "B", VelocidadeAtaqueBonus = 10, CriticoBonus = 5, DanoBonus = 3, DurationMinutes = 120, Price = tierPrices["B"] },
+            new() { Id = Guid.NewGuid(), Name = "Café Pilão", Category = "Café", Tier = "C", VelocidadeAtaqueBonus = 6, DanoBonus = 2, DurationMinutes = 45, VisualDescription = "Tradição brasileira", Price = tierPrices["C"] },
+            new() { Id = Guid.NewGuid(), Name = "3 Corações", Category = "Café", Tier = "C", VelocidadeAtaqueBonus = 7, CriticoBonus = 3, DurationMinutes = 50, VisualDescription = "Feito com amor", Price = tierPrices["C"] },
+            new() { Id = Guid.NewGuid(), Name = "Café Orfeu", Category = "Café", Tier = "A", VelocidadeAtaqueBonus = 12, CriticoBonus = 6, DanoBonus = 5, DurationMinutes = 90, VisualDescription = "Premium brasileiro", Price = tierPrices["A"] },
+            new() { Id = Guid.NewGuid(), Name = "Café do Ponto", Category = "Café", Tier = "D", VelocidadeAtaqueBonus = 4, DurationMinutes = 40, VisualDescription = "Clássico paulista", Price = tierPrices["D"] },
 
             // Energéticos
-            new() { Id = Guid.NewGuid(), Name = "Monster Energy", Category = "Energético", Tier = "D", VelocidadeMovimentoBonus = 5, VelocidadeAtaqueBonus = 3, DurationMinutes = 45 },
-            new() { Id = Guid.NewGuid(), Name = "Red Bull", Category = "Energético", Tier = "C", VelocidadeMovimentoBonus = 8, VelocidadeAtaqueBonus = 5, DurationMinutes = 60 },
-            new() { Id = Guid.NewGuid(), Name = "G Fuel", Category = "Energético", Tier = "B", VelocidadeMovimentoBonus = 12, VelocidadeAtaqueBonus = 8, CriticoBonus = 3, DurationMinutes = 90 },
+            new() { Id = Guid.NewGuid(), Name = "Monster Energy", Category = "Energético", Tier = "D", VelocidadeMovimentoBonus = 5, VelocidadeAtaqueBonus = 3, DurationMinutes = 45, Price = tierPrices["D"] },
+            new() { Id = Guid.NewGuid(), Name = "Red Bull", Category = "Energético", Tier = "C", VelocidadeMovimentoBonus = 8, VelocidadeAtaqueBonus = 5, DurationMinutes = 60, Price = tierPrices["C"] },
+            new() { Id = Guid.NewGuid(), Name = "G Fuel", Category = "Energético", Tier = "B", VelocidadeMovimentoBonus = 12, VelocidadeAtaqueBonus = 8, CriticoBonus = 3, DurationMinutes = 90, Price = tierPrices["B"] },
 
             // Teclados - incluindo split e hype
-            new() { Id = Guid.NewGuid(), Name = "Teclado Membrana", Category = "Teclado", Tier = "F", VelocidadeAtaqueBonus = 1 },
-            new() { Id = Guid.NewGuid(), Name = "Keychron K2", Category = "Teclado", Tier = "C", VelocidadeAtaqueBonus = 5, DanoBonus = 2 },
-            new() { Id = Guid.NewGuid(), Name = "Custom Mechanical", Category = "Teclado", Tier = "A", VelocidadeAtaqueBonus = 12, DanoBonus = 5, CriticoBonus = 3 },
-            new() { Id = Guid.NewGuid(), Name = "ZSA Moonlander", Category = "Teclado", Tier = "S", VelocidadeAtaqueBonus = 18, DanoBonus = 8, CriticoBonus = 8, EvasaoBonus = 5, VisualDescription = "Split ergo masterpiece" },
-            new() { Id = Guid.NewGuid(), Name = "Wooting 60HE", Category = "Teclado", Tier = "S", VelocidadeAtaqueBonus = 20, DanoBonus = 10, CriticoBonus = 5, VisualDescription = "Analog switches pro" },
-            new() { Id = Guid.NewGuid(), Name = "Ducky One 3", Category = "Teclado", Tier = "A", VelocidadeAtaqueBonus = 14, DanoBonus = 6, CriticoBonus = 4, VisualDescription = "Hot-swap legend" },
+            new() { Id = Guid.NewGuid(), Name = "Teclado Membrana", Category = "Teclado", Tier = "F", VelocidadeAtaqueBonus = 1, Price = tierPrices["F"] },
+            new() { Id = Guid.NewGuid(), Name = "Keychron K2", Category = "Teclado", Tier = "C", VelocidadeAtaqueBonus = 5, DanoBonus = 2, Price = tierPrices["C"] },
+            new() { Id = Guid.NewGuid(), Name = "Custom Mechanical", Category = "Teclado", Tier = "A", VelocidadeAtaqueBonus = 12, DanoBonus = 5, CriticoBonus = 3, Price = tierPrices["A"] },
+            new() { Id = Guid.NewGuid(), Name = "ZSA Moonlander", Category = "Teclado", Tier = "S", VelocidadeAtaqueBonus = 18, DanoBonus = 8, CriticoBonus = 8, EvasaoBonus = 5, VisualDescription = "Split ergo masterpiece", Price = tierPrices["S"] },
+            new() { Id = Guid.NewGuid(), Name = "Wooting 60HE", Category = "Teclado", Tier = "S", VelocidadeAtaqueBonus = 20, DanoBonus = 10, CriticoBonus = 5, VisualDescription = "Analog switches pro", Price = tierPrices["S"] },
+            new() { Id = Guid.NewGuid(), Name = "Ducky One 3", Category = "Teclado", Tier = "A", VelocidadeAtaqueBonus = 14, DanoBonus = 6, CriticoBonus = 4, VisualDescription = "Hot-swap legend", Price = tierPrices["A"] },
 
             // Fones - incluindo hype
-            new() { Id = Guid.NewGuid(), Name = "Fone Genérico", Category = "Fone", Tier = "F", EvasaoBonus = 1 },
-            new() { Id = Guid.NewGuid(), Name = "AirPods Pro", Category = "Fone", Tier = "B", EvasaoBonus = 5, VelocidadeMovimentoBonus = 3 },
-            new() { Id = Guid.NewGuid(), Name = "Sony WH-1000XM5", Category = "Fone", Tier = "A", EvasaoBonus = 10, VelocidadeMovimentoBonus = 5, ArmaduraBonus = 3 },
-            new() { Id = Guid.NewGuid(), Name = "Bose QuietComfort Ultra", Category = "Fone", Tier = "A", EvasaoBonus = 12, ArmaduraBonus = 5, HpBonus = 10, VisualDescription = "Silence is golden" },
-            new() { Id = Guid.NewGuid(), Name = "Sennheiser HD 800 S", Category = "Fone", Tier = "S", EvasaoBonus = 15, CriticoBonus = 8, DanoBonus = 5, VisualDescription = "Audiophile endgame" },
-            new() { Id = Guid.NewGuid(), Name = "Beyerdynamic DT 1990", Category = "Fone", Tier = "S", EvasaoBonus = 12, CriticoBonus = 10, DanoBonus = 8, VisualDescription = "German precision" },
+            new() { Id = Guid.NewGuid(), Name = "Fone Genérico", Category = "Fone", Tier = "F", EvasaoBonus = 1, Price = tierPrices["F"] },
+            new() { Id = Guid.NewGuid(), Name = "AirPods Pro", Category = "Fone", Tier = "B", EvasaoBonus = 5, VelocidadeMovimentoBonus = 3, Price = tierPrices["B"] },
+            new() { Id = Guid.NewGuid(), Name = "Sony WH-1000XM5", Category = "Fone", Tier = "A", EvasaoBonus = 10, VelocidadeMovimentoBonus = 5, ArmaduraBonus = 3, Price = tierPrices["A"] },
+            new() { Id = Guid.NewGuid(), Name = "Bose QuietComfort Ultra", Category = "Fone", Tier = "A", EvasaoBonus = 12, ArmaduraBonus = 5, HpBonus = 10, VisualDescription = "Silence is golden", Price = tierPrices["A"] },
+            new() { Id = Guid.NewGuid(), Name = "Sennheiser HD 800 S", Category = "Fone", Tier = "S", EvasaoBonus = 15, CriticoBonus = 8, DanoBonus = 5, VisualDescription = "Audiophile endgame", Price = tierPrices["S"] },
+            new() { Id = Guid.NewGuid(), Name = "Beyerdynamic DT 1990", Category = "Fone", Tier = "S", EvasaoBonus = 12, CriticoBonus = 10, DanoBonus = 8, VisualDescription = "German precision", Price = tierPrices["S"] },
 
             // Camisetas
-            new() { Id = Guid.NewGuid(), Name = "Camiseta Básica", Category = "Camiseta", Tier = "F", ArmaduraBonus = 1 },
-            new() { Id = Guid.NewGuid(), Name = "Hoodie Tech", Category = "Camiseta", Tier = "C", ArmaduraBonus = 5, HpBonus = 10 },
-            new() { Id = Guid.NewGuid(), Name = "Moletom GitHub", Category = "Camiseta", Tier = "B", ArmaduraBonus = 8, HpBonus = 20, EvasaoBonus = 2 },
+            new() { Id = Guid.NewGuid(), Name = "Camiseta Básica", Category = "Camiseta", Tier = "F", ArmaduraBonus = 1, Price = tierPrices["F"] },
+            new() { Id = Guid.NewGuid(), Name = "Hoodie Tech", Category = "Camiseta", Tier = "C", ArmaduraBonus = 5, HpBonus = 10, Price = tierPrices["C"] },
+            new() { Id = Guid.NewGuid(), Name = "Moletom GitHub", Category = "Camiseta", Tier = "B", ArmaduraBonus = 8, HpBonus = 20, EvasaoBonus = 2, Price = tierPrices["B"] },
 
             // IDEs - todas as famosas
-            new() { Id = Guid.NewGuid(), Name = "Notepad", Category = "IDE", Tier = "F", DanoBonus = -5, EvasaoBonus = 10, VisualDescription = "Chad energy" },
-            new() { Id = Guid.NewGuid(), Name = "VS Code", Category = "IDE", Tier = "B", DanoBonus = 8, VelocidadeAtaqueBonus = 5 },
-            new() { Id = Guid.NewGuid(), Name = "Neovim", Category = "IDE", Tier = "A", DanoBonus = 15, VelocidadeAtaqueBonus = 10, CriticoBonus = 5, VisualDescription = "btw I use vim" },
-            new() { Id = Guid.NewGuid(), Name = "JetBrains Fleet", Category = "IDE", Tier = "S", DanoBonus = 20, VelocidadeAtaqueBonus = 12, CriticoBonus = 8, ArmaduraBonus = 5 },
-            new() { Id = Guid.NewGuid(), Name = "IntelliJ IDEA", Category = "IDE", Tier = "S", DanoBonus = 22, VelocidadeAtaqueBonus = 10, CriticoBonus = 10, ArmaduraBonus = 8, VisualDescription = "Java god mode" },
-            new() { Id = Guid.NewGuid(), Name = "PyCharm", Category = "IDE", Tier = "A", DanoBonus = 16, VelocidadeAtaqueBonus = 8, CriticoBonus = 6, VisualDescription = "Python paradise" },
-            new() { Id = Guid.NewGuid(), Name = "WebStorm", Category = "IDE", Tier = "A", DanoBonus = 14, VelocidadeAtaqueBonus = 12, CriticoBonus = 5, VisualDescription = "JS/TS mastery" },
-            new() { Id = Guid.NewGuid(), Name = "Sublime Text", Category = "IDE", Tier = "B", DanoBonus = 10, VelocidadeAtaqueBonus = 15, VisualDescription = "Speed demon" },
-            new() { Id = Guid.NewGuid(), Name = "Vim", Category = "IDE", Tier = "A", DanoBonus = 18, VelocidadeAtaqueBonus = 8, CriticoBonus = 12, EvasaoBonus = 5, VisualDescription = "The OG" },
-            new() { Id = Guid.NewGuid(), Name = "Emacs", Category = "IDE", Tier = "A", DanoBonus = 12, ArmaduraBonus = 15, HpBonus = 20, VisualDescription = "OS disguised as editor" },
-            new() { Id = Guid.NewGuid(), Name = "Eclipse", Category = "IDE", Tier = "C", DanoBonus = 5, ArmaduraBonus = 8, HpBonus = 15, VisualDescription = "Enterprise classic" },
-            new() { Id = Guid.NewGuid(), Name = "Cursor", Category = "IDE", Tier = "S", DanoBonus = 25, VelocidadeAtaqueBonus = 15, CriticoBonus = 12, VisualDescription = "AI-powered coding" },
-            new() { Id = Guid.NewGuid(), Name = "Zed", Category = "IDE", Tier = "A", DanoBonus = 12, VelocidadeAtaqueBonus = 20, CriticoBonus = 5, VisualDescription = "Blazingly fast" },
-            new() { Id = Guid.NewGuid(), Name = "Rider", Category = "IDE", Tier = "S", DanoBonus = 20, VelocidadeAtaqueBonus = 10, ArmaduraBonus = 10, CriticoBonus = 8, VisualDescription = "C# excellence" },
+            new() { Id = Guid.NewGuid(), Name = "Notepad", Category = "IDE", Tier = "F", DanoBonus = -5, EvasaoBonus = 10, VisualDescription = "Chad energy", Price = tierPrices["F"] },
+            new() { Id = Guid.NewGuid(), Name = "VS Code", Category = "IDE", Tier = "B", DanoBonus = 8, VelocidadeAtaqueBonus = 5, Price = tierPrices["B"] },
+            new() { Id = Guid.NewGuid(), Name = "Neovim", Category = "IDE", Tier = "A", DanoBonus = 15, VelocidadeAtaqueBonus = 10, CriticoBonus = 5, VisualDescription = "btw I use vim", Price = tierPrices["A"] },
+            new() { Id = Guid.NewGuid(), Name = "JetBrains Fleet", Category = "IDE", Tier = "S", DanoBonus = 20, VelocidadeAtaqueBonus = 12, CriticoBonus = 8, ArmaduraBonus = 5, Price = tierPrices["S"] },
+            new() { Id = Guid.NewGuid(), Name = "IntelliJ IDEA", Category = "IDE", Tier = "S", DanoBonus = 22, VelocidadeAtaqueBonus = 10, CriticoBonus = 10, ArmaduraBonus = 8, VisualDescription = "Java god mode", Price = tierPrices["S"] },
+            new() { Id = Guid.NewGuid(), Name = "PyCharm", Category = "IDE", Tier = "A", DanoBonus = 16, VelocidadeAtaqueBonus = 8, CriticoBonus = 6, VisualDescription = "Python paradise", Price = tierPrices["A"] },
+            new() { Id = Guid.NewGuid(), Name = "WebStorm", Category = "IDE", Tier = "A", DanoBonus = 14, VelocidadeAtaqueBonus = 12, CriticoBonus = 5, VisualDescription = "JS/TS mastery", Price = tierPrices["A"] },
+            new() { Id = Guid.NewGuid(), Name = "Sublime Text", Category = "IDE", Tier = "B", DanoBonus = 10, VelocidadeAtaqueBonus = 15, VisualDescription = "Speed demon", Price = tierPrices["B"] },
+            new() { Id = Guid.NewGuid(), Name = "Vim", Category = "IDE", Tier = "A", DanoBonus = 18, VelocidadeAtaqueBonus = 8, CriticoBonus = 12, EvasaoBonus = 5, VisualDescription = "The OG", Price = tierPrices["A"] },
+            new() { Id = Guid.NewGuid(), Name = "Emacs", Category = "IDE", Tier = "A", DanoBonus = 12, ArmaduraBonus = 15, HpBonus = 20, VisualDescription = "OS disguised as editor", Price = tierPrices["A"] },
+            new() { Id = Guid.NewGuid(), Name = "Eclipse", Category = "IDE", Tier = "C", DanoBonus = 5, ArmaduraBonus = 8, HpBonus = 15, VisualDescription = "Enterprise classic", Price = tierPrices["C"] },
+            new() { Id = Guid.NewGuid(), Name = "Cursor", Category = "IDE", Tier = "S", DanoBonus = 25, VelocidadeAtaqueBonus = 15, CriticoBonus = 12, VisualDescription = "AI-powered coding", Price = tierPrices["S"] },
+            new() { Id = Guid.NewGuid(), Name = "Zed", Category = "IDE", Tier = "A", DanoBonus = 12, VelocidadeAtaqueBonus = 20, CriticoBonus = 5, VisualDescription = "Blazingly fast", Price = tierPrices["A"] },
+            new() { Id = Guid.NewGuid(), Name = "Rider", Category = "IDE", Tier = "S", DanoBonus = 20, VelocidadeAtaqueBonus = 10, ArmaduraBonus = 10, CriticoBonus = 8, VisualDescription = "C# excellence", Price = tierPrices["S"] },
 
             // Comidas
-            new() { Id = Guid.NewGuid(), Name = "Miojo", Category = "Comida", Tier = "F", HpBonus = 5, DurationMinutes = 30 },
-            new() { Id = Guid.NewGuid(), Name = "Pizza", Category = "Comida", Tier = "D", HpBonus = 15, ArmaduraBonus = 2, DurationMinutes = 60 },
-            new() { Id = Guid.NewGuid(), Name = "Sushi Premium", Category = "Comida", Tier = "A", HpBonus = 30, ArmaduraBonus = 5, CriticoBonus = 3, DurationMinutes = 120 },
+            new() { Id = Guid.NewGuid(), Name = "Miojo", Category = "Comida", Tier = "F", HpBonus = 5, DurationMinutes = 30, Price = tierPrices["F"] },
+            new() { Id = Guid.NewGuid(), Name = "Pizza", Category = "Comida", Tier = "D", HpBonus = 15, ArmaduraBonus = 2, DurationMinutes = 60, Price = tierPrices["D"] },
+            new() { Id = Guid.NewGuid(), Name = "Sushi Premium", Category = "Comida", Tier = "A", HpBonus = 30, ArmaduraBonus = 5, CriticoBonus = 3, DurationMinutes = 120, Price = tierPrices["A"] },
 
             // Pets
-            new() { Id = Guid.NewGuid(), Name = "Rubber Duck", Category = "Pet", Tier = "C", CriticoBonus = 5, VisualDescription = "Debug companion" },
-            new() { Id = Guid.NewGuid(), Name = "Gato Preto", Category = "Pet", Tier = "B", EvasaoBonus = 8, CriticoBonus = 5, VisualDescription = "Bad luck for enemies" },
-            new() { Id = Guid.NewGuid(), Name = "Octocat", Category = "Pet", Tier = "S", DanoBonus = 10, CriticoBonus = 10, EvasaoBonus = 10, VisualDescription = "GitHub mascot" },
+            new() { Id = Guid.NewGuid(), Name = "Rubber Duck", Category = "Pet", Tier = "C", CriticoBonus = 5, VisualDescription = "Debug companion", Price = tierPrices["C"] },
+            new() { Id = Guid.NewGuid(), Name = "Gato Preto", Category = "Pet", Tier = "B", EvasaoBonus = 8, CriticoBonus = 5, VisualDescription = "Bad luck for enemies", Price = tierPrices["B"] },
+            new() { Id = Guid.NewGuid(), Name = "Octocat", Category = "Pet", Tier = "S", DanoBonus = 10, CriticoBonus = 10, EvasaoBonus = 10, VisualDescription = "GitHub mascot", Price = tierPrices["S"] },
 
             // Acessórios
-            new() { Id = Guid.NewGuid(), Name = "Mousepad RGB", Category = "Acessório", Tier = "D", VelocidadeAtaqueBonus = 3 },
-            new() { Id = Guid.NewGuid(), Name = "Standing Desk", Category = "Acessório", Tier = "B", HpBonus = 20, VelocidadeMovimentoBonus = 5 },
-            new() { Id = Guid.NewGuid(), Name = "Herman Miller", Category = "Acessório", Tier = "S", HpBonus = 50, ArmaduraBonus = 10, EvasaoBonus = 5, VisualDescription = "Ergonomic throne" },
+            new() { Id = Guid.NewGuid(), Name = "Mousepad RGB", Category = "Acessório", Tier = "D", VelocidadeAtaqueBonus = 3, Price = tierPrices["D"] },
+            new() { Id = Guid.NewGuid(), Name = "Standing Desk", Category = "Acessório", Tier = "B", HpBonus = 20, VelocidadeMovimentoBonus = 5, Price = tierPrices["B"] },
+            new() { Id = Guid.NewGuid(), Name = "Herman Miller", Category = "Acessório", Tier = "S", HpBonus = 50, ArmaduraBonus = 10, EvasaoBonus = 5, VisualDescription = "Ergonomic throne", Price = tierPrices["S"] },
         };
 
         db.Items.AddRange(items);
@@ -1010,6 +1017,7 @@ app.MapGet("/shop/items", async (IItemService itemService) =>
         i.Name,
         i.Category,
         i.Tier,
+        i.Price,
         stats = new
         {
             dano = i.DanoBonus,
@@ -1070,8 +1078,8 @@ app.MapGet("/player/inventory", async (HttpContext context, IItemService itemSer
     }));
 }).WithName("GetPlayerInventory");
 
-// POST /player/items/acquire - Acquire an item
-app.MapPost("/player/items/acquire", async (HttpContext context, IItemService itemService, AppDbContext db, IClerkJwtValidator clerkValidator, Guid itemId) =>
+// POST /player/items/acquire - Acquire an item (purchase with gold)
+app.MapPost("/player/items/acquire", async (HttpContext context, IItemService itemService, AppDbContext db, IClerkJwtValidator clerkValidator, World world, Guid itemId) =>
 {
     var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
     if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
@@ -1086,25 +1094,43 @@ app.MapPost("/player/items/acquire", async (HttpContext context, IItemService it
     if (player == null)
         return Results.NotFound(new { error = "Player not found" });
 
-    var playerItem = await itemService.AcquireItemAsync(player.Id, itemId);
-    if (playerItem == null)
-        return Results.NotFound(new { error = "Item not found" });
+    var (playerItem, error, newGoldBalance) = await itemService.AcquireItemAsync(player.Id, itemId);
+
+    if (error != null)
+    {
+        return error switch
+        {
+            "INSUFFICIENT_GOLD" => Results.BadRequest(new { error = "Insufficient gold", code = "INSUFFICIENT_GOLD", currentGold = newGoldBalance }),
+            "ITEM_NOT_FOUND" => Results.NotFound(new { error = "Item not found", code = "ITEM_NOT_FOUND" }),
+            "PLAYER_NOT_FOUND" => Results.NotFound(new { error = "Player not found", code = "PLAYER_NOT_FOUND" }),
+            _ => Results.BadRequest(new { error, code = "UNKNOWN_ERROR" })
+        };
+    }
+
+    // Update player's gold in the World entity (for real-time sync)
+    var entity = world.GetEntity(player.Id);
+    if (entity != null)
+    {
+        entity.Gold = newGoldBalance;
+    }
 
     // Reload with Item included
-    var acquired = await db.PlayerItems.Include(pi => pi.Item).FirstAsync(pi => pi.Id == playerItem.Id);
+    var acquired = await db.PlayerItems.Include(pi => pi.Item).FirstAsync(pi => pi.Id == playerItem!.Id);
 
-    return Results.Created($"/player/inventory/{playerItem.Id}", new
+    return Results.Created($"/player/inventory/{playerItem!.Id}", new
     {
         acquired.Id,
         acquired.IsEquipped,
         acquired.AcquiredAt,
         acquired.ExpiresAt,
+        newGoldBalance,
         item = new
         {
             acquired.Item.Id,
             acquired.Item.Name,
             acquired.Item.Category,
-            acquired.Item.Tier
+            acquired.Item.Tier,
+            acquired.Item.Price
         }
     });
 }).WithName("AcquireItem");

@@ -3,6 +3,8 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { UNIT_VECTOR3 } from './optimizations';
+
 interface ErrorModelProps {
   color: number;
   opacity: number;
@@ -52,7 +54,7 @@ export function JsUndefinedModel({ color, opacity, isWalking, lastAttackTime }: 
       lastAttackRef.current = lastAttackTime;
       groupRef.current.scale.setScalar(1.5);
     }
-    groupRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
+    groupRef.current.scale.lerp(UNIT_VECTOR3, 0.1);
   });
 
   return (
@@ -152,7 +154,7 @@ export function JsNaNModel({ color, opacity, isWalking, lastAttackTime }: ErrorM
         if (Math.random() > 0.95) {
           digit.scale.setScalar(Math.random() * 2);
         } else {
-          digit.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
+          digit.scale.lerp(UNIT_VECTOR3, 0.1);
         }
       }
     });
@@ -251,7 +253,7 @@ export function JsCallbackHellModel({ color, opacity, isWalking, lastAttackTime 
     }
     layersRef.current.forEach((layer) => {
       if (layer) {
-        layer.scale.lerp(new THREE.Vector3(1, 1, 1), 0.05);
+        layer.scale.lerp(UNIT_VECTOR3, 0.05);
       }
     });
   });
@@ -485,7 +487,7 @@ export function PyNoneTypeModel({ color, opacity, isWalking, lastAttackTime }: E
       }
     }
     if (voidRef.current) {
-      voidRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), 0.05);
+      voidRef.current.scale.lerp(UNIT_VECTOR3, 0.05);
     }
   });
 

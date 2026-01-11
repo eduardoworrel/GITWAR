@@ -2379,7 +2379,16 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
 
   // Only show shop tabs if user is authenticated AND viewing their own character
   const isOwnPlayer = isSignedIn && player.id === currentPlayerId;
-  const [activeTab, setActiveTab] = useState<TabType>('shop');
+
+  // Persist active tab in localStorage
+  const [activeTab, setActiveTabState] = useState<TabType>(() => {
+    const saved = localStorage.getItem('playerModal_activeTab');
+    return (saved === 'shop' || saved === 'attributes') ? saved : 'shop';
+  });
+  const setActiveTab = (tab: TabType) => {
+    localStorage.setItem('playerModal_activeTab', tab);
+    setActiveTabState(tab);
+  };
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [previewItem, setPreviewItem] = useState<Item | null>(null);
@@ -2389,12 +2398,18 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 600;
 
   // Fetch shop items and inventory when modal opens
+  // Only show loading if we don't have cached data - otherwise fetch silently in background
   useEffect(() => {
     if (!isOwnPlayer) return;
 
+    const hasCachedData = shopItems.length > 0;
+
     const fetchData = async () => {
       try {
-        setInventoryLoading(true);
+        // Only show loading spinner if we have no cached data
+        if (!hasCachedData) {
+          setInventoryLoading(true);
+        }
 
         // Fetch shop items
         const shopRes = await fetch('/api/shop/items');
@@ -2422,7 +2437,8 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
     };
 
     fetchData();
-  }, [isOwnPlayer, getToken, setShopItems, setInventory, setInventoryLoading]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOwnPlayer, getToken]);
 
   // Category order: head to toe
   const categoryOrder: Record<string, number> = {
@@ -2478,11 +2494,14 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
     }
   }, [getToken, inventory, updateInventoryItem]);
 
-  // Handle acquire item (free for now)
+  // Handle acquire item (purchase with gold)
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
+
   const handleAcquireItem = useCallback(async (itemId: string) => {
     const token = await getToken();
     if (!token) return;
 
+    setPurchaseError(null);
     setActionLoading(itemId);
     try {
       const res = await fetch(`/api/player/items/acquire?itemId=${itemId}`, {
@@ -2503,11 +2522,18 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
             item,
           });
         }
+      } else {
+        const errorData = await res.json().catch(() => null);
+        if (errorData?.code === 'INSUFFICIENT_GOLD') {
+          setPurchaseError(t('errors.insufficientGold', 'Gold insuficiente!'));
+          // Clear error after 3 seconds
+          setTimeout(() => setPurchaseError(null), 3000);
+        }
       }
     } finally {
       setActionLoading(null);
     }
-  }, [getToken, shopItems, addToInventory]);
+  }, [getToken, shopItems, addToInventory, t]);
 
   // Close on ESC
   useEffect(() => {
@@ -2660,6 +2686,46 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
           {/* Shop tab content (only for own player) */}
           {isOwnPlayer && activeTab === 'shop' ? (
             <div style={{ minHeight: '180px' }}>
+              {/* Gold display header */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '12px',
+                padding: '8px 12px',
+                background: 'rgba(255,215,0,0.1)',
+                borderRadius: '8px',
+                border: '1px solid rgba(255,215,0,0.2)',
+              }}>
+                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>
+                  {t('ui.yourGold', 'Seu Gold')}:
+                </span>
+                <span style={{
+                  fontSize: '16px',
+                  fontWeight: 700,
+                  color: '#ffd54f',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+                }}>
+                  {(player.gold ?? 0).toLocaleString()}
+                </span>
+              </div>
+
+              {/* Purchase error message */}
+              {purchaseError && (
+                <div style={{
+                  marginBottom: '12px',
+                  padding: '8px 12px',
+                  background: 'rgba(239,68,68,0.2)',
+                  borderRadius: '6px',
+                  border: '1px solid #ef4444',
+                  color: '#fca5a5',
+                  fontSize: '12px',
+                  textAlign: 'center',
+                }}>
+                  {purchaseError}
+                </div>
+              )}
+
               {inventoryLoading ? (
                 <div style={{
                   display: 'flex',
@@ -2892,29 +2958,29 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
                                     ) : (
                                       <button
                                         onClick={(e) => { e.stopPropagation(); handleAcquireItem(item.id); }}
-                                        disabled={actionLoading === item.id}
+                                        disabled={actionLoading === item.id || (player.gold ?? 0) < item.price}
                                         style={{
                                           padding: '4px 10px',
                                           fontSize: '9px',
                                           fontWeight: 600,
-                                          background: 'transparent',
-                                          border: `1px solid ${reinoColor}60`,
+                                          background: (player.gold ?? 0) < item.price ? 'rgba(100,100,100,0.2)' : '#ffd54f20',
+                                          border: `1px solid ${(player.gold ?? 0) < item.price ? 'rgba(100,100,100,0.4)' : '#ffd54f'}`,
                                           borderRadius: '4px',
-                                          color: reinoColor,
-                                          cursor: actionLoading === item.id ? 'wait' : 'pointer',
+                                          color: (player.gold ?? 0) < item.price ? 'rgba(255,255,255,0.4)' : '#ffd54f',
+                                          cursor: actionLoading === item.id || (player.gold ?? 0) < item.price ? 'not-allowed' : 'pointer',
                                           opacity: actionLoading === item.id ? 0.5 : 1,
                                           transition: 'all 0.15s ease',
                                         }}
                                         onMouseEnter={(e) => {
-                                          e.currentTarget.style.background = `${reinoColor}20`;
-                                          e.currentTarget.style.borderColor = reinoColor;
+                                          if ((player.gold ?? 0) >= item.price) {
+                                            e.currentTarget.style.background = '#ffd54f30';
+                                          }
                                         }}
                                         onMouseLeave={(e) => {
-                                          e.currentTarget.style.background = 'transparent';
-                                          e.currentTarget.style.borderColor = `${reinoColor}60`;
+                                          e.currentTarget.style.background = (player.gold ?? 0) < item.price ? 'rgba(100,100,100,0.2)' : '#ffd54f20';
                                         }}
                                       >
-                                        {actionLoading === item.id ? '...' : t('ui.get', 'Pegar')}
+                                        {actionLoading === item.id ? '...' : `${item.price}G`}
                                       </button>
                                     )}
                                   </div>

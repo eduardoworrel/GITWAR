@@ -1,10 +1,18 @@
-import { useFrame, type ThreeEvent } from '@react-three/fiber';
-import { useRef, useMemo, useCallback } from 'react';
+import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
+import { useRef, useMemo, useCallback, useState } from 'react';
 import * as THREE from 'three';
 import { useGameStore } from '../stores/gameStore';
 import type { InterpolatedPlayer } from '../stores/gameStore';
 import { Player } from './Player';
 import type { EquippableItem } from './ItemPreviewComponents';
+import { incrementGlobalFrameCount } from './optimizations';
+
+// Frustum culling - reusable objects
+const frustum = new THREE.Frustum();
+const projScreenMatrix = new THREE.Matrix4();
+const boundingSphere = new THREE.Sphere();
+const CULLING_RADIUS = 150; // Entity bounding sphere radius
+const CULLING_UPDATE_FRAMES = 5; // Update culling every N frames
 
 // Shared geometry for click hitbox
 const HITBOX_GEOMETRY = new THREE.CylinderGeometry(15, 15, 50, 8);
@@ -159,6 +167,56 @@ export function Players() {
   const players = useGameStore((s) => s.players);
   const currentPlayerId = useGameStore((s) => s.currentPlayerId);
   const inventory = useGameStore((s) => s.inventory);
+  const getInterpolatedPosition = useGameStore((s) => s.getInterpolatedPosition);
+  const { camera } = useThree();
+
+  // Track which entities are visible (frustum culling)
+  const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set());
+  const frameCountRef = useRef(0);
+
+  // Update frustum culling periodically (not every frame)
+  useFrame(() => {
+    // Increment global frame counter for throttled animations
+    incrementGlobalFrameCount();
+
+    frameCountRef.current++;
+    if (frameCountRef.current % CULLING_UPDATE_FRAMES !== 0) return;
+
+    // Update frustum from camera
+    projScreenMatrix.multiplyMatrices(
+      camera.projectionMatrix,
+      camera.matrixWorldInverse
+    );
+    frustum.setFromProjectionMatrix(projScreenMatrix);
+
+    const newVisible = new Set<string>();
+
+    players.forEach((player) => {
+      // Always show current player
+      if (player.id === currentPlayerId) {
+        newVisible.add(player.id);
+        return;
+      }
+
+      // Get interpolated position for culling check
+      const pos = getInterpolatedPosition(player.id);
+      if (!pos) return;
+
+      // Check if in frustum
+      boundingSphere.center.set(pos.x, 50, pos.y);
+      boundingSphere.radius = CULLING_RADIUS;
+
+      if (frustum.intersectsSphere(boundingSphere)) {
+        newVisible.add(player.id);
+      }
+    });
+
+    // Only update state if visibility changed
+    if (newVisible.size !== visibleIds.size ||
+        ![...newVisible].every(id => visibleIds.has(id))) {
+      setVisibleIds(newVisible);
+    }
+  });
 
   // Get equipped items for current player from local inventory (for immediate UI updates)
   const localEquippedItems = useMemo(() => {
@@ -167,22 +225,31 @@ export function Players() {
 
   return (
     <>
-      {Array.from(players.values()).map((player) => {
-        const isCurrentPlayer = player.id === currentPlayerId;
-        // For current player: use local inventory if available (immediate updates), else server state
-        // For other players: use server state
-        const equippedItems: EquippableItem[] = isCurrentPlayer && localEquippedItems.length > 0
-          ? localEquippedItems
-          : (player.equippedItems ?? []);
-        return (
-          <InterpolatedPlayerMesh
-            key={player.id}
-            player={player}
-            isCurrentPlayer={isCurrentPlayer}
-            equippedItems={equippedItems}
-          />
-        );
-      })}
+      {Array.from(players.values())
+        .filter((player) => {
+          // Always render current player
+          if (player.id === currentPlayerId) return true;
+          // Skip dead entities that have been dead for a while (reduce render count)
+          if (player.estado === 'dead') return true; // Still show dead for ghost effect
+          // Frustum culling - only render visible entities
+          return visibleIds.has(player.id);
+        })
+        .map((player) => {
+          const isCurrentPlayer = player.id === currentPlayerId;
+          // For current player: use local inventory if available (immediate updates), else server state
+          // For other players: use server state
+          const equippedItems: EquippableItem[] = isCurrentPlayer && localEquippedItems.length > 0
+            ? localEquippedItems
+            : (player.equippedItems ?? []);
+          return (
+            <InterpolatedPlayerMesh
+              key={player.id}
+              player={player}
+              isCurrentPlayer={isCurrentPlayer}
+              equippedItems={equippedItems}
+            />
+          );
+        })}
     </>
   );
 }

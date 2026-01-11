@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { Text, Billboard } from '@react-three/drei';
 import { useTranslation } from 'react-i18next';
 import { getCorReino } from './constants';
+import { getHpBarGeometry, getHpBarPositionX } from './optimizations';
 import {
   NotebookPreview,
   TecladoPreview,
@@ -713,10 +714,13 @@ export function Player({
             <mesh position={[0, 4, 0]} geometry={SHARED_GEOMETRIES.hpBarBg} renderOrder={200}>
               <meshBasicMaterial color="#21262d" depthTest={false} />
             </mesh>
-            {/* HP Bar fill */}
+            {/* HP Bar fill - uses cached geometry */}
             {hp > 0 && (
-              <mesh position={[-15 + (hp / maxHp) * 15, 4, 0.1]} renderOrder={201}>
-                <planeGeometry args={[(hp / maxHp) * 30, 2.5]} />
+              <mesh
+                position={[getHpBarPositionX(hp / maxHp), 4, 0.1]}
+                geometry={getHpBarGeometry(hp / maxHp)}
+                renderOrder={201}
+              >
                 <meshBasicMaterial color={(hp / maxHp) > 0.6 ? '#238636' : (hp / maxHp) > 0.3 ? '#d29922' : '#f85149'} depthTest={false} />
               </mesh>
             )}

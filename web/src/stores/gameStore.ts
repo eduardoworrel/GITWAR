@@ -59,6 +59,7 @@ export interface Item {
   name: string;
   category: string;
   tier: string;
+  price: number;
   stats: ItemStats;
   durationMinutes?: number;
   durationCondition?: string;

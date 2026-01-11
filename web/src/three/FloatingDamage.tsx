@@ -1,9 +1,12 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Text, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../stores/gameStore';
+
+// Throttle combat event processing to reduce re-renders
+const PROCESS_EVENTS_INTERVAL_MS = 50; // Process new events every 50ms max
 
 
 interface DamageNumber {
@@ -113,12 +116,18 @@ export function FloatingDamage() {
   const getInterpolatedPosition = useGameStore((s) => s.getInterpolatedPosition);
   const [damageNumbers, setDamageNumbers] = useState<DamageNumber[]>([]);
   const processedEventsRef = useRef<Set<string>>(new Set());
+  const lastProcessTimeRef = useRef(0);
+  const pendingEventsRef = useRef<typeof combatEvents>([]);
 
-  // Process new combat events
-  useEffect(() => {
+  // Memoized event processor to avoid recreating function
+  const processEvents = useCallback(() => {
+    const eventsToProcess = pendingEventsRef.current;
+    if (eventsToProcess.length === 0) return;
+
     const newDamages: DamageNumber[] = [];
+    const now = Date.now();
 
-    for (const event of combatEvents) {
+    for (const event of eventsToProcess) {
       // Skip already processed events
       if (processedEventsRef.current.has(event.id)) continue;
       processedEventsRef.current.add(event.id);
@@ -133,8 +142,6 @@ export function FloatingDamage() {
       // Add random offset so multiple hits don't overlap
       const offsetX = (Math.random() - 0.5) * 1.5;
       const offsetZ = (Math.random() - 0.5) * 1.5;
-
-      const now = Date.now();
 
       // Add damage number - originates at target
       newDamages.push({
@@ -152,20 +159,53 @@ export function FloatingDamage() {
       });
     }
 
-    if (newDamages.length > 0) {
-      setDamageNumbers((prev) => [...prev, ...newDamages]);
-    }
+    pendingEventsRef.current = [];
 
-    // Cleanup old items
-    const now = Date.now();
-    setDamageNumbers((prev) => prev.filter((d) => now - d.createdAt < 1400));
+    if (newDamages.length > 0) {
+      setDamageNumbers((prev) => {
+        // Cleanup old items and add new ones in single update
+        const filtered = prev.filter((d) => now - d.createdAt < 1400);
+        return [...filtered, ...newDamages];
+      });
+    }
 
     // Cleanup old processed events (keep only last 100)
     if (processedEventsRef.current.size > 200) {
       const arr = Array.from(processedEventsRef.current);
       processedEventsRef.current = new Set(arr.slice(-100));
     }
-  }, [combatEvents, getInterpolatedPosition]);
+  }, [getInterpolatedPosition]);
+
+  // Throttled event processing - batch updates instead of processing every change
+  useEffect(() => {
+    // Store events for batch processing
+    pendingEventsRef.current = combatEvents;
+
+    const now = Date.now();
+    const timeSinceLastProcess = now - lastProcessTimeRef.current;
+
+    if (timeSinceLastProcess >= PROCESS_EVENTS_INTERVAL_MS) {
+      // Process immediately if enough time has passed
+      lastProcessTimeRef.current = now;
+      processEvents();
+    } else {
+      // Schedule processing for later
+      const timeoutId = setTimeout(() => {
+        lastProcessTimeRef.current = Date.now();
+        processEvents();
+      }, PROCESS_EVENTS_INTERVAL_MS - timeSinceLastProcess);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [combatEvents, processEvents]);
+
+  // Periodic cleanup of old damage numbers (separate from event processing)
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      const now = Date.now();
+      setDamageNumbers((prev) => prev.filter((d) => now - d.createdAt < 1400));
+    }, 500); // Cleanup every 500ms
+    return () => clearInterval(cleanupInterval);
+  }, []);
 
   return (
     <>
