@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { GameScene } from './three/Scene';
 import { PlayerList } from './components/PlayerList';
 import { Minimap } from './components/Minimap';
+import { Killfeed } from './components/Killfeed';
 import { LoadingScreen } from './components/LoadingScreen';
 import { SpectatorBanner } from './components/SpectatorBanner';
 import { LoginBar } from './components/LoginBar';
@@ -12,6 +13,7 @@ import { PiPButton } from './components/PiPButton';
 import { CameraResetButton } from './components/CameraResetButton';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { Dock } from './components/Dock';
+import { PlayerHUD } from './components/PlayerHUD';
 import { useGameStore } from './stores/gameStore';
 import { useSpectatorMode } from './hooks/useSpectatorMode';
 import { useS2Stream } from './hooks/useS2Stream';
@@ -112,11 +114,13 @@ function App() {
       <GameScene />
       <PlayerList />
       <Minimap />
+      <Killfeed />
       <PiPButton />
       <CameraResetButton />
       <EventBanner />
       {isSpectator && <SpectatorBanner />}
       {isSpectator && <LoginBar />}
+      {!isSpectator && <PlayerHUD />}
       <Dock />
       <ConnectionStatus />
     </>

@@ -49,8 +49,10 @@ public class GitHubFetcher : IGitHubFetcher
         var commitsTask = FetchCommitsAsync(username);
         var prsTask = FetchPullRequestsAsync(username);
         var issuesTask = FetchIssuesAsync(username);
+        var orgsTask = FetchOrgsAsync(username);
+        var reviewsTask = FetchReviewsAsync(username);
 
-        await Task.WhenAll(profileTask, reposTask, commitsTask, prsTask, issuesTask);
+        await Task.WhenAll(profileTask, reposTask, commitsTask, prsTask, issuesTask, orgsTask, reviewsTask);
 
         // Processar perfil
         var profile = await profileTask;
@@ -79,6 +81,14 @@ public class GitHubFetcher : IGitHubFetcher
         // Processar Issues
         var issues = await issuesTask;
         ProcessIssues(data, issues);
+
+        // Processar Orgs
+        var orgs = await orgsTask;
+        data.Orgs = orgs.Count;
+
+        // Processar Reviews
+        var reviews = await reviewsTask;
+        data.Reviews = reviews.TotalCount;
 
         return data;
     }
@@ -184,6 +194,40 @@ public class GitHubFetcher : IGitHubFetcher
         {
             _logger.LogError(ex, "Erro ao buscar issues de {Username}", username);
             return new GitHubSearchResult<GitHubIssueItem>();
+        }
+    }
+
+    private async Task<List<GitHubOrg>> FetchOrgsAsync(string username)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"users/{username}/orgs");
+            response.EnsureSuccessStatusCode();
+            var json = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<List<GitHubOrg>>(json, JsonOptions)
+                   ?? new List<GitHubOrg>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar orgs de {Username}", username);
+            return new List<GitHubOrg>();
+        }
+    }
+
+    private async Task<GitHubSearchResult<GitHubReviewItem>> FetchReviewsAsync(string username)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"search/issues?q=reviewed-by:{username}+type:pr&per_page=1");
+            response.EnsureSuccessStatusCode();
+            var json = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<GitHubSearchResult<GitHubReviewItem>>(json, JsonOptions)
+                   ?? new GitHubSearchResult<GitHubReviewItem>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao buscar reviews de {Username}", username);
+            return new GitHubSearchResult<GitHubReviewItem>();
         }
     }
 
@@ -333,6 +377,17 @@ internal class GitHubIssueItem
 {
     public DateTime CreatedAt { get; set; }
     public string? State { get; set; }
+}
+
+internal class GitHubOrg
+{
+    public long Id { get; set; }
+    public string Login { get; set; } = string.Empty;
+}
+
+internal class GitHubReviewItem
+{
+    public long Id { get; set; }
 }
 
 #endregion

@@ -149,6 +149,7 @@ function InterpolatedPlayerMesh({ player, isCurrentPlayer, equippedItems = [] }:
         estado={player.estado}
         lastAttackTime={lastAttackTime}
         equippedItems={equippedItems}
+        level={player.level}
       />
     </group>
   );

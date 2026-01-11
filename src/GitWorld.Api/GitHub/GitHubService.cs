@@ -20,6 +20,11 @@ public interface IGitHubService
     Task<PlayerStats> GetPlayerStatsAsync(string username, string? accessToken = null, bool forceRefresh = false);
 
     /// <summary>
+    /// Obtém os dados brutos do GitHub (para exibição no perfil).
+    /// </summary>
+    Task<GitHubData> GetRawDataAsync(string username, string? accessToken = null, bool forceRefresh = false);
+
+    /// <summary>
     /// Invalida o cache de um usuário.
     /// </summary>
     void InvalidateCache(string username);
@@ -102,6 +107,12 @@ public class GitHubService : IGitHubService
     {
         var profile = await GetPlayerProfileAsync(username, accessToken, forceRefresh);
         return profile.Stats;
+    }
+
+    public async Task<GitHubData> GetRawDataAsync(string username, string? accessToken = null, bool forceRefresh = false)
+    {
+        var token = accessToken ?? _defaultToken;
+        return await _fetcher.FetchUserDataAsync(username, token);
     }
 
     public void InvalidateCache(string username)

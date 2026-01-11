@@ -25,6 +25,9 @@ public class Item
     // Visual
     public string? VisualDescription { get; set; }
 
+    // Price based on tier
+    public int Price { get; set; } = 0;
+
     // Navegacao
     public ICollection<PlayerItem> PlayerItems { get; set; } = new List<PlayerItem>();
 }

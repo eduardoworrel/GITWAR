@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { S2 } from '@s2-dev/streamstore';
 import { useGameStore } from '../stores/gameStore';
-import type { Player, CombatEvent, CombatEventType, EntityType, EventType } from '../stores/gameStore';
+import type { Player, CombatEvent, CombatEventType, EntityType, EventType, RewardEvent, LevelUpEvent } from '../stores/gameStore';
 
 // S2 Configuration from environment
 const S2_TOKEN = import.meta.env.VITE_S2_READ_TOKEN;
@@ -38,6 +38,9 @@ interface EntityPayload {
   evasao?: number;
   armadura?: number;
   velocidadeMovimento?: number;
+  level?: number;
+  exp?: number;
+  gold?: number;
   equippedItems?: EquippedItemPayload[] | null;
 }
 
@@ -58,6 +61,28 @@ interface ActiveEventPayload {
   monstersRemaining: number;
 }
 
+interface RewardEventPayload {
+  playerId: string;
+  x: number;
+  y: number;
+  expGained: number;
+  goldGained: number;
+  leveledUp: boolean;
+  newLevel: number;
+  source: string;
+  tick: number;
+}
+
+interface LevelUpEventPayload {
+  playerId: string;
+  playerName: string;
+  oldLevel: number;
+  newLevel: number;
+  x: number;
+  y: number;
+  tick: number;
+}
+
 interface GameStatePayload {
   tick: number;
   timestamp?: number;
@@ -65,6 +90,8 @@ interface GameStatePayload {
   entidades?: EntityPayload[];
   entities?: EntityPayload[];
   eventos?: EventPayload[];
+  rewards?: RewardEventPayload[];
+  levelUps?: LevelUpEventPayload[];
   activeEvent?: ActiveEventPayload | null;
 }
 
@@ -80,6 +107,8 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
   // Store selectors
   const setPlayers = useGameStore((s) => s.setPlayers);
   const addCombatEvents = useGameStore((s) => s.addCombatEvents);
+  const addRewardEvents = useGameStore((s) => s.addRewardEvents);
+  const addLevelUpEvents = useGameStore((s) => s.addLevelUpEvents);
   const clearOldEvents = useGameStore((s) => s.clearOldEvents);
   const setActiveEvent = useGameStore((s) => s.setActiveEvent);
   const setConnectionStatus = useGameStore((s) => s.setConnectionStatus);
@@ -95,16 +124,11 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
   const isConnectingRef = useRef(false);
   const hasEverConnectedRef = useRef(false);
 
-  // Entity type parser
+  // Entity type parser - pass through all valid types (server sends lowercase)
   const parseEntityType = useCallback((typeStr?: string): EntityType => {
-    const type = typeStr?.toLowerCase();
-    if (type === 'npc') return 'npc';
-    if (type === 'bug') return 'bug';
-    if (type === 'aihallucination') return 'aihallucination';
-    if (type === 'manager') return 'manager';
-    if (type === 'boss') return 'boss';
-    if (type === 'unexplainedbug') return 'unexplainedbug';
-    return 'player';
+    if (!typeStr) return 'player';
+    // Server already sends lowercase types, just pass through
+    return typeStr.toLowerCase() as EntityType;
   }, []);
 
   // Process entities
@@ -130,6 +154,9 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
       evasao: e.evasao ?? 5,
       armadura: e.armadura ?? 10,
       velocidadeMovimento: e.velocidadeMovimento ?? 50,
+      level: e.level ?? 1,
+      exp: e.exp ?? 0,
+      gold: e.gold ?? 0,
       equippedItems: e.equippedItems ?? undefined,
     }));
 
@@ -157,6 +184,46 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
     addCombatEvents(combatEvents);
   }, [addCombatEvents]);
 
+  // Process reward events
+  const processRewards = useCallback((rewards: RewardEventPayload[]) => {
+    if (!rewards || rewards.length === 0) return;
+
+    const rewardEvents: RewardEvent[] = rewards.map((r) => ({
+      id: `reward-${r.tick}-${r.playerId}-${eventIdCounter++}`,
+      playerId: r.playerId,
+      x: r.x,
+      y: r.y,
+      expGained: r.expGained,
+      goldGained: r.goldGained,
+      leveledUp: r.leveledUp,
+      newLevel: r.newLevel,
+      source: r.source,
+      tick: r.tick,
+      createdAt: Date.now(),
+    }));
+
+    addRewardEvents(rewardEvents);
+  }, [addRewardEvents]);
+
+  // Process level up events
+  const processLevelUps = useCallback((levelUps: LevelUpEventPayload[]) => {
+    if (!levelUps || levelUps.length === 0) return;
+
+    const levelUpEvents: LevelUpEvent[] = levelUps.map((l) => ({
+      id: `levelup-${l.tick}-${l.playerId}-${eventIdCounter++}`,
+      playerId: l.playerId,
+      playerName: l.playerName,
+      oldLevel: l.oldLevel,
+      newLevel: l.newLevel,
+      x: l.x,
+      y: l.y,
+      tick: l.tick,
+      createdAt: Date.now(),
+    }));
+
+    addLevelUpEvents(levelUpEvents);
+  }, [addLevelUpEvents]);
+
   // Process payload
   const processPayload = useCallback((payload: GameStatePayload) => {
     lastMessageTimeRef.current = Date.now();
@@ -168,6 +235,14 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
       processEvents(payload.eventos);
     }
 
+    if (payload.rewards && payload.rewards.length > 0) {
+      processRewards(payload.rewards);
+    }
+
+    if (payload.levelUps && payload.levelUps.length > 0) {
+      processLevelUps(payload.levelUps);
+    }
+
     if (payload.activeEvent) {
       setActiveEvent({
         type: payload.activeEvent.type as EventType,
@@ -176,7 +251,7 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
     } else {
       setActiveEvent(null);
     }
-  }, [processEntities, processEvents, setActiveEvent]);
+  }, [processEntities, processEvents, processRewards, processLevelUps, setActiveEvent]);
 
   // Handle connection success
   const handleConnected = useCallback(() => {

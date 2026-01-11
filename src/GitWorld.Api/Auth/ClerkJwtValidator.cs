@@ -19,9 +19,16 @@ public record ClerkUser(
     string? Email
 );
 
+public record LinkedAccount(
+    OAuthProvider Provider,
+    string Username,
+    string? AvatarUrl
+);
+
 public interface IClerkJwtValidator
 {
     Task<ClerkUser?> ValidateTokenAsync(string token);
+    Task<List<LinkedAccount>> GetLinkedAccountsAsync(string clerkUserId);
 }
 
 public class ClerkJwtValidator : IClerkJwtValidator
@@ -104,6 +111,96 @@ public class ClerkJwtValidator : IClerkJwtValidator
             _logger.LogError(ex, "Unexpected error validating token");
             return null;
         }
+    }
+
+    public async Task<List<LinkedAccount>> GetLinkedAccountsAsync(string clerkUserId)
+    {
+        var accounts = new List<LinkedAccount>();
+
+        if (string.IsNullOrEmpty(_secretKey))
+        {
+            _logger.LogWarning("Clerk secret key not configured");
+            return accounts;
+        }
+
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.clerk.com/v1/users/{clerkUserId}");
+            request.Headers.Add("Authorization", $"Bearer {_secretKey}");
+
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Failed to fetch user from Clerk API: {Status}", response.StatusCode);
+                return accounts;
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            var json = JsonDocument.Parse(content);
+
+            if (json.RootElement.TryGetProperty("external_accounts", out var externalAccounts))
+            {
+                foreach (var account in externalAccounts.EnumerateArray())
+                {
+                    if (account.TryGetProperty("provider", out var providerElement))
+                    {
+                        var providerString = providerElement.GetString()?.ToLower() ?? "";
+                        string? username = null;
+                        string? avatarUrl = null;
+
+                        if (account.TryGetProperty("username", out var usernameElement))
+                            username = usernameElement.GetString();
+
+                        if (account.TryGetProperty("avatar_url", out var avatarElement))
+                            avatarUrl = avatarElement.GetString();
+
+                        // For HuggingFace, username might be null but we can use provider_user_id
+                        // or extract from email
+                        string? providerUserId = null;
+                        if (account.TryGetProperty("provider_user_id", out var providerUserIdElement))
+                            providerUserId = providerUserIdElement.GetString();
+
+                        string? email = null;
+                        if (account.TryGetProperty("email_address", out var emailElement))
+                            email = emailElement.GetString();
+
+                        OAuthProvider provider = OAuthProvider.Unknown;
+
+                        if (providerString.Contains("github"))
+                            provider = OAuthProvider.GitHub;
+                        else if (providerString.Contains("gitlab"))
+                            provider = OAuthProvider.GitLab;
+                        else if (providerString.Contains("huggingface") || providerString.Contains("hugging"))
+                            provider = OAuthProvider.HuggingFace;
+
+                        if (provider != OAuthProvider.Unknown)
+                        {
+                            // Use username if available, otherwise use providerUserId for HuggingFace
+                            var effectiveUsername = username;
+                            if (string.IsNullOrEmpty(effectiveUsername) && provider == OAuthProvider.HuggingFace)
+                            {
+                                // HuggingFace doesn't always provide username via Clerk
+                                // Use email prefix or provider_user_id as fallback
+                                effectiveUsername = !string.IsNullOrEmpty(email)
+                                    ? email.Split('@')[0]
+                                    : providerUserId;
+                            }
+
+                            if (!string.IsNullOrEmpty(effectiveUsername))
+                            {
+                                accounts.Add(new LinkedAccount(provider, effectiveUsername, avatarUrl));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching linked accounts from Clerk API");
+        }
+
+        return accounts;
     }
 
     private async Task<(OAuthProvider provider, string? username)> GetProviderAndUsernameFromClerkApi(string userId)

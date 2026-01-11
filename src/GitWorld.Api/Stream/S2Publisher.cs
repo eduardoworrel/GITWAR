@@ -11,7 +11,7 @@ public interface IS2Publisher
     Task<bool> CreateStreamAsync(string streamName);
     Task<bool> AppendAsync(string streamName, object data);
     Task<bool> AppendGameStateAsync(Guid userId, GameStatePayload state);
-    Task<bool> BroadcastGameStateAsync(long tick, IEnumerable<GitWorld.Api.Core.Entity> entities, IEnumerable<GitWorld.Api.Core.CombatEvent>? combatEvents = null, GitWorld.Api.Core.Systems.EventInfo? activeEvent = null);
+    Task<bool> BroadcastGameStateAsync(long tick, IEnumerable<GitWorld.Api.Core.Entity> entities, IEnumerable<GitWorld.Api.Core.CombatEvent>? combatEvents = null, GitWorld.Api.Core.Systems.EventInfo? activeEvent = null, IEnumerable<GitWorld.Api.Core.RewardEvent>? rewardEvents = null, IEnumerable<GitWorld.Api.Core.LevelUpEvent>? levelUpEvents = null);
     Task<bool> EnsureStreamExistsAsync(string streamName);
     bool IsAvailable { get; }
 }
@@ -238,7 +238,7 @@ public class S2Publisher : IS2Publisher
         return await AppendAsync(streamName, state);
     }
 
-    public async Task<bool> BroadcastGameStateAsync(long tick, IEnumerable<GitWorld.Api.Core.Entity> entities, IEnumerable<GitWorld.Api.Core.CombatEvent>? combatEvents = null, GitWorld.Api.Core.Systems.EventInfo? activeEvent = null)
+    public async Task<bool> BroadcastGameStateAsync(long tick, IEnumerable<GitWorld.Api.Core.Entity> entities, IEnumerable<GitWorld.Api.Core.CombatEvent>? combatEvents = null, GitWorld.Api.Core.Systems.EventInfo? activeEvent = null, IEnumerable<GitWorld.Api.Core.RewardEvent>? rewardEvents = null, IEnumerable<GitWorld.Api.Core.LevelUpEvent>? levelUpEvents = null)
     {
         if (!ShouldRetry())
             return false;
@@ -270,6 +270,9 @@ public class S2Publisher : IS2Publisher
                     Critico = e.Critico,
                     Evasao = e.Evasao,
                     Armadura = e.Armadura,
+                    Level = e.Level,
+                    Exp = e.Exp,
+                    Gold = e.Gold,
                     EquippedItems = e.EquippedItems.Count > 0
                         ? e.EquippedItems.Select(i => new EquippedItemPayload
                         {
@@ -291,6 +294,28 @@ public class S2Publisher : IS2Publisher
                     Damage = e.Damage,
                     IsCritical = e.IsCritical
                 }).ToList() ?? new List<GameEventPayload>(),
+                Rewards = rewardEvents?.Select(r => new RewardEventPayload
+                {
+                    PlayerId = r.PlayerId,
+                    X = r.X,
+                    Y = r.Y,
+                    ExpGained = r.ExpGained,
+                    GoldGained = r.GoldGained,
+                    LeveledUp = r.LeveledUp,
+                    NewLevel = r.NewLevel,
+                    Source = r.Source,
+                    Tick = r.Tick
+                }).ToList() ?? new List<RewardEventPayload>(),
+                LevelUps = levelUpEvents?.Select(l => new LevelUpEventPayload
+                {
+                    PlayerId = l.PlayerId,
+                    PlayerName = l.PlayerName,
+                    OldLevel = l.OldLevel,
+                    NewLevel = l.NewLevel,
+                    X = l.X,
+                    Y = l.Y,
+                    Tick = l.Tick
+                }).ToList() ?? new List<LevelUpEventPayload>(),
                 ActiveEvent = activeEvent != null && activeEvent.Type != GitWorld.Api.Core.Systems.EventType.None
                     ? new ActiveEventPayload
                     {
@@ -338,6 +363,8 @@ public class GameStatePayload
     public EntityPayload? Player { get; set; }
     public List<EntityPayload> Entidades { get; set; } = new();
     public List<GameEventPayload> Eventos { get; set; } = new();
+    public List<RewardEventPayload> Rewards { get; set; } = new();
+    public List<LevelUpEventPayload> LevelUps { get; set; } = new();
     public ActiveEventPayload? ActiveEvent { get; set; }
 }
 
@@ -368,6 +395,9 @@ public class EntityPayload
     public int Critico { get; set; } = 10;
     public int Evasao { get; set; } = 5;
     public int Armadura { get; set; } = 10;
+    public int Level { get; set; } = 1;
+    public int Exp { get; set; } = 0;
+    public int Gold { get; set; } = 0;
     public List<EquippedItemPayload>? EquippedItems { get; set; }
 }
 
@@ -389,4 +419,28 @@ public class GameEventPayload
     public string TargetName { get; set; } = string.Empty;
     public int? Damage { get; set; }
     public bool IsCritical { get; set; }
+}
+
+public class RewardEventPayload
+{
+    public Guid PlayerId { get; set; }
+    public float X { get; set; }
+    public float Y { get; set; }
+    public int ExpGained { get; set; }
+    public int GoldGained { get; set; }
+    public bool LeveledUp { get; set; }
+    public int NewLevel { get; set; }
+    public string Source { get; set; } = string.Empty;
+    public long Tick { get; set; }
+}
+
+public class LevelUpEventPayload
+{
+    public Guid PlayerId { get; set; }
+    public string PlayerName { get; set; } = string.Empty;
+    public int OldLevel { get; set; }
+    public int NewLevel { get; set; }
+    public float X { get; set; }
+    public float Y { get; set; }
+    public long Tick { get; set; }
 }

@@ -32,6 +32,11 @@ public class Player
     public int Vitorias { get; set; }
     public int Derrotas { get; set; }
 
+    // Progressão
+    public int Level { get; set; } = 1;
+    public int Exp { get; set; } = 0;
+    public int Gold { get; set; } = 0;
+
     // Metadata
     public DateTime LastGitHubSync { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

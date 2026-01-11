@@ -23,33 +23,46 @@ public class StatsCalculator : IStatsCalculator
 
     public PlayerStats Calculate(GitHubData data)
     {
-        var dias = (DateTime.UtcNow - data.CreatedAt).Days;
+        // ========== STATS BASE IGUAIS PARA TODOS ==========
+        // TODO: Descomentar quando quiser usar stats baseados no GitHub
+        // var dias = (DateTime.UtcNow - data.CreatedAt).Days;
+        // var mergeRatio = data.PrsTotal > 0 ? (double)data.PrsMerged / data.PrsTotal : 0;
 
+        // Stats base iguais para todos os jogadores
+        var hp = 500;                    // HP base
+        var dano = 50;                   // Dano base
+        var velocidadeAtaque = 50;       // Velocidade de ataque base
+        var velocidadeMovimento = 100;   // Velocidade de movimento base
+        var critico = 10;                // Chance de crítico base (%)
+        var evasao = 10;                 // Chance de evasão base (%)
+        var armadura = 10;               // Armadura base
+
+        // ========== FÓRMULAS ORIGINAIS (COMENTADAS) ==========
         // HP: (dias×0.5) + (commits×0.3) + (repos×10) + 200
-        var hp = (int)((dias * 0.5) + (data.Commits * 0.3) + (data.PublicRepos * 10) + 200);
+        // hp = (int)((dias * 0.5) + (data.Commits * 0.3) + (data.PublicRepos * 10) + 200);
 
         // Dano: 30 + (commits/50) + (commits30d×2) + (stars/5) + (forks×3)
-        var dano = (int)(30 + (data.Commits / 50.0) + (data.Commits30d * 2) + (data.Stars / 5.0) + (data.Forks * 3));
+        // dano = (int)(30 + (data.Commits / 50.0) + (data.Commits30d * 2) + (data.Stars / 5.0) + (data.Forks * 3));
 
         // Vel. Ataque: 20 + (commits/80) + (commits7d×1.5) + (commits30d×0.5)
-        var velocidadeAtaque = (int)(20 + (data.Commits / 80.0) + (data.Commits7d * 1.5) + (data.Commits30d * 0.5));
+        // velocidadeAtaque = (int)(20 + (data.Commits / 80.0) + (data.Commits7d * 1.5) + (data.Commits30d * 0.5));
 
         // Velocidade de Movimento: baseado em repos + linguagens
-        var velocidadeMovimento = ((data.PublicRepos * 2) + (data.Languages * 5)) * 2;
+        // velocidadeMovimento = ((data.PublicRepos * 2) + (data.Languages * 5)) * 2;
 
         // Crítico: 5 + (commits/200) + (merged_ratio×20) + (avgStars×3) + (reviews/30)
-        var mergeRatio = data.PrsTotal > 0 ? (double)data.PrsMerged / data.PrsTotal : 0;
-        var critico = (int)(5 + (data.Commits / 200.0) + (mergeRatio * 20) + (data.AvgStars * 3) + (data.Reviews / 30.0));
+        // critico = (int)(5 + (data.Commits / 200.0) + (mergeRatio * 20) + (data.AvgStars * 3) + (data.Reviews / 30.0));
 
         // Evasão: 5 + (repos/10) + langs + orgs + (extRepos/2) + (followers/500)
-        var evasao = (int)(5 + (data.PublicRepos / 10.0) + data.Languages + data.Orgs
-                     + (data.ExternalRepos / 2.0) + (data.Followers / 500.0));
+        // evasao = (int)(5 + (data.PublicRepos / 10.0) + data.Languages + data.Orgs
+        //              + (data.ExternalRepos / 2.0) + (data.Followers / 500.0));
 
         // Armadura: 5 + (issues×0.5) + (reviews×0.8) + (commits/100) + (extCommits/20)
-        var armadura = (int)(5 + (data.IssuesClosed * 0.5) + (data.Reviews * 0.8)
-                       + (data.Commits / 100.0) + (data.CommitsExternal / 20.0));
+        // armadura = (int)(5 + (data.IssuesClosed * 0.5) + (data.Reviews * 0.8)
+        //                + (data.Commits / 100.0) + (data.CommitsExternal / 20.0));
+        // ========== FIM FÓRMULAS COMENTADAS ==========
 
-        // Determinar reino (linguagem principal válida)
+        // Determinar reino (linguagem principal válida) - MANTIDO
         var reino = DetermineKingdom(data);
 
         return new PlayerStats(hp, dano, velocidadeAtaque, velocidadeMovimento, critico, evasao, armadura, reino);

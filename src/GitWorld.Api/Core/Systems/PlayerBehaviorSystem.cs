@@ -167,5 +167,26 @@ public class PlayerBehaviorSystem
     }
 
     private static bool IsMonsterOrNpc(EntityType type) =>
-        type is EntityType.NPC or EntityType.Bug or EntityType.AIHallucination or EntityType.Manager or EntityType.Boss or EntityType.UnexplainedBug;
+        type is EntityType.NPC or EntityType.Bug or EntityType.AIHallucination or EntityType.Manager or EntityType.Boss or EntityType.UnexplainedBug
+        // Language error monsters
+        or EntityType.JsUndefined or EntityType.JsNaN or EntityType.JsCallbackHell
+        or EntityType.PyIndentationError or EntityType.PyNoneType or EntityType.PyImportError
+        or EntityType.JavaNullPointer or EntityType.JavaClassNotFound or EntityType.JavaOutOfMemory
+        or EntityType.CsNullReference or EntityType.CsStackOverflow or EntityType.CsInvalidCast
+        or EntityType.CSegFault or EntityType.CStackOverflow or EntityType.CMemoryLeak
+        or EntityType.TsTypeError or EntityType.TsAny or EntityType.TsReadonly
+        or EntityType.PhpPaamayim or EntityType.PhpFatalError or EntityType.PhpUndefinedIndex
+        or EntityType.GoNilPanic or EntityType.GoDeadlock or EntityType.GoImportCycle
+        or EntityType.RustBorrowChecker or EntityType.RustPanic or EntityType.RustLifetimeError
+        or EntityType.RubyNoMethodError or EntityType.RubyLoadError or EntityType.RubySyntaxError
+        or EntityType.SwiftFoundNil or EntityType.SwiftForceUnwrap or EntityType.SwiftIndexOutOfRange
+        or EntityType.KotlinNullPointer or EntityType.KotlinClassCast or EntityType.KotlinUninitialized
+        or EntityType.ScalaMatchError or EntityType.ScalaAbstractMethod or EntityType.ScalaStackOverflow
+        or EntityType.REvalError or EntityType.RObjectNotFound or EntityType.RSubscriptOutOfBounds
+        or EntityType.SqlDeadlock or EntityType.SqlSyntaxError or EntityType.SqlTimeout
+        or EntityType.BashCommandNotFound or EntityType.BashPermissionDenied or EntityType.BashCoreDumped
+        or EntityType.PerlUninitialized or EntityType.PerlSyntaxError or EntityType.PerlCantLocate
+        or EntityType.LuaIndexNil or EntityType.LuaBadArgument or EntityType.LuaStackOverflow
+        or EntityType.DartNullCheck or EntityType.DartRangeError or EntityType.DartNoSuchMethod
+        or EntityType.ElixirFunctionClause or EntityType.ElixirArgumentError or EntityType.ElixirKeyError;
 }

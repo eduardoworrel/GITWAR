@@ -5,10 +5,63 @@ namespace GitWorld.Api.Core.Systems;
 public enum EventType
 {
     None,
-    BugSwarm,       // 5-10 bugs per player
-    Intermediate,   // AI Hallucinations + Managers
+    BugSwarm,       // Language error monsters (replaced bugs)
+    Intermediate,   // AI Hallucinations + Managers + Language errors
     Boss,           // Daily boss at 18h
     UnexplainedBug  // Hourly boss - high HP, low damage
+}
+
+// All language error monster types for random spawning
+public static class LanguageErrorTypes
+{
+    public static readonly EntityType[] All = new[]
+    {
+        // JavaScript
+        EntityType.JsUndefined, EntityType.JsNaN, EntityType.JsCallbackHell,
+        // Python
+        EntityType.PyIndentationError, EntityType.PyNoneType, EntityType.PyImportError,
+        // Java
+        EntityType.JavaNullPointer, EntityType.JavaClassNotFound, EntityType.JavaOutOfMemory,
+        // C#
+        EntityType.CsNullReference, EntityType.CsStackOverflow, EntityType.CsInvalidCast,
+        // C/C++
+        EntityType.CSegFault, EntityType.CStackOverflow, EntityType.CMemoryLeak,
+        // TypeScript
+        EntityType.TsTypeError, EntityType.TsAny, EntityType.TsReadonly,
+        // PHP
+        EntityType.PhpPaamayim, EntityType.PhpFatalError, EntityType.PhpUndefinedIndex,
+        // Go
+        EntityType.GoNilPanic, EntityType.GoDeadlock, EntityType.GoImportCycle,
+        // Rust
+        EntityType.RustBorrowChecker, EntityType.RustPanic, EntityType.RustLifetimeError,
+        // Ruby
+        EntityType.RubyNoMethodError, EntityType.RubyLoadError, EntityType.RubySyntaxError,
+        // Swift
+        EntityType.SwiftFoundNil, EntityType.SwiftForceUnwrap, EntityType.SwiftIndexOutOfRange,
+        // Kotlin
+        EntityType.KotlinNullPointer, EntityType.KotlinClassCast, EntityType.KotlinUninitialized,
+        // Scala
+        EntityType.ScalaMatchError, EntityType.ScalaAbstractMethod, EntityType.ScalaStackOverflow,
+        // R
+        EntityType.REvalError, EntityType.RObjectNotFound, EntityType.RSubscriptOutOfBounds,
+        // SQL
+        EntityType.SqlDeadlock, EntityType.SqlSyntaxError, EntityType.SqlTimeout,
+        // Shell/Bash
+        EntityType.BashCommandNotFound, EntityType.BashPermissionDenied, EntityType.BashCoreDumped,
+        // Perl
+        EntityType.PerlUninitialized, EntityType.PerlSyntaxError, EntityType.PerlCantLocate,
+        // Lua
+        EntityType.LuaIndexNil, EntityType.LuaBadArgument, EntityType.LuaStackOverflow,
+        // Dart
+        EntityType.DartNullCheck, EntityType.DartRangeError, EntityType.DartNoSuchMethod,
+        // Elixir
+        EntityType.ElixirFunctionClause, EntityType.ElixirArgumentError, EntityType.ElixirKeyError,
+    };
+
+    public static EntityType GetRandom(Random random)
+    {
+        return All[random.Next(All.Length)];
+    }
 }
 
 public class EventInfo
@@ -113,22 +166,23 @@ public class EventSystem
         var players = GetAlivePlayers().ToList();
         if (players.Count == 0) return;
 
-        var totalBugs = _random.Next(
+        var totalMonsters = _random.Next(
             GameConstants.BugSpawnMin * players.Count,
             GameConstants.BugSpawnMax * players.Count + 1
         );
 
-        Console.WriteLine($"[EventSystem] Starting Bug Swarm event - spawning {totalBugs} bugs near {players.Count} players");
+        Console.WriteLine($"[EventSystem] Starting Language Error event - spawning {totalMonsters} errors near {players.Count} players");
 
-        for (int i = 0; i < totalBugs; i++)
+        for (int i = 0; i < totalMonsters; i++)
         {
             var (x, y) = GetPositionNearPlayer(players);
-            var monster = _world.AddMonster(EntityType.Bug, x, y);
+            var errorType = LanguageErrorTypes.GetRandom(_random);
+            var monster = _world.AddMonster(errorType, x, y);
             _spawnedMonsterIds.Add(monster.Id);
         }
 
         CurrentEvent.Type = EventType.BugSwarm;
-        CurrentEvent.MonstersRemaining = totalBugs;
+        CurrentEvent.MonstersRemaining = totalMonsters;
         CurrentEvent.StartTick = currentTick;
     }
 
@@ -139,16 +193,17 @@ public class EventSystem
 
         Console.WriteLine($"[EventSystem] Starting Intermediate event near {players.Count} players");
 
-        // Spawn bugs too
-        var bugCount = _random.Next(
+        // Spawn language errors (replaced bugs)
+        var errorCount = _random.Next(
             GameConstants.BugSpawnMin * players.Count,
             GameConstants.BugSpawnMax * players.Count + 1
         );
 
-        for (int i = 0; i < bugCount; i++)
+        for (int i = 0; i < errorCount; i++)
         {
             var (x, y) = GetPositionNearPlayer(players);
-            var monster = _world.AddMonster(EntityType.Bug, x, y);
+            var errorType = LanguageErrorTypes.GetRandom(_random);
+            var monster = _world.AddMonster(errorType, x, y);
             _spawnedMonsterIds.Add(monster.Id);
         }
 
@@ -179,10 +234,10 @@ public class EventSystem
         }
 
         CurrentEvent.Type = EventType.Intermediate;
-        CurrentEvent.MonstersRemaining = bugCount + aiCount + managerCount;
+        CurrentEvent.MonstersRemaining = errorCount + aiCount + managerCount;
         CurrentEvent.StartTick = currentTick;
 
-        Console.WriteLine($"[EventSystem] Spawned {bugCount} bugs, {aiCount} AI, {managerCount} managers");
+        Console.WriteLine($"[EventSystem] Spawned {errorCount} language errors, {aiCount} AI, {managerCount} managers");
     }
 
     private void StartBossEvent(long currentTick)
@@ -347,6 +402,12 @@ public class EventSystem
     /// </summary>
     public int GetMonsterEloReward(EntityType type)
     {
+        // Check if it's a language error monster (same reward as Bug)
+        if (LanguageErrorTypes.All.Contains(type))
+        {
+            return GameConstants.BugEloReward;
+        }
+
         return type switch
         {
             EntityType.Bug => GameConstants.BugEloReward,

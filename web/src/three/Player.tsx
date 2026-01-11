@@ -18,6 +18,7 @@ import {
   getEquippedByCategory,
   type EquippableItem,
 } from './ItemPreviewComponents';
+import { MonsterModel, type MonsterType } from './MonsterModels';
 
 // Ghost effect constants
 const GHOST_DURATION = 4500; // ms - ghost rises for most of respawn time
@@ -35,9 +36,6 @@ const LEG_WIDTH = 4;
 const LEG_HEIGHT = 14;
 const LEG_DEPTH = 4;
 
-// Skin color for exposed body parts
-const SKIN_COLOR = 0xffdbac;
-
 // Shared geometries - created once, reused by all players to reduce VRAM usage
 const SHARED_GEOMETRIES = {
   head: new THREE.BoxGeometry(HEAD_SIZE, HEAD_SIZE, HEAD_SIZE),
@@ -52,23 +50,261 @@ const SHARED_GEOMETRIES = {
 
 // Monster type colors
 const MONSTER_COLORS: Record<string, number> = {
-  bug: 0x8b4513,         // Marrom (saddlebrown)
-  aihallucination: 0x9932cc, // Roxo (darkorchid)
-  manager: 0x4169e1,     // Azul (royalblue)
-  boss: 0xff0000,        // Vermelho
-  unexplainedbug: 0x00ff00,  // Verde neon (inexplicável)
+  // Original monsters
+  bug: 0x8b4513,
+  aihallucination: 0x9932cc,
+  manager: 0x4169e1,
+  boss: 0xff0000,
+  unexplainedbug: 0x00ff00,
+  // JavaScript
+  jsundefined: 0xaaaaaa,
+  jsnan: 0xf7df1e,
+  jscallbackhell: 0xf7df1e,
+  // Python
+  pyindentationerror: 0x3776ab,
+  pynonetype: 0x000000,
+  pyimporterror: 0x3776ab,
+  // Java
+  javanullpointer: 0xf89820,
+  javaclassnotfound: 0x5382a1,
+  javaoutofmemory: 0x5382a1,
+  // C#
+  csnullreference: 0x68217a,
+  csstackoverflow: 0x68217a,
+  csinvalidcast: 0x68217a,
+  // C/C++
+  csegfault: 0xa8b9cc,
+  cstackoverflow: 0x00599c,
+  cmemoryleak: 0x00599c,
+  // TypeScript
+  tstypeerror: 0x3178c6,
+  tsany: 0x888888,
+  tsreadonly: 0x3178c6,
+  // PHP
+  phppaamayim: 0x777bb4,
+  phpfatalerror: 0x777bb4,
+  phpundefinedindex: 0x777bb4,
+  // Go
+  gonilpanic: 0x00add8,
+  godeadlock: 0x00add8,
+  goimportcycle: 0x00add8,
+  // Rust
+  rustborrowchecker: 0xdea584,
+  rustpanic: 0xdea584,
+  rustlifetimeerror: 0xdea584,
+  // Ruby
+  rubynomethoderror: 0xcc342d,
+  rubyloaderror: 0xcc342d,
+  rubysyntaxerror: 0xcc342d,
+  // Swift
+  swiftfoundnil: 0xfa7343,
+  swiftforceunwrap: 0xfa7343,
+  swiftindexoutofrange: 0xfa7343,
+  // Kotlin
+  kotlinnullpointer: 0x7f52ff,
+  kotlinclasscast: 0x7f52ff,
+  kotlinuninitialized: 0x7f52ff,
+  // Scala
+  scalamatcherror: 0xdc322f,
+  scalaabstractmethod: 0xdc322f,
+  scalastackoverflow: 0xdc322f,
+  // R
+  revalerror: 0x276dc3,
+  robjectnotfound: 0x276dc3,
+  rsubscriptoutofbounds: 0x276dc3,
+  // SQL
+  sqldeadlock: 0x0078d7,
+  sqlsyntaxerror: 0x0078d7,
+  sqltimeout: 0x0078d7,
+  // Bash
+  bashcommandnotfound: 0x00ff00,
+  bashpermissiondenied: 0xff0000,
+  bashcoredumped: 0xff6600,
+  // Perl
+  perluninitialized: 0x39457e,
+  perlsyntaxerror: 0x39457e,
+  perlcantlocate: 0x39457e,
+  // Lua
+  luaindexnil: 0x000080,
+  luabadargument: 0x000080,
+  luastackoverflow: 0x000080,
+  // Dart
+  dartnullcheck: 0x0175c2,
+  dartrangeerror: 0x0175c2,
+  dartnosuchmethod: 0x0175c2,
+  // Elixir
+  elixirfunctionclause: 0x4e2a8e,
+  elixirargumenterror: 0x4e2a8e,
+  elixirkeyerror: 0x4e2a8e,
 };
 
-// Monster type scales
+// Monster model heights (base height before scaling) - for HP bar positioning
+// These values represent the approximate TOP of each model in its local coordinate system
+const MONSTER_HEIGHTS: Record<string, number> = {
+  // Original monsters (based on actual model geometry analysis)
+  bug: 25,           // Antennae top at ~22-25
+  aihallucination: 45, // Floats at Y=20, core radius 8, ring +12 = ~40-45
+  manager: 52,       // Head at Y=40, box height 10 = top at 45-50
+  boss: 70,          // Horns at Y=56, cone extends up = ~65-70
+  unexplainedbug: 35, // Parts scatter up to ~30-35
+  // Language errors - heights based on model geometry (capsules, boxes, spheres)
+  // Most have floating animations adding ~5-10 units
+  jsundefined: 35, jsnan: 30, jscallbackhell: 45,
+  pyindentationerror: 40, pynonetype: 30, pyimporterror: 40,
+  javanullpointer: 45, javaclassnotfound: 40, javaoutofmemory: 50,
+  csnullreference: 40, csstackoverflow: 45, csinvalidcast: 35,
+  csegfault: 45, cstackoverflow: 40, cmemoryleak: 40,
+  tstypeerror: 40, tsany: 35, tsreadonly: 30,
+  phppaamayim: 40, phpfatalerror: 45, phpundefinedindex: 35,
+  gonilpanic: 40, godeadlock: 50, goimportcycle: 40,
+  rustborrowchecker: 45, rustpanic: 40, rustlifetimeerror: 40,
+  rubynomethoderror: 40, rubyloaderror: 40, rubysyntaxerror: 30,
+  swiftfoundnil: 40, swiftforceunwrap: 40, swiftindexoutofrange: 45,
+  kotlinnullpointer: 40, kotlinclasscast: 35, kotlinuninitialized: 45,
+  scalamatcherror: 40, scalaabstractmethod: 40, scalastackoverflow: 50,
+  revalerror: 40, robjectnotfound: 40, rsubscriptoutofbounds: 30,
+  sqldeadlock: 50, sqlsyntaxerror: 40, sqltimeout: 45,
+  bashcommandnotfound: 40, bashpermissiondenied: 45, bashcoredumped: 40,
+  perluninitialized: 40, perlsyntaxerror: 30, perlcantlocate: 40,
+  luaindexnil: 35, luabadargument: 30, luastackoverflow: 45,
+  dartnullcheck: 40, dartrangeerror: 40, dartnosuchmethod: 40,
+  elixirfunctionclause: 45, elixirargumenterror: 40, elixirkeyerror: 40,
+};
+
+// Monster type scales - language errors are 1.5-2.5 range
 const MONSTER_SCALES: Record<string, number> = {
+  // Original monsters
   bug: 0.6,
   aihallucination: 3.1,
   manager: 3.74,
   boss: 3.84,
-  unexplainedbug: 2.0,   // Tamanho médio
+  unexplainedbug: 2.0,
+  // JavaScript
+  jsundefined: 1.8,
+  jsnan: 1.6,
+  jscallbackhell: 2.2,
+  // Python
+  pyindentationerror: 1.7,
+  pynonetype: 1.5,
+  pyimporterror: 2.0,
+  // Java
+  javanullpointer: 2.0,
+  javaclassnotfound: 1.8,
+  javaoutofmemory: 2.5,
+  // C#
+  csnullreference: 1.8,
+  csstackoverflow: 2.2,
+  csinvalidcast: 1.7,
+  // C/C++
+  csegfault: 2.3,
+  cstackoverflow: 2.0,
+  cmemoryleak: 2.0,
+  // TypeScript
+  tstypeerror: 1.7,
+  tsany: 2.0,
+  tsreadonly: 1.6,
+  // PHP
+  phppaamayim: 1.8,
+  phpfatalerror: 2.2,
+  phpundefinedindex: 1.6,
+  // Go
+  gonilpanic: 1.8,
+  godeadlock: 2.5,
+  goimportcycle: 2.0,
+  // Rust
+  rustborrowchecker: 2.2,
+  rustpanic: 2.0,
+  rustlifetimeerror: 2.0,
+  // Ruby
+  rubynomethoderror: 1.8,
+  rubyloaderror: 2.2,
+  rubysyntaxerror: 1.6,
+  // Swift
+  swiftfoundnil: 1.8,
+  swiftforceunwrap: 2.0,
+  swiftindexoutofrange: 2.0,
+  // Kotlin
+  kotlinnullpointer: 1.8,
+  kotlinclasscast: 1.7,
+  kotlinuninitialized: 2.2,
+  // Scala
+  scalamatcherror: 2.0,
+  scalaabstractmethod: 1.8,
+  scalastackoverflow: 2.5,
+  // R
+  revalerror: 2.0,
+  robjectnotfound: 1.8,
+  rsubscriptoutofbounds: 1.6,
+  // SQL
+  sqldeadlock: 2.2,
+  sqlsyntaxerror: 1.8,
+  sqltimeout: 2.0,
+  // Bash
+  bashcommandnotfound: 2.0,
+  bashpermissiondenied: 2.2,
+  bashcoredumped: 2.0,
+  // Perl
+  perluninitialized: 1.8,
+  perlsyntaxerror: 1.7,
+  perlcantlocate: 2.0,
+  // Lua
+  luaindexnil: 1.8,
+  luabadargument: 1.6,
+  luastackoverflow: 2.2,
+  // Dart
+  dartnullcheck: 1.8,
+  dartrangeerror: 2.0,
+  dartnosuchmethod: 1.7,
+  // Elixir
+  elixirfunctionclause: 2.0,
+  elixirargumenterror: 1.8,
+  elixirkeyerror: 1.7,
 };
 
-type EntityType = 'player' | 'npc' | 'bug' | 'aihallucination' | 'manager' | 'boss' | 'unexplainedbug';
+// All monster type keys for type checking
+const MONSTER_TYPE_KEYS = Object.keys(MONSTER_COLORS);
+
+type EntityType = 'player' | 'npc' | 'bug' | 'aihallucination' | 'manager' | 'boss' | 'unexplainedbug' |
+  // JavaScript
+  'jsundefined' | 'jsnan' | 'jscallbackhell' |
+  // Python
+  'pyindentationerror' | 'pynonetype' | 'pyimporterror' |
+  // Java
+  'javanullpointer' | 'javaclassnotfound' | 'javaoutofmemory' |
+  // C#
+  'csnullreference' | 'csstackoverflow' | 'csinvalidcast' |
+  // C/C++
+  'csegfault' | 'cstackoverflow' | 'cmemoryleak' |
+  // TypeScript
+  'tstypeerror' | 'tsany' | 'tsreadonly' |
+  // PHP
+  'phppaamayim' | 'phpfatalerror' | 'phpundefinedindex' |
+  // Go
+  'gonilpanic' | 'godeadlock' | 'goimportcycle' |
+  // Rust
+  'rustborrowchecker' | 'rustpanic' | 'rustlifetimeerror' |
+  // Ruby
+  'rubynomethoderror' | 'rubyloaderror' | 'rubysyntaxerror' |
+  // Swift
+  'swiftfoundnil' | 'swiftforceunwrap' | 'swiftindexoutofrange' |
+  // Kotlin
+  'kotlinnullpointer' | 'kotlinclasscast' | 'kotlinuninitialized' |
+  // Scala
+  'scalamatcherror' | 'scalaabstractmethod' | 'scalastackoverflow' |
+  // R
+  'revalerror' | 'robjectnotfound' | 'rsubscriptoutofbounds' |
+  // SQL
+  'sqldeadlock' | 'sqlsyntaxerror' | 'sqltimeout' |
+  // Bash
+  'bashcommandnotfound' | 'bashpermissiondenied' | 'bashcoredumped' |
+  // Perl
+  'perluninitialized' | 'perlsyntaxerror' | 'perlcantlocate' |
+  // Lua
+  'luaindexnil' | 'luabadargument' | 'luastackoverflow' |
+  // Dart
+  'dartnullcheck' | 'dartrangeerror' | 'dartnosuchmethod' |
+  // Elixir
+  'elixirfunctionclause' | 'elixirargumenterror' | 'elixirkeyerror';
 
 interface PlayerProps {
   position: [number, number, number];
@@ -81,6 +317,7 @@ interface PlayerProps {
   estado?: string;
   lastAttackTime?: number | null;
   equippedItems?: EquippableItem[];
+  level?: number;
 }
 
 // Avatar texture on head front - with proper cleanup to prevent memory leaks
@@ -356,7 +593,7 @@ function Leg({
 
 // Helper to check if entity is a monster type
 function isMonsterType(type: EntityType): boolean {
-  return type === 'bug' || type === 'aihallucination' || type === 'manager' || type === 'boss' || type === 'unexplainedbug';
+  return MONSTER_TYPE_KEYS.includes(type);
 }
 
 export function Player({
@@ -370,6 +607,7 @@ export function Player({
   estado = 'idle',
   lastAttackTime = null,
   equippedItems = [],
+  level = 1,
 }: PlayerProps) {
   const { t } = useTranslation();
   const groupRef = useRef<THREE.Group>(null);
@@ -390,14 +628,16 @@ export function Player({
   const acessorioItem = useMemo(() => getEquippedByCategory(equippedItems, 'acessorio'), [equippedItems]);
 
   // Translate monster names, keep player names as-is
+  // For players, show "Lv.X Name" format
   const displayName = useMemo(() => {
     if (!githubLogin) return undefined;
     if (isMonster) {
       const translated = t(`monsters.${githubLogin}`, { defaultValue: githubLogin });
       return translated;
     }
-    return githubLogin;
-  }, [githubLogin, isMonster, t]);
+    // Show level for players
+    return `Lv.${level} ${githubLogin}`;
+  }, [githubLogin, isMonster, level, t]);
   const isDead = estado === 'dead';
   const isWalking = estado === 'walking' || estado === 'moving';
 
@@ -456,10 +696,17 @@ export function Player({
     }
   });
 
+  // Height offset for HP bar based on monster type
+  // Billboard is inside scaled group, so position is already scaled by parent
+  // Just use model's local height + padding (padding also needs to be compensated for scale)
+  const hpBarHeight = isMonster
+    ? (MONSTER_HEIGHTS[type] ?? 30) + (10 / scale)
+    : HEAD_SIZE + BODY_HEIGHT + LEG_HEIGHT + (20 / scale);
+
   return (
     <group position={position} ref={groupRef} scale={[scale, scale, scale]}>
-      {/* Name and HP as 3D Billboard - offset compensated for scale, raised higher to clear glass head */}
-      <Billboard position={[0, HEAD_SIZE + BODY_HEIGHT + LEG_HEIGHT + (20 / scale), 0]} follow={true}>
+      {/* Name and HP as 3D Billboard */}
+      <Billboard position={[0, hpBarHeight, 0]} follow={true}>
         {/* HP Bar background */}
         {!isDead && maxHp > 0 && (
           <>
@@ -493,103 +740,118 @@ export function Player({
         )}
       </Billboard>
 
-      {/* Character body offset to stand on ground */}
-      <group position={[0, LEG_HEIGHT, 0]}>
-        {/* Head with avatar */}
-        <Head avatarTexture={avatarTexture} isNpc={isNpcHead} />
+      {/* Render monster model or player model */}
+      {isMonster ? (
+        /* Monster-specific models */
+        <MonsterModel
+          type={type as MonsterType}
+          color={color}
+          opacity={opacity}
+          isWalking={isWalking}
+          lastAttackTime={lastAttackTime}
+        />
+      ) : (
+        /* Player humanoid model */
+        <>
+          {/* Character body offset to stand on ground */}
+          <group position={[0, LEG_HEIGHT, 0]}>
+            {/* Head with avatar */}
+            <Head avatarTexture={avatarTexture} isNpc={isNpcHead} />
 
-        {/* Processor INSIDE the glass head */}
-        {processadorItem && (
-          <ProcessadorPreview itemName={processadorItem.name} tier={processadorItem.tier} />
-        )}
+            {/* Processor INSIDE the glass head */}
+            {processadorItem && (
+              <ProcessadorPreview itemName={processadorItem.name} tier={processadorItem.tier} />
+            )}
 
-        {/* Headphones on head */}
-        {foneItem && (
-          <group position={[0, BODY_HEIGHT + HEAD_SIZE / 2, 0]}>
-            <FonePreview itemName={foneItem.name} tier={foneItem.tier} />
+            {/* Headphones on head */}
+            {foneItem && (
+              <group position={[0, BODY_HEIGHT + HEAD_SIZE / 2, 0]}>
+                <FonePreview itemName={foneItem.name} tier={foneItem.tier} />
+              </group>
+            )}
+
+            {/* Orbiting items around head */}
+            {(cafeItem || energeticoItem) && (
+              <group position={[0, BODY_HEIGHT + HEAD_SIZE / 2, 0]}>
+                <BebidaPreview
+                  itemName={(cafeItem || energeticoItem)!.name}
+                  tier={(cafeItem || energeticoItem)!.tier}
+                />
+              </group>
+            )}
+            {comidaItem && (
+              <group position={[0, BODY_HEIGHT + HEAD_SIZE / 2, 0]}>
+                <ComidaPreview itemName={comidaItem.name} tier={comidaItem.tier} />
+              </group>
+            )}
+
+            {/* Body/Torso */}
+            <Body color={color} opacity={opacity} />
+
+            {/* Shirt/Hoodie on body */}
+            {camisetaItem && (
+              <CamisetaPreview itemName={camisetaItem.name} tier={camisetaItem.tier} />
+            )}
+
+            {/* Arms - animation triggered by lastAttackTime */}
+            <Arm
+              side="left"
+              color={color}
+              opacity={opacity}
+              lastAttackTime={lastAttackTime}
+            >
+              {/* Keyboard in left hand */}
+              {tecladoItem && (
+                <TecladoPreview itemName={tecladoItem.name} tier={tecladoItem.tier} />
+              )}
+            </Arm>
+            <Arm
+              side="right"
+              color={color}
+              opacity={opacity}
+              lastAttackTime={lastAttackTime}
+            >
+              {/* Notebook in right hand */}
+              {notebookItem && (
+                <NotebookPreview itemName={notebookItem.name} tier={notebookItem.tier} />
+              )}
+            </Arm>
           </group>
-        )}
 
-        {/* Orbiting items around head */}
-        {(cafeItem || energeticoItem) && (
-          <group position={[0, BODY_HEIGHT + HEAD_SIZE / 2, 0]}>
-            <BebidaPreview
-              itemName={(cafeItem || energeticoItem)!.name}
-              tier={(cafeItem || energeticoItem)!.tier}
+          {/* IDE floating screen */}
+          {ideItem && (
+            <IDEPreview itemName={ideItem.name} tier={ideItem.tier} />
+          )}
+
+          {/* Pet companion */}
+          {petItem && (
+            <PetPreview itemName={petItem.name} tier={petItem.tier} />
+          )}
+
+          {/* Accessory furniture */}
+          {acessorioItem && (
+            <AcessorioPreview itemName={acessorioItem.name} tier={acessorioItem.tier} />
+          )}
+
+          {/* Legs (pivot at hip) - each leg manages its own animation */}
+          <group position={[0, LEG_HEIGHT, 0]}>
+            <Leg
+              side="left"
+              color={color}
+              isWalking={isWalking}
+              opacity={opacity}
+              animationSpeed={animationSpeed}
+            />
+            <Leg
+              side="right"
+              color={color}
+              isWalking={isWalking}
+              opacity={opacity}
+              animationSpeed={animationSpeed}
             />
           </group>
-        )}
-        {comidaItem && (
-          <group position={[0, BODY_HEIGHT + HEAD_SIZE / 2, 0]}>
-            <ComidaPreview itemName={comidaItem.name} tier={comidaItem.tier} />
-          </group>
-        )}
-
-        {/* Body/Torso */}
-        <Body color={color} opacity={opacity} />
-
-        {/* Shirt/Hoodie on body */}
-        {camisetaItem && (
-          <CamisetaPreview itemName={camisetaItem.name} tier={camisetaItem.tier} />
-        )}
-
-        {/* Arms - animation triggered by lastAttackTime */}
-        <Arm
-          side="left"
-          color={color}
-          opacity={opacity}
-          lastAttackTime={lastAttackTime}
-        >
-          {/* Keyboard in left hand */}
-          {tecladoItem && (
-            <TecladoPreview itemName={tecladoItem.name} tier={tecladoItem.tier} />
-          )}
-        </Arm>
-        <Arm
-          side="right"
-          color={color}
-          opacity={opacity}
-          lastAttackTime={lastAttackTime}
-        >
-          {/* Notebook in right hand */}
-          {notebookItem && (
-            <NotebookPreview itemName={notebookItem.name} tier={notebookItem.tier} />
-          )}
-        </Arm>
-      </group>
-
-      {/* IDE floating screen */}
-      {ideItem && (
-        <IDEPreview itemName={ideItem.name} tier={ideItem.tier} />
+        </>
       )}
-
-      {/* Pet companion */}
-      {petItem && (
-        <PetPreview itemName={petItem.name} tier={petItem.tier} />
-      )}
-
-      {/* Accessory furniture */}
-      {acessorioItem && (
-        <AcessorioPreview itemName={acessorioItem.name} tier={acessorioItem.tier} />
-      )}
-
-      {/* Legs (pivot at hip) - each leg manages its own animation */}
-      <group position={[0, LEG_HEIGHT, 0]}>
-        <Leg
-          side="left"
-          color={color}
-          isWalking={isWalking}
-          opacity={opacity}
-          animationSpeed={animationSpeed}
-        />
-        <Leg
-          side="right"
-          color={color}
-          isWalking={isWalking}
-          opacity={opacity}
-          animationSpeed={animationSpeed}
-        />
-      </group>
 
       {/* Shadow on ground - renderOrder -1 ensures it renders before transparent objects */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.1, 0]} renderOrder={-1} geometry={SHARED_GEOMETRIES.shadow}>

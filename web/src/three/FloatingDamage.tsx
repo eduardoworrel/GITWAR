@@ -53,9 +53,9 @@ function DamageText({ damage }: { damage: DamageNumber }) {
     // Parabolic arc: y = 4h*t*(1-t) - starts at 0, peaks at h when t=0.5, returns to 0
     const arcHeight = 4 * MAX_HEIGHT * progress * (1 - progress);
 
-    // Update position
+    // Update position - start higher (60) to avoid head collision
     groupRef.current.position.x = baseX + damage.offsetX * 10 + driftX;
-    groupRef.current.position.y = 25 + arcHeight; // Start at character center
+    groupRef.current.position.y = 60 + arcHeight; // Start above character head
     groupRef.current.position.z = baseZ + damage.offsetZ * 10;
 
     // Fade out in the last 40% of animation
@@ -96,8 +96,9 @@ function DamageText({ damage }: { damage: DamageNumber }) {
           outlineColor="black"
           fillOpacity={opacity * baseOpacity}
           outlineOpacity={opacity * baseOpacity}
-          depthOffset={-1}
-          renderOrder={999}
+          material-depthTest={false}
+          material-depthWrite={false}
+          renderOrder={9999}
           fontWeight="bold"
         >
           {text}

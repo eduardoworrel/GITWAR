@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../stores/gameStore';
 import { PlayerModal } from './PlayerModal';
 import { CalendarModal } from './CalendarModal';
+import { UserProfileModal } from './UserProfileModal';
 
 // SVG Icons
 const DiscordIcon = () => (
@@ -43,9 +44,10 @@ const CompassIcon = () => (
   </svg>
 );
 
-const StarIcon = () => (
+const UserIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
   </svg>
 );
 
@@ -97,6 +99,7 @@ export function Dock() {
   const { t } = useTranslation();
   const [showShop, setShowShop] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   const currentPlayerId = useGameStore((s) => s.currentPlayerId);
   const players = useGameStore((s) => s.players);
@@ -118,9 +121,9 @@ export function Dock() {
             disabled
           />
           <DockItem
-            icon={<StarIcon />}
-            label={t('ui.comingSoon')}
-            disabled
+            icon={<UserIcon />}
+            label={t('dock.profile')}
+            onClick={() => setShowProfile(true)}
           />
 
           <DockSeparator />
@@ -167,6 +170,15 @@ export function Dock() {
       {/* Calendar Modal */}
       {showCalendar && createPortal(
         <CalendarModal onClose={() => setShowCalendar(false)} />,
+        document.body
+      )}
+
+      {/* User Profile Modal */}
+      {showProfile && currentPlayer && createPortal(
+        <UserProfileModal
+          username={currentPlayer.githubLogin}
+          onClose={() => setShowProfile(false)}
+        />,
         document.body
       )}
     </>

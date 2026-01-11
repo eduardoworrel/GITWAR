@@ -22,6 +22,13 @@ public class CombatSystem
     /// </summary>
     public event Action<Entity, Entity>? OnPlayerKill;
 
+    /// <summary>
+    /// Event triggered when a monster is killed.
+    /// Parameters: monster, killer (last hit)
+    /// Used for distributing XP/Gold rewards.
+    /// </summary>
+    public event Action<Entity, Entity>? OnMonsterKill;
+
     public CombatEventQueue EventQueue => _eventQueue;
 
     public CombatSystem(World world)
@@ -113,6 +120,9 @@ public class CombatSystem
 
         if (damage > 0)
         {
+            // Register damage for reward distribution (before applying damage)
+            target.RegisterDamage(entity.Id, damage);
+
             var targetDied = target.TakeDamage(damage, currentTick);
 
             // Log combat event
@@ -143,6 +153,12 @@ public class CombatSystem
                 {
                     CalculateElo(entity, target);
                     OnPlayerKill?.Invoke(entity, target);
+                }
+
+                // Notify monster kill for XP/Gold distribution
+                if (ProgressionSystem.IsMonster(target.Type))
+                {
+                    OnMonsterKill?.Invoke(target, entity);
                 }
 
                 // Emit kill event

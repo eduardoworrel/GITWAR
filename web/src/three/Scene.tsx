@@ -5,6 +5,8 @@ import { IsometricCamera } from './IsometricCamera';
 import { GameMap } from './Map';
 import { Players } from './Players';
 import { FloatingDamage } from './FloatingDamage';
+import { FloatingReward } from './FloatingReward';
+import { LevelUpEffect } from './LevelUpEffect';
 import { CombatEffects } from './CombatEffects';
 import { RadialMenuOverlay } from '../components/RadialMenuOverlay';
 import { useGameStore } from '../stores/gameStore';
@@ -132,6 +134,12 @@ function SceneContent() {
 
       {/* Floating damage numbers */}
       <FloatingDamage />
+
+      {/* Floating XP/Gold rewards */}
+      <FloatingReward />
+
+      {/* Level up effects */}
+      <LevelUpEffect />
 
       {/* Calculate screen position for radial menu */}
       <RadialMenuPositionCalculator />

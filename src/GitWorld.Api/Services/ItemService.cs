@@ -10,7 +10,7 @@ public interface IItemService
     Task<Item?> GetItemByIdAsync(Guid itemId);
     Task<List<PlayerItem>> GetPlayerInventoryAsync(Guid playerId);
     Task<List<PlayerItem>> GetEquippedItemsAsync(Guid playerId);
-    Task<PlayerItem?> AcquireItemAsync(Guid playerId, Guid itemId);
+    Task<(PlayerItem? playerItem, string? error, int newGoldBalance)> AcquireItemAsync(Guid playerId, Guid itemId);
     Task<bool> EquipItemAsync(Guid playerId, Guid playerItemId);
     Task<bool> UnequipItemAsync(Guid playerId, Guid playerItemId);
     Task<int> CleanupExpiredItemsAsync();
@@ -69,14 +69,32 @@ public class ItemService : IItemService
             .ToListAsync();
     }
 
-    public async Task<PlayerItem?> AcquireItemAsync(Guid playerId, Guid itemId)
+    public async Task<(PlayerItem? playerItem, string? error, int newGoldBalance)> AcquireItemAsync(Guid playerId, Guid itemId)
     {
         var item = await _db.Items.FindAsync(itemId);
         if (item == null)
         {
             _logger.LogWarning("Item {ItemId} not found", itemId);
-            return null;
+            return (null, "ITEM_NOT_FOUND", 0);
         }
+
+        var player = await _db.Players.FindAsync(playerId);
+        if (player == null)
+        {
+            _logger.LogWarning("Player {PlayerId} not found", playerId);
+            return (null, "PLAYER_NOT_FOUND", 0);
+        }
+
+        // Check if player has enough gold
+        if (player.Gold < item.Price)
+        {
+            _logger.LogWarning("Player {PlayerId} has insufficient gold ({Gold}) for item {ItemName} (price: {Price})",
+                playerId, player.Gold, item.Name, item.Price);
+            return (null, "INSUFFICIENT_GOLD", player.Gold);
+        }
+
+        // Deduct gold from player
+        player.Gold -= item.Price;
 
         var playerItem = new PlayerItem
         {
@@ -93,9 +111,10 @@ public class ItemService : IItemService
         _db.PlayerItems.Add(playerItem);
         await _db.SaveChangesAsync();
 
-        _logger.LogInformation("Player {PlayerId} acquired item {ItemName}", playerId, item.Name);
+        _logger.LogInformation("Player {PlayerId} purchased item {ItemName} for {Price} gold (new balance: {Gold})",
+            playerId, item.Name, item.Price, player.Gold);
 
-        return playerItem;
+        return (playerItem, null, player.Gold);
     }
 
     public async Task<bool> EquipItemAsync(Guid playerId, Guid playerItemId)

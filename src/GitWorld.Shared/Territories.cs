@@ -229,15 +229,48 @@ public static class Territories
     };
 
     /// <summary>
-    /// Retorna a posição de spawn para um jogador.
-    /// Todos spawnam no centro da mesa (spawn único).
+    /// Verifica se uma posição está dentro de uma zona de colisão.
+    /// </summary>
+    private static bool IsInsideCollisionZone(float x, float y, float radius = 15f)
+    {
+        foreach (var zone in GameConstants.DeskCollisionZones)
+        {
+            if (x >= zone.X - radius &&
+                x <= zone.X + zone.Width + radius &&
+                y >= zone.Y - radius &&
+                y <= zone.Y + zone.Height + radius)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Retorna uma posição de spawn aleatória segura (fora das zonas de colisão).
+    /// Tenta gerar posições aleatórias até encontrar uma válida.
     /// </summary>
     public static (float x, float y) GetSpawnPosition(string reino, Random random)
     {
-        // Spawn único no centro da mesa com pequena variação para não empilhar
-        var offsetX = (random.NextSingle() - 0.5f) * 200;
-        var offsetY = (random.NextSingle() - 0.5f) * 200;
-        return (GameConstants.SpawnX + offsetX, GameConstants.SpawnY + offsetY);
+        const int maxAttempts = 50;
+        const float margin = 50f; // Margem das bordas do mapa
+
+        for (int i = 0; i < maxAttempts; i++)
+        {
+            // Gera posição aleatória dentro dos limites do mapa
+            var x = margin + random.NextSingle() * (GameConstants.MapaWidth - 2 * margin);
+            var y = margin + random.NextSingle() * (GameConstants.MapaHeight - 2 * margin);
+
+            // Se não está em zona de colisão, retorna
+            if (!IsInsideCollisionZone(x, y))
+            {
+                return (x, y);
+            }
+        }
+
+        // Fallback: posição padrão se não encontrar posição segura
+        // (improvável com 50 tentativas, mas por segurança)
+        return (GameConstants.SpawnX, GameConstants.SpawnY);
     }
 
     /// <summary>

@@ -19,6 +19,15 @@ public class NpcData
     public Guid? AggroTargetId { get; set; }
 }
 
+/// <summary>
+/// Helper to check if an entity type is a passive monster (NPC, Bug, or Language Error)
+/// </summary>
+public static class PassiveMonsterTypes
+{
+    public static bool IsPassiveMonster(EntityType type) =>
+        type == EntityType.NPC || type == EntityType.Bug || LanguageErrorTypes.All.Contains(type);
+}
+
 public class AISystem
 {
     private readonly World _world;
@@ -39,8 +48,8 @@ public class AISystem
     /// </summary>
     private void OnEntityDamaged(Entity attacker, Entity target, int damage)
     {
-        // NPCs and Bugs are passive - only attack when attacked
-        if (target.Type != EntityType.NPC && target.Type != EntityType.Bug)
+        // NPCs, Bugs, and Language Errors are passive - only attack when attacked
+        if (!PassiveMonsterTypes.IsPassiveMonster(target.Type))
             return;
 
         // Trigger aggro - will chase and attack the player
@@ -52,8 +61,8 @@ public class AISystem
     /// </summary>
     public void RegisterNpc(Entity entity)
     {
-        // Only register NPCs and Bugs (passive entities)
-        if (entity.Type != EntityType.NPC && entity.Type != EntityType.Bug)
+        // Only register passive monsters (NPCs, Bugs, Language Errors)
+        if (!PassiveMonsterTypes.IsPassiveMonster(entity.Type))
             return;
 
         _npcData[entity.Id] = new NpcData
@@ -74,12 +83,12 @@ public class AISystem
 
     /// <summary>
     /// Set aggro on an NPC or passive monster when it's attacked
-    /// NPCs and Bugs are PASSIVE - they only attack if attacked first!
+    /// NPCs, Bugs, and Language Errors are PASSIVE - they only attack if attacked first!
     /// </summary>
     public void SetAggro(Entity npc, Entity attacker)
     {
-        // Only NPCs and Bugs use passive aggro system
-        if (npc.Type != EntityType.NPC && npc.Type != EntityType.Bug)
+        // Only passive monsters use this aggro system
+        if (!PassiveMonsterTypes.IsPassiveMonster(npc.Type))
             return;
 
         if (!npc.IsAlive)

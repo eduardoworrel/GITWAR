@@ -1,7 +1,47 @@
 import { create } from 'zustand';
 import { INTERPOLATION_DURATION_MS } from '../three/constants';
 
-export type EntityType = 'player' | 'npc' | 'bug' | 'aihallucination' | 'manager' | 'boss' | 'unexplainedbug';
+export type EntityType = 'player' | 'npc' | 'bug' | 'aihallucination' | 'manager' | 'boss' | 'unexplainedbug' |
+  // JavaScript
+  'jsundefined' | 'jsnan' | 'jscallbackhell' |
+  // Python
+  'pyindentationerror' | 'pynonetype' | 'pyimporterror' |
+  // Java
+  'javanullpointer' | 'javaclassnotfound' | 'javaoutofmemory' |
+  // C#
+  'csnullreference' | 'csstackoverflow' | 'csinvalidcast' |
+  // C/C++
+  'csegfault' | 'cstackoverflow' | 'cmemoryleak' |
+  // TypeScript
+  'tstypeerror' | 'tsany' | 'tsreadonly' |
+  // PHP
+  'phppaamayim' | 'phpfatalerror' | 'phpundefinedindex' |
+  // Go
+  'gonilpanic' | 'godeadlock' | 'goimportcycle' |
+  // Rust
+  'rustborrowchecker' | 'rustpanic' | 'rustlifetimeerror' |
+  // Ruby
+  'rubynomethoderror' | 'rubyloaderror' | 'rubysyntaxerror' |
+  // Swift
+  'swiftfoundnil' | 'swiftforceunwrap' | 'swiftindexoutofrange' |
+  // Kotlin
+  'kotlinnullpointer' | 'kotlinclasscast' | 'kotlinuninitialized' |
+  // Scala
+  'scalamatcherror' | 'scalaabstractmethod' | 'scalastackoverflow' |
+  // R
+  'revalerror' | 'robjectnotfound' | 'rsubscriptoutofbounds' |
+  // SQL
+  'sqldeadlock' | 'sqlsyntaxerror' | 'sqltimeout' |
+  // Bash
+  'bashcommandnotfound' | 'bashpermissiondenied' | 'bashcoredumped' |
+  // Perl
+  'perluninitialized' | 'perlsyntaxerror' | 'perlcantlocate' |
+  // Lua
+  'luaindexnil' | 'luabadargument' | 'luastackoverflow' |
+  // Dart
+  'dartnullcheck' | 'dartrangeerror' | 'dartnosuchmethod' |
+  // Elixir
+  'elixirfunctionclause' | 'elixirargumenterror' | 'elixirkeyerror';
 
 // Item system types
 export interface ItemStats {
@@ -60,6 +100,10 @@ export interface Player {
   evasao?: number;
   armadura?: number;
   velocidadeMovimento?: number;
+  // Progression stats
+  level?: number;
+  exp?: number;
+  gold?: number;
   // Equipped items (from server)
   equippedItems?: EquippedItemInfo[];
 }
@@ -96,6 +140,32 @@ export interface CombatEvent {
   createdAt: number; // Local timestamp for cleanup
 }
 
+export interface RewardEvent {
+  id: string;
+  playerId: string;
+  x: number;
+  y: number;
+  expGained: number;
+  goldGained: number;
+  leveledUp: boolean;
+  newLevel: number;
+  source: string;
+  tick: number;
+  createdAt: number;
+}
+
+export interface LevelUpEvent {
+  id: string;
+  playerId: string;
+  playerName: string;
+  oldLevel: number;
+  newLevel: number;
+  x: number;
+  y: number;
+  tick: number;
+  createdAt: number;
+}
+
 export type CameraMode = 'follow' | 'free' | 'drone';
 export type ConnectionStatus = 'connected' | 'disconnected' | 'reconnecting';
 
@@ -109,6 +179,8 @@ export interface SelectedPlayerForMenu {
 interface GameState {
   players: Map<string, InterpolatedPlayer>;
   combatEvents: CombatEvent[];
+  rewardEvents: RewardEvent[];
+  levelUpEvents: LevelUpEvent[];
   currentPlayerId: string | null;
   frameTime: number; // Consistent timestamp for entire frame
   currentPlayerPos: { x: number; y: number } | null; // Cached position for current player
@@ -134,6 +206,8 @@ interface GameState {
   setFrameTime: (time: number) => void;
   getInterpolatedPosition: (id: string) => { x: number; y: number } | null;
   addCombatEvents: (events: CombatEvent[]) => void;
+  addRewardEvents: (events: RewardEvent[]) => void;
+  addLevelUpEvents: (events: LevelUpEvent[]) => void;
   clearOldEvents: () => void;
   getLastAttackTime: (playerId: string) => number | null;
   setActiveEvent: (event: ActiveEvent | null) => void;
@@ -159,6 +233,8 @@ function lerp(start: number, end: number, t: number): number {
 export const useGameStore = create<GameState>((set, get) => ({
   players: new Map(),
   combatEvents: [],
+  rewardEvents: [],
+  levelUpEvents: [],
   currentPlayerId: null,
   frameTime: Date.now(),
   currentPlayerPos: null,
@@ -309,14 +385,42 @@ export const useGameStore = create<GameState>((set, get) => ({
       return { combatEvents: allEvents };
     }),
 
+  addRewardEvents: (events) =>
+    set((state) => {
+      const now = Date.now();
+      const newEvents = events.map((e) => ({ ...e, createdAt: now }));
+      // Keep max 30 reward events
+      const allEvents = [...state.rewardEvents, ...newEvents].slice(-30);
+      return { rewardEvents: allEvents };
+    }),
+
+  addLevelUpEvents: (events) =>
+    set((state) => {
+      const now = Date.now();
+      const newEvents = events.map((e) => ({ ...e, createdAt: now }));
+      // Keep max 10 level up events
+      const allEvents = [...state.levelUpEvents, ...newEvents].slice(-10);
+      return { levelUpEvents: allEvents };
+    }),
+
   clearOldEvents: () =>
     set((state) => {
       const now = Date.now();
       const maxAge = 2000; // Remove events older than 2 seconds
-      const filtered = state.combatEvents.filter(
+      const filteredCombat = state.combatEvents.filter(
         (e) => now - e.createdAt < maxAge
       );
-      return { combatEvents: filtered };
+      const filteredRewards = state.rewardEvents.filter(
+        (e) => now - e.createdAt < maxAge
+      );
+      const filteredLevelUps = state.levelUpEvents.filter(
+        (e) => now - e.createdAt < 3000 // Level ups last longer
+      );
+      return {
+        combatEvents: filteredCombat,
+        rewardEvents: filteredRewards,
+        levelUpEvents: filteredLevelUps,
+      };
     }),
 
   getLastAttackTime: (playerId: string) => {

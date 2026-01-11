@@ -15,6 +15,7 @@ public class GameLoop : IDisposable
     private readonly PlayerBehaviorSystem _playerBehaviorSystem;
     private readonly HealthBehaviorSystem _healthBehaviorSystem;
     private readonly EventSystem _eventSystem;
+    private readonly ProgressionSystem _progressionSystem;
 
     private long _currentTick;
     private bool _isRunning;
@@ -31,6 +32,7 @@ public class GameLoop : IDisposable
     public AISystem AISystem => _aiSystem;
     public MovementSystem MovementSystem => _movementSystem;
     public EventSystem EventSystem => _eventSystem;
+    public ProgressionSystem ProgressionSystem => _progressionSystem;
 
     public GameLoop(World world)
     {
@@ -41,9 +43,21 @@ public class GameLoop : IDisposable
         _playerBehaviorSystem = new PlayerBehaviorSystem(world);
         _healthBehaviorSystem = new HealthBehaviorSystem(world);
         _eventSystem = new EventSystem(world);
+        _progressionSystem = new ProgressionSystem(world);
 
         // Wire up EventSystem to PlayerBehaviorSystem for monster priority
         _playerBehaviorSystem.SetEventSystem(_eventSystem);
+
+        // Wire up CombatSystem to ProgressionSystem for XP/Gold rewards
+        _combatSystem.OnMonsterKill += (monster, killer) =>
+        {
+            _progressionSystem.DistributeMonsterRewards(monster, _currentTick);
+        };
+
+        _combatSystem.OnPlayerKill += (killer, victim) =>
+        {
+            _progressionSystem.GivePlayerKillReward(killer, victim, _currentTick);
+        };
 
         _timer = new Timer(Tick, null, Timeout.Infinite, Timeout.Infinite);
     }
@@ -218,5 +232,5 @@ public class GameLoop : IDisposable
     }
 
     private static bool IsMonsterType(EntityType type) =>
-        type is EntityType.Bug or EntityType.AIHallucination or EntityType.Manager or EntityType.Boss or EntityType.UnexplainedBug;
+        ProgressionSystem.IsMonster(type);
 }

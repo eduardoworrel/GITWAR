@@ -57,6 +57,11 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Vitorias).HasColumnName("vitorias").HasDefaultValue(0);
             entity.Property(e => e.Derrotas).HasColumnName("derrotas").HasDefaultValue(0);
 
+            // Progressão
+            entity.Property(e => e.Level).HasColumnName("level").HasDefaultValue(1);
+            entity.Property(e => e.Exp).HasColumnName("exp").HasDefaultValue(0);
+            entity.Property(e => e.Gold).HasColumnName("gold").HasDefaultValue(0);
+
             // Metadata
             entity.Property(e => e.LastGitHubSync).HasColumnName("last_github_sync");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("NOW()");
@@ -122,6 +127,9 @@ public class AppDbContext : DbContext
 
             // Visual
             entity.Property(e => e.VisualDescription).HasColumnName("visual_description").HasMaxLength(200);
+
+            // Price
+            entity.Property(e => e.Price).HasColumnName("price").HasDefaultValue(0);
         });
 
         // PlayerItem
