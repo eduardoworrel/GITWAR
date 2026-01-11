@@ -1,10 +1,11 @@
-import { useRef } from 'react';
+import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { LanguageErrorModels } from './LanguageErrorModels';
 import { LanguageErrorModels2 } from './LanguageErrorModels2';
 import { LanguageErrorModels3 } from './LanguageErrorModels3';
 import { UNIT_VECTOR3 } from './optimizations';
+import { getSharedMaterial, SHARED_MATERIALS } from './AnimationManager';
 
 // Shared monster geometries - created once, reused
 const BUG_GEOMETRIES = {
@@ -68,6 +69,17 @@ export function BugModel({ color, opacity, isWalking, lastAttackTime }: MonsterP
   const lastAttackRef = useRef<number | null>(null);
   const attackPhaseRef = useRef(0);
 
+  // Memoized materials - only recreated when color/opacity change
+  const materials = useMemo(() => {
+    const darkColor = new THREE.Color(color).multiplyScalar(0.6).getHex();
+    return {
+      body: getSharedMaterial(color, { transparent: opacity < 1, opacity }),
+      dark: getSharedMaterial(darkColor, { transparent: opacity < 1, opacity }),
+      eye: getSharedMaterial(0xff0000, { transparent: opacity < 1, opacity }),
+      antennaTip: getSharedMaterial(0xffff00, { transparent: opacity < 1, opacity }),
+    };
+  }, [color, opacity]);
+
   useFrame((_, delta) => {
     if (!groupRef.current) return;
 
@@ -106,27 +118,17 @@ export function BugModel({ color, opacity, isWalking, lastAttackTime }: MonsterP
     }
   });
 
-  const darkColor = new THREE.Color(color).multiplyScalar(0.6).getHex();
-
   return (
     <group ref={groupRef}>
       {/* Body - oval shape */}
-      <mesh position={[0, 10, 0]} geometry={BUG_GEOMETRIES.body}>
-        <meshBasicMaterial color={color} transparent={opacity < 1} opacity={opacity} />
-      </mesh>
+      <mesh position={[0, 10, 0]} geometry={BUG_GEOMETRIES.body} material={materials.body} />
 
       {/* Head */}
-      <mesh position={[0, 10, 10]} geometry={BUG_GEOMETRIES.head}>
-        <meshBasicMaterial color={darkColor} transparent={opacity < 1} opacity={opacity} />
-      </mesh>
+      <mesh position={[0, 10, 10]} geometry={BUG_GEOMETRIES.head} material={materials.dark} />
 
       {/* Compound eyes */}
-      <mesh position={[-3, 12, 13]} geometry={BUG_GEOMETRIES.eye}>
-        <meshBasicMaterial color={0xff0000} transparent={opacity < 1} opacity={opacity} />
-      </mesh>
-      <mesh position={[3, 12, 13]} geometry={BUG_GEOMETRIES.eye}>
-        <meshBasicMaterial color={0xff0000} transparent={opacity < 1} opacity={opacity} />
-      </mesh>
+      <mesh position={[-3, 12, 13]} geometry={BUG_GEOMETRIES.eye} material={materials.eye} />
+      <mesh position={[3, 12, 13]} geometry={BUG_GEOMETRIES.eye} material={materials.eye} />
 
       {/* Antennae */}
       {[0, 1].map((i) => (
@@ -135,12 +137,8 @@ export function BugModel({ color, opacity, isWalking, lastAttackTime }: MonsterP
           ref={(el) => { if (el) antennaeRef.current[i] = el; }}
           position={[i === 0 ? -2 : 2, 14, 12]}
         >
-          <mesh rotation={[0.3, 0, i === 0 ? -0.3 : 0.3]} geometry={BUG_GEOMETRIES.antenna}>
-            <meshBasicMaterial color={darkColor} transparent={opacity < 1} opacity={opacity} />
-          </mesh>
-          <mesh position={[i === 0 ? -2 : 2, 6, 2]} geometry={BUG_GEOMETRIES.antennaTip}>
-            <meshBasicMaterial color={0xffff00} transparent={opacity < 1} opacity={opacity} />
-          </mesh>
+          <mesh rotation={[0.3, 0, i === 0 ? -0.3 : 0.3]} geometry={BUG_GEOMETRIES.antenna} material={materials.dark} />
+          <mesh position={[i === 0 ? -2 : 2, 6, 2]} geometry={BUG_GEOMETRIES.antennaTip} material={materials.antennaTip} />
         </group>
       ))}
 
@@ -155,9 +153,7 @@ export function BugModel({ color, opacity, isWalking, lastAttackTime }: MonsterP
             position={[side * 8, 6, zOffset]}
             rotation={[0, 0, side * 0.5]}
           >
-            <mesh position={[side * 4, -4, 0]} rotation={[0, 0, side * 0.8]} geometry={BUG_GEOMETRIES.leg}>
-              <meshBasicMaterial color={darkColor} transparent={opacity < 1} opacity={opacity} />
-            </mesh>
+            <mesh position={[side * 4, -4, 0]} rotation={[0, 0, side * 0.8]} geometry={BUG_GEOMETRIES.leg} material={materials.dark} />
           </group>
         );
       })}
@@ -172,6 +168,15 @@ export function AIHallucinationModel({ color, opacity, isWalking: _isWalking, la
   const ringRef = useRef<THREE.Mesh>(null);
   const floatPhaseRef = useRef(Math.random() * Math.PI * 2);
   const lastAttackRef = useRef<number | null>(null);
+
+  // Memoized materials
+  const materials = useMemo(() => ({
+    coreWireframe: getSharedMaterial(color, { transparent: true, opacity: opacity * 0.7, wireframe: true }),
+    coreSolid: getSharedMaterial(color, { transparent: true, opacity: opacity * 0.5 }),
+    ring: getSharedMaterial(color, { transparent: true, opacity: opacity * 0.6 }),
+    fragment: getSharedMaterial(color, { transparent: true, opacity: opacity * 0.8 }),
+    eye: SHARED_MATERIALS.magenta,
+  }), [color, opacity]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -213,27 +218,14 @@ export function AIHallucinationModel({ color, opacity, isWalking: _isWalking, la
   return (
     <group ref={groupRef} position={[0, 20, 0]}>
       {/* Core - icosahedron */}
-      <mesh geometry={AI_GEOMETRIES.core}>
-        <meshBasicMaterial
-          color={color}
-          transparent
-          opacity={opacity * 0.7}
-          wireframe
-        />
-      </mesh>
-      <mesh geometry={AI_GEOMETRIES.core} scale={0.8}>
-        <meshBasicMaterial color={color} transparent opacity={opacity * 0.5} />
-      </mesh>
+      <mesh geometry={AI_GEOMETRIES.core} material={materials.coreWireframe} />
+      <mesh geometry={AI_GEOMETRIES.core} scale={0.8} material={materials.coreSolid} />
 
       {/* Glowing eye */}
-      <mesh position={[0, 0, 6]} geometry={AI_GEOMETRIES.eye}>
-        <meshBasicMaterial color={0xff00ff} transparent opacity={opacity} />
-      </mesh>
+      <mesh position={[0, 0, 6]} geometry={AI_GEOMETRIES.eye} material={materials.eye} />
 
       {/* Rotating ring */}
-      <mesh ref={ringRef} geometry={AI_GEOMETRIES.ring}>
-        <meshBasicMaterial color={color} transparent opacity={opacity * 0.6} />
-      </mesh>
+      <mesh ref={ringRef} geometry={AI_GEOMETRIES.ring} material={materials.ring} />
 
       {/* Orbiting fragments */}
       {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -241,9 +233,8 @@ export function AIHallucinationModel({ color, opacity, isWalking: _isWalking, la
           key={`frag-${i}`}
           ref={(el) => { if (el) fragmentsRef.current[i] = el; }}
           geometry={AI_GEOMETRIES.fragment}
-        >
-          <meshBasicMaterial color={color} transparent opacity={opacity * 0.8} />
-        </mesh>
+          material={materials.fragment}
+        />
       ))}
     </group>
   );
@@ -259,6 +250,16 @@ export function ManagerModel({ color, opacity, isWalking, lastAttackTime }: Mons
   const walkPhaseRef = useRef(0);
   const lastAttackRef = useRef<number | null>(null);
   const attackPhaseRef = useRef(1);
+
+  // Memoized materials
+  const materials = useMemo(() => ({
+    suit: getSharedMaterial(0x1a1a2e, { transparent: opacity < 1, opacity }),
+    shirt: getSharedMaterial(0xffffff, { transparent: opacity < 1, opacity }),
+    skin: getSharedMaterial(0xffdbac, { transparent: opacity < 1, opacity }),
+    tie: getSharedMaterial(color, { transparent: opacity < 1, opacity }),
+    glasses: getSharedMaterial(0x222222, { transparent: opacity < 1, opacity }),
+    briefcase: getSharedMaterial(0x8b4513, { transparent: opacity < 1, opacity }),
+  }), [color, opacity]);
 
   useFrame((_, delta) => {
     // Walking animation
@@ -289,69 +290,44 @@ export function ManagerModel({ color, opacity, isWalking, lastAttackTime }: Mons
     }
   });
 
-  const suitColor = 0x1a1a2e; // Dark suit
-  const shirtColor = 0xffffff;
-  const skinColor = 0xffdbac;
-
   return (
     <group ref={groupRef}>
       {/* Head */}
-      <mesh position={[0, 40, 0]} geometry={MANAGER_GEOMETRIES.head}>
-        <meshBasicMaterial color={skinColor} transparent={opacity < 1} opacity={opacity} />
-      </mesh>
+      <mesh position={[0, 40, 0]} geometry={MANAGER_GEOMETRIES.head} material={materials.skin} />
 
       {/* Glasses */}
-      <mesh position={[0, 42, 5.5]} geometry={MANAGER_GEOMETRIES.glasses}>
-        <meshBasicMaterial color={0x222222} transparent={opacity < 1} opacity={opacity} />
-      </mesh>
+      <mesh position={[0, 42, 5.5]} geometry={MANAGER_GEOMETRIES.glasses} material={materials.glasses} />
 
       {/* Body/Suit */}
-      <mesh position={[0, 22, 0]} geometry={MANAGER_GEOMETRIES.body}>
-        <meshBasicMaterial color={suitColor} transparent={opacity < 1} opacity={opacity} />
-      </mesh>
+      <mesh position={[0, 22, 0]} geometry={MANAGER_GEOMETRIES.body} material={materials.suit} />
 
       {/* Shirt collar visible */}
-      <mesh position={[0, 30, 4]} scale={[0.8, 0.2, 0.5]}>
+      <mesh position={[0, 30, 4]} scale={[0.8, 0.2, 0.5]} material={materials.shirt}>
         <boxGeometry args={[14, 4, 2]} />
-        <meshBasicMaterial color={shirtColor} transparent={opacity < 1} opacity={opacity} />
       </mesh>
 
       {/* Tie */}
-      <mesh position={[0, 22, 4.5]} geometry={MANAGER_GEOMETRIES.tie}>
-        <meshBasicMaterial color={color} transparent={opacity < 1} opacity={opacity} />
-      </mesh>
-      <mesh position={[0, 28, 4.5]} geometry={MANAGER_GEOMETRIES.tieKnot}>
-        <meshBasicMaterial color={color} transparent={opacity < 1} opacity={opacity} />
-      </mesh>
+      <mesh position={[0, 22, 4.5]} geometry={MANAGER_GEOMETRIES.tie} material={materials.tie} />
+      <mesh position={[0, 28, 4.5]} geometry={MANAGER_GEOMETRIES.tieKnot} material={materials.tie} />
 
       {/* Left Arm */}
       <group ref={leftArmRef} position={[-9, 28, 0]}>
-        <mesh position={[0, -7, 0]} geometry={MANAGER_GEOMETRIES.arm}>
-          <meshBasicMaterial color={suitColor} transparent={opacity < 1} opacity={opacity} />
-        </mesh>
+        <mesh position={[0, -7, 0]} geometry={MANAGER_GEOMETRIES.arm} material={materials.suit} />
       </group>
 
       {/* Right Arm with briefcase */}
       <group ref={rightArmRef} position={[9, 28, 0]}>
-        <mesh position={[0, -7, 0]} geometry={MANAGER_GEOMETRIES.arm}>
-          <meshBasicMaterial color={suitColor} transparent={opacity < 1} opacity={opacity} />
-        </mesh>
+        <mesh position={[0, -7, 0]} geometry={MANAGER_GEOMETRIES.arm} material={materials.suit} />
         {/* Briefcase */}
-        <mesh position={[0, -16, 4]} geometry={MANAGER_GEOMETRIES.briefcase}>
-          <meshBasicMaterial color={0x8b4513} transparent={opacity < 1} opacity={opacity} />
-        </mesh>
+        <mesh position={[0, -16, 4]} geometry={MANAGER_GEOMETRIES.briefcase} material={materials.briefcase} />
       </group>
 
       {/* Legs */}
       <group ref={leftLegRef} position={[-4, 14, 0]}>
-        <mesh position={[0, -7, 0]} geometry={MANAGER_GEOMETRIES.leg}>
-          <meshBasicMaterial color={suitColor} transparent={opacity < 1} opacity={opacity} />
-        </mesh>
+        <mesh position={[0, -7, 0]} geometry={MANAGER_GEOMETRIES.leg} material={materials.suit} />
       </group>
       <group ref={rightLegRef} position={[4, 14, 0]}>
-        <mesh position={[0, -7, 0]} geometry={MANAGER_GEOMETRIES.leg}>
-          <meshBasicMaterial color={suitColor} transparent={opacity < 1} opacity={opacity} />
-        </mesh>
+        <mesh position={[0, -7, 0]} geometry={MANAGER_GEOMETRIES.leg} material={materials.suit} />
       </group>
     </group>
   );
@@ -365,6 +341,17 @@ export function BossModel({ color, opacity, isWalking, lastAttackTime }: Monster
   const lastAttackRef = useRef<number | null>(null);
   const attackPhaseRef = useRef(1);
   const pulseRef = useRef(0);
+
+  // Memoized materials
+  const materials = useMemo(() => {
+    const darkColor = new THREE.Color(color).multiplyScalar(0.4).getHex();
+    return {
+      body: getSharedMaterial(color, { transparent: opacity < 1, opacity }),
+      dark: getSharedMaterial(darkColor, { transparent: opacity < 1, opacity }),
+      eye: getSharedMaterial(0xff0000, { transparent: opacity < 1, opacity }),
+      horn: getSharedMaterial(0x222222, { transparent: opacity < 1, opacity }),
+    };
+  }, [color, opacity]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -402,40 +389,24 @@ export function BossModel({ color, opacity, isWalking, lastAttackTime }: Monster
     }
   });
 
-  const darkColor = new THREE.Color(color).multiplyScalar(0.4).getHex();
-
   return (
     <group ref={groupRef}>
       {/* Main body - chest */}
-      <mesh position={[0, 28, 0]} geometry={BOSS_GEOMETRIES.chest}>
-        <meshBasicMaterial color={color} transparent={opacity < 1} opacity={opacity} />
-      </mesh>
+      <mesh position={[0, 28, 0]} geometry={BOSS_GEOMETRIES.chest} material={materials.body} />
 
       {/* Armored plates */}
-      <mesh position={[0, 28, 6]} scale={[0.9, 0.9, 0.3]} geometry={BOSS_GEOMETRIES.chest}>
-        <meshBasicMaterial color={darkColor} transparent={opacity < 1} opacity={opacity} />
-      </mesh>
+      <mesh position={[0, 28, 6]} scale={[0.9, 0.9, 0.3]} geometry={BOSS_GEOMETRIES.chest} material={materials.dark} />
 
       {/* Head */}
-      <mesh position={[0, 48, 0]} geometry={BOSS_GEOMETRIES.head}>
-        <meshBasicMaterial color={darkColor} transparent={opacity < 1} opacity={opacity} />
-      </mesh>
+      <mesh position={[0, 48, 0]} geometry={BOSS_GEOMETRIES.head} material={materials.dark} />
 
       {/* Glowing eyes */}
-      <mesh position={[-4, 50, 7]} geometry={BOSS_GEOMETRIES.eye}>
-        <meshBasicMaterial color={0xff0000} transparent={opacity < 1} opacity={opacity} />
-      </mesh>
-      <mesh position={[4, 50, 7]} geometry={BOSS_GEOMETRIES.eye}>
-        <meshBasicMaterial color={0xff0000} transparent={opacity < 1} opacity={opacity} />
-      </mesh>
+      <mesh position={[-4, 50, 7]} geometry={BOSS_GEOMETRIES.eye} material={materials.eye} />
+      <mesh position={[4, 50, 7]} geometry={BOSS_GEOMETRIES.eye} material={materials.eye} />
 
       {/* Horns */}
-      <mesh position={[-6, 56, 0]} rotation={[0.3, 0, -0.4]} geometry={BOSS_GEOMETRIES.horn}>
-        <meshBasicMaterial color={0x222222} transparent={opacity < 1} opacity={opacity} />
-      </mesh>
-      <mesh position={[6, 56, 0]} rotation={[0.3, 0, 0.4]} geometry={BOSS_GEOMETRIES.horn}>
-        <meshBasicMaterial color={0x222222} transparent={opacity < 1} opacity={opacity} />
-      </mesh>
+      <mesh position={[-6, 56, 0]} rotation={[0.3, 0, -0.4]} geometry={BOSS_GEOMETRIES.horn} material={materials.horn} />
+      <mesh position={[6, 56, 0]} rotation={[0.3, 0, 0.4]} geometry={BOSS_GEOMETRIES.horn} material={materials.horn} />
 
       {/* 4 Arms */}
       {[0, 1, 2, 3].map((i) => {
@@ -448,28 +419,18 @@ export function BossModel({ color, opacity, isWalking, lastAttackTime }: Monster
             position={[side * 12, 34 + yOffset, 0]}
           >
             {/* Shoulder */}
-            <mesh geometry={BOSS_GEOMETRIES.shoulder}>
-              <meshBasicMaterial color={color} transparent={opacity < 1} opacity={opacity} />
-            </mesh>
+            <mesh geometry={BOSS_GEOMETRIES.shoulder} material={materials.body} />
             {/* Arm */}
-            <mesh position={[side * 4, -9, 0]} geometry={BOSS_GEOMETRIES.arm}>
-              <meshBasicMaterial color={color} transparent={opacity < 1} opacity={opacity} />
-            </mesh>
+            <mesh position={[side * 4, -9, 0]} geometry={BOSS_GEOMETRIES.arm} material={materials.body} />
             {/* Claw */}
-            <mesh position={[side * 4, -20, 0]} rotation={[Math.PI, 0, 0]} geometry={BOSS_GEOMETRIES.claw}>
-              <meshBasicMaterial color={0x222222} transparent={opacity < 1} opacity={opacity} />
-            </mesh>
+            <mesh position={[side * 4, -20, 0]} rotation={[Math.PI, 0, 0]} geometry={BOSS_GEOMETRIES.claw} material={materials.horn} />
           </group>
         );
       })}
 
       {/* Legs (thick, sturdy) */}
-      <mesh position={[-6, 7, 0]} scale={[1.5, 1, 1.5]} geometry={BOSS_GEOMETRIES.arm}>
-        <meshBasicMaterial color={darkColor} transparent={opacity < 1} opacity={opacity} />
-      </mesh>
-      <mesh position={[6, 7, 0]} scale={[1.5, 1, 1.5]} geometry={BOSS_GEOMETRIES.arm}>
-        <meshBasicMaterial color={darkColor} transparent={opacity < 1} opacity={opacity} />
-      </mesh>
+      <mesh position={[-6, 7, 0]} scale={[1.5, 1, 1.5]} geometry={BOSS_GEOMETRIES.arm} material={materials.dark} />
+      <mesh position={[6, 7, 0]} scale={[1.5, 1, 1.5]} geometry={BOSS_GEOMETRIES.arm} material={materials.dark} />
     </group>
   );
 }
@@ -480,6 +441,22 @@ export function UnexplainedBugModel({ color, opacity, isWalking: _isWalking, las
   const partsRef = useRef<THREE.Mesh[]>([]);
   const glitchPhaseRef = useRef(0);
   const lastAttackRef = useRef<number | null>(null);
+
+  // Memoized materials - stable opacities per part
+  const materials = useMemo(() => {
+    const opacities = [0.7, 0.8, 0.75, 0.85, 0.6, 0.9]; // Fixed instead of random
+    return {
+      parts: [
+        getSharedMaterial(color, { transparent: true, opacity: opacity * opacities[0], wireframe: true }),
+        getSharedMaterial(0xff00ff, { transparent: true, opacity: opacity * opacities[1] }),
+        getSharedMaterial(0x00ffff, { transparent: true, opacity: opacity * opacities[2], wireframe: true }),
+        getSharedMaterial(color, { transparent: true, opacity: opacity * opacities[3] }),
+        getSharedMaterial(0xffff00, { transparent: true, opacity: opacity * opacities[4], wireframe: true }),
+        getSharedMaterial(0xff00ff, { transparent: true, opacity: opacity * opacities[5] }),
+      ],
+      question: getSharedMaterial(0xffffff, { transparent: true, opacity }),
+    };
+  }, [color, opacity]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -537,8 +514,6 @@ export function UnexplainedBugModel({ color, opacity, isWalking: _isWalking, las
     UNEXPLAINED_GEOMETRIES.tetra,
   ];
 
-  const colors = [color, 0xff00ff, 0x00ffff, color, 0xffff00, 0xff00ff];
-
   return (
     <group ref={groupRef}>
       {geometries.map((geo, i) => (
@@ -547,24 +522,16 @@ export function UnexplainedBugModel({ color, opacity, isWalking: _isWalking, las
           ref={(el) => { if (el) partsRef.current[i] = el; }}
           position={[((i % 3) - 1) * 8, Math.floor(i / 3) * 8 + 10, 0]}
           geometry={geo}
-        >
-          <meshBasicMaterial
-            color={colors[i]}
-            transparent
-            opacity={opacity * (0.6 + Math.random() * 0.4)}
-            wireframe={i % 2 === 0}
-          />
-        </mesh>
+          material={materials.parts[i]}
+        />
       ))}
 
       {/* Central "?" symbol */}
-      <mesh position={[0, 15, 5]}>
+      <mesh position={[0, 15, 5]} material={materials.question}>
         <boxGeometry args={[3, 8, 1]} />
-        <meshBasicMaterial color={0xffffff} transparent opacity={opacity} />
       </mesh>
-      <mesh position={[0, 5, 5]}>
+      <mesh position={[0, 5, 5]} material={materials.question}>
         <boxGeometry args={[3, 3, 1]} />
-        <meshBasicMaterial color={0xffffff} transparent opacity={opacity} />
       </mesh>
     </group>
   );

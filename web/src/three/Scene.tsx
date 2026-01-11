@@ -11,6 +11,7 @@ import { CombatEffects } from './CombatEffects';
 import { RadialMenuOverlay } from '../components/RadialMenuOverlay';
 import { useGameStore } from '../stores/gameStore';
 import { MAP_WIDTH, MAP_HEIGHT } from './constants';
+import { AnimationManagerProvider } from './AnimationManager';
 
 // Smooth lerp for menu position
 const menuPosRef = { x: 0, y: 0, initialized: false };
@@ -164,7 +165,9 @@ export function GameScene() {
         flat
         legacy
       >
-        <SceneContent />
+        <AnimationManagerProvider>
+          <SceneContent />
+        </AnimationManagerProvider>
       </Canvas>
       {/* Radial menu overlay - rendered outside Canvas */}
       <RadialMenuOverlay />
