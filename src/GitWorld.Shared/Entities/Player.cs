@@ -5,6 +5,7 @@ public class Player
     public Guid Id { get; set; }
     public long GitHubId { get; set; }
     public string GitHubLogin { get; set; } = string.Empty;
+    public string? ClerkId { get; set; }
 
     // Stats calculados do GitHub
     public int Hp { get; set; }
@@ -41,6 +42,10 @@ public class Player
     public string? CustomScript { get; set; }          // User's custom JavaScript code
     public bool ScriptEnabled { get; set; } = false;   // Whether to use custom script
     public DateTime? ScriptUpdatedAt { get; set; }     // Last script update time
+
+    // S2 Stream Token
+    public string? S2ReadToken { get; set; }
+    public DateTime? S2ReadTokenExpiresAt { get; set; }
 
     // Metadata
     public DateTime LastGitHubSync { get; set; }

@@ -542,15 +542,8 @@ public class S2Publisher : IS2Publisher
                 }
             }
 
-            // If no entities changed and no events, skip broadcast
-            var hasEvents = (combatEvents?.Any() ?? false) ||
-                           (rewardEvents?.Any() ?? false) ||
-                           (levelUpEvents?.Any() ?? false);
-
-            if (entityPayloads.Count == 0 && !hasEvents && !forceFullState)
-            {
-                return true; // Nothing to send
-            }
+            // Always send at least a heartbeat (tick/timestamp) for individual streams
+            // This prevents frontend from timing out when there are no changes
 
             var payload = new GameStatePayload
             {

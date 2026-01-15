@@ -3,12 +3,13 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GitWorld.Api.Stream;
+using GitWorld.Shared.Entities;
 
 namespace GitWorld.Api.Services;
 
 public interface IS2TokenService
 {
-    Task<string?> CreatePlayerReadTokenAsync(Guid playerId, TimeSpan? expiration = null);
+    Task<string?> GetOrCreatePlayerReadTokenAsync(Player player, TimeSpan? expiration = null);
 }
 
 public class S2TokenService : IS2TokenService
@@ -36,8 +37,17 @@ public class S2TokenService : IS2TokenService
         }
     }
 
-    public async Task<string?> CreatePlayerReadTokenAsync(Guid playerId, TimeSpan? expiration = null)
+    public async Task<string?> GetOrCreatePlayerReadTokenAsync(Player player, TimeSpan? expiration = null)
     {
+        // Check if player has a valid cached token (with 1 hour buffer)
+        if (!string.IsNullOrEmpty(player.S2ReadToken) &&
+            player.S2ReadTokenExpiresAt.HasValue &&
+            player.S2ReadTokenExpiresAt.Value > DateTime.UtcNow.AddHours(1))
+        {
+            _logger.LogDebug("Using cached S2 read token for player {PlayerId}", player.Id);
+            return player.S2ReadToken;
+        }
+
         if (string.IsNullOrWhiteSpace(_config.Token))
         {
             _logger.LogWarning("S2 token not configured, cannot create player read token");
@@ -46,14 +56,19 @@ public class S2TokenService : IS2TokenService
 
         try
         {
-            var streamName = $"player-{playerId}";
+            var streamName = $"player-{player.Id}";
             var expiresAt = DateTime.UtcNow.Add(expiration ?? TimeSpan.FromHours(24));
+            var tokenId = $"player-read-{player.Id}-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
 
             var request = new CreateTokenRequest
             {
-                Basins = new BasinScope { Exact = _config.Basin },
-                Streams = new StreamScope { Exact = streamName },
-                Operations = new[] { "read" },
+                Id = tokenId,
+                Scope = new TokenScope
+                {
+                    Basins = new BasinScope { Exact = _config.Basin },
+                    Streams = new StreamScope { Exact = streamName },
+                    Ops = new[] { "read" }
+                },
                 ExpiresAt = expiresAt.ToString("O")
             };
 
@@ -77,20 +92,24 @@ public class S2TokenService : IS2TokenService
             var responseBody = await response.Content.ReadAsStringAsync();
             var tokenResponse = JsonSerializer.Deserialize<CreateTokenResponse>(responseBody, _jsonOptions);
 
-            if (string.IsNullOrEmpty(tokenResponse?.Token))
+            if (string.IsNullOrEmpty(tokenResponse?.AccessToken))
             {
                 _logger.LogWarning("S2 returned empty token");
                 return null;
             }
 
-            _logger.LogDebug("Created S2 read token for player {PlayerId}, expires {ExpiresAt}",
-                playerId, expiresAt);
+            // Cache token in player entity (caller must save to DB)
+            player.S2ReadToken = tokenResponse.AccessToken;
+            player.S2ReadTokenExpiresAt = expiresAt;
 
-            return tokenResponse.Token;
+            _logger.LogDebug("Created S2 read token for player {PlayerId}, expires {ExpiresAt}",
+                player.Id, expiresAt);
+
+            return tokenResponse.AccessToken;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating S2 token for player {PlayerId}", playerId);
+            _logger.LogError(ex, "Error creating S2 token for player {PlayerId}", player.Id);
             return null;
         }
     }
@@ -98,10 +117,17 @@ public class S2TokenService : IS2TokenService
 
 internal class CreateTokenRequest
 {
+    public string? Id { get; set; }
+    public TokenScope? Scope { get; set; }
+    public bool? AutoPrefixStreams { get; set; }
+    public string? ExpiresAt { get; set; }
+}
+
+internal class TokenScope
+{
     public BasinScope? Basins { get; set; }
     public StreamScope? Streams { get; set; }
-    public string[]? Operations { get; set; }
-    public string? ExpiresAt { get; set; }
+    public string[]? Ops { get; set; }
 }
 
 internal class BasinScope
@@ -118,6 +144,6 @@ internal class StreamScope
 
 internal class CreateTokenResponse
 {
-    public string? Token { get; set; }
+    public string? AccessToken { get; set; }
     public string? Id { get; set; }
 }

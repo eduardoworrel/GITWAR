@@ -31,6 +31,9 @@ public class AppDbContext : DbContext
 
             entity.Property(e => e.GitHubLogin).HasColumnName("github_login").HasMaxLength(255).IsRequired();
 
+            entity.Property(e => e.ClerkId).HasColumnName("clerk_id").HasMaxLength(255);
+            entity.HasIndex(e => e.ClerkId).IsUnique();
+
             // Stats
             entity.Property(e => e.Hp).HasColumnName("hp");
             entity.Property(e => e.HpMax).HasColumnName("hp_max");
@@ -61,6 +64,15 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Level).HasColumnName("level").HasDefaultValue(1);
             entity.Property(e => e.Exp).HasColumnName("exp").HasDefaultValue(0);
             entity.Property(e => e.Gold).HasColumnName("gold").HasDefaultValue(0);
+
+            // Scripting (PascalCase column names from previous migrations)
+            entity.Property(e => e.CustomScript).HasColumnName("CustomScript");
+            entity.Property(e => e.ScriptEnabled).HasColumnName("ScriptEnabled").HasDefaultValue(false);
+            entity.Property(e => e.ScriptUpdatedAt).HasColumnName("ScriptUpdatedAt");
+
+            // S2 Stream Token (PascalCase column names from previous migrations)
+            entity.Property(e => e.S2ReadToken).HasColumnName("S2ReadToken");
+            entity.Property(e => e.S2ReadTokenExpiresAt).HasColumnName("S2ReadTokenExpiresAt");
 
             // Metadata
             entity.Property(e => e.LastGitHubSync).HasColumnName("last_github_sync");

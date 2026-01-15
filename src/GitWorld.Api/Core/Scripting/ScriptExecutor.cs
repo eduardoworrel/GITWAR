@@ -17,7 +17,7 @@ public class ScriptExecutor
     private readonly ConcurrentDictionary<Guid, CachedScript> _scriptCache = new();
 
     // Execution limits
-    private const int MaxExecutionTimeMs = 5;          // Max 5ms per tick
+    private const int MaxExecutionTimeMs = 10;         // Max 10ms per tick (increased for CancellationToken overhead)
     private const int MaxStatements = 1000;            // Max statements per execution
     private const int MaxMemoryMb = 2;                 // Max 2MB memory
     private const int MaxRecursionDepth = 50;          // Max recursion depth
@@ -25,6 +25,9 @@ public class ScriptExecutor
     // Error tracking for auto-disable
     private readonly ConcurrentDictionary<Guid, int> _errorCounts = new();
     private const int MaxErrorsBeforeDisable = 10;
+
+    // Pool of CancellationTokenSources to reduce allocations
+    private readonly ConcurrentQueue<CancellationTokenSource> _ctsPool = new();
 
     public ScriptExecutor(ILogger<ScriptExecutor> logger)
     {
@@ -34,6 +37,7 @@ public class ScriptExecutor
     /// <summary>
     /// Execute a player's script and return the resulting action.
     /// Returns null if script fails or is disabled.
+    /// Uses CancellationToken for robust infinite loop protection.
     /// </summary>
     public ScriptAction? Execute(Guid playerId, string scriptCode, ScriptContext context)
     {
@@ -43,33 +47,26 @@ public class ScriptExecutor
             return null; // Script disabled due to errors
         }
 
+        // Get or reuse a CancellationTokenSource from pool
+        if (!_ctsPool.TryDequeue(out var cts))
+        {
+            cts = new CancellationTokenSource();
+        }
+
         try
         {
+            cts.CancelAfter(MaxExecutionTimeMs);
             var stopwatch = Stopwatch.StartNew();
 
-            // Get or create cached engine
-            var cached = _scriptCache.GetOrAdd(playerId, _ => new CachedScript());
-
-            // Check if script changed
-            if (cached.ScriptHash != scriptCode.GetHashCode())
-            {
-                cached.Engine = CreateSandboxedEngine();
-                cached.ScriptHash = scriptCode.GetHashCode();
-                cached.IsCompiled = false;
-            }
-
-            var engine = cached.Engine!;
+            // Create fresh engine with CancellationToken for this execution
+            // This ensures robust cancellation even for tight loops
+            var engine = CreateSandboxedEngineWithCancellation(cts.Token);
 
             // Expose context to JavaScript
             ExposeContextToEngine(engine, context);
 
-            // Execute the script
-            if (!cached.IsCompiled)
-            {
-                // First time: parse and execute the full script (defines onTick function)
-                engine.Execute(scriptCode);
-                cached.IsCompiled = true;
-            }
+            // Parse and execute the script (defines onTick function)
+            engine.Execute(scriptCode);
 
             // Call onTick() if it exists
             var onTick = engine.GetValue("onTick");
@@ -92,6 +89,12 @@ public class ScriptExecutor
 
             return context.Action;
         }
+        catch (OperationCanceledException)
+        {
+            IncrementErrorCount(playerId);
+            _logger.LogWarning("Script for player {PlayerId} cancelled - possible infinite loop", playerId);
+            return null;
+        }
         catch (ExecutionCanceledException)
         {
             IncrementErrorCount(playerId);
@@ -103,6 +106,18 @@ public class ScriptExecutor
             IncrementErrorCount(playerId);
             _logger.LogWarning(ex, "Script error for player {PlayerId}: {Message}", playerId, ex.Message);
             return null;
+        }
+        finally
+        {
+            // Reset and return CTS to pool for reuse
+            if (cts.TryReset())
+            {
+                _ctsPool.Enqueue(cts);
+            }
+            else
+            {
+                cts.Dispose();
+            }
         }
     }
 
@@ -206,6 +221,28 @@ public class ScriptExecutor
         return new Engine(options =>
         {
             // Resource limits
+            options.TimeoutInterval(TimeSpan.FromMilliseconds(MaxExecutionTimeMs));
+            options.MaxStatements(MaxStatements);
+            options.LimitRecursion(MaxRecursionDepth);
+            options.LimitMemory(MaxMemoryMb * 1024 * 1024);
+
+            // Disable dangerous features
+            options.Strict();
+
+            // Allow CLR interop for our exposed types only
+            options.AllowClr(typeof(ScriptEntity).Assembly);
+        });
+    }
+
+    private Engine CreateSandboxedEngineWithCancellation(CancellationToken cancellationToken)
+    {
+        return new Engine(options =>
+        {
+            // CancellationToken provides robust protection against infinite loops
+            // The engine checks this token at regular intervals during execution
+            options.CancellationToken(cancellationToken);
+
+            // Additional resource limits as fallback
             options.TimeoutInterval(TimeSpan.FromMilliseconds(MaxExecutionTimeMs));
             options.MaxStatements(MaxStatements);
             options.LimitRecursion(MaxRecursionDepth);

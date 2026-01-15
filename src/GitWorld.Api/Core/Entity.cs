@@ -271,11 +271,15 @@ public class Entity
 
     public bool IsAlive => State != EntityState.Dead;
 
-    public void SetTarget(float x, float y)
+    public void SetTarget(float x, float y, bool preserveAttackState = false)
     {
         TargetX = x;
         TargetY = y;
-        State = EntityState.Moving;
+        // Don't override Attacking state when chasing a target
+        if (!preserveAttackState || State != EntityState.Attacking)
+        {
+            State = EntityState.Moving;
+        }
     }
 
     public void ClearTarget()

@@ -3,6 +3,7 @@ using System;
 using GitWorld.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GitWorld.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260115002323_AddClerkId")]
+    partial class AddClerkId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -165,6 +168,11 @@ namespace GitWorld.Api.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("armadura");
 
+                    b.Property<string>("ClerkId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("clerk_id");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -289,6 +297,9 @@ namespace GitWorld.Api.Data.Migrations
                         .HasColumnName("y");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ClerkId")
+                        .IsUnique();
 
                     b.HasIndex("GitHubId")
                         .IsUnique();

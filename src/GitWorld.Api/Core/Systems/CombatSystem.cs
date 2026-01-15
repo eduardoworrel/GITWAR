@@ -102,8 +102,8 @@ public class CombatSystem
         var distance = entity.DistanceTo(target);
         if (distance > GameConstants.RangeAtaque)
         {
-            // Move towards target
-            entity.SetTarget(target.X, target.Y);
+            // Move towards target while maintaining attack state
+            entity.SetTarget(target.X, target.Y, preserveAttackState: true);
             return;
         }
 

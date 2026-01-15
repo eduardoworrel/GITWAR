@@ -261,9 +261,11 @@ gameLoop.OnTick += (tick, world) =>
         if (playerEntity == null) continue;
 
         // Determine activity level based on entity state
+        // Dead state also gets high frequency so client sees death/respawn transitions
         var newActivityLevel = playerEntity.State switch
         {
             GitWorld.Api.Core.EntityState.Attacking => PlayerActivityLevel.Combat,
+            GitWorld.Api.Core.EntityState.Dead => PlayerActivityLevel.Combat, // High frequency for death/respawn
             _ when playerEntity.TargetEntityId.HasValue => PlayerActivityLevel.Combat,
             GitWorld.Api.Core.EntityState.Moving => PlayerActivityLevel.Moving,
             _ => PlayerActivityLevel.Idle
@@ -314,6 +316,13 @@ gameLoop.OnTick += (tick, world) =>
         // Use delta updates for individual player streams
         // Full state every 100 ticks (~5 seconds) for sync, delta updates otherwise
         var forceFullState = tick % 100 == 0;
+
+        // DEBUG: Log entity count every 100 ticks
+        if (tick % 100 == 0)
+        {
+            Console.WriteLine($"[Stream] Player {session.GithubLogin} at ({playerEntity.X:F0},{playerEntity.Y:F0}) -> stream={streamName}, nearby={nearbyEntities.Count}, total={world.Entities.Count}");
+        }
+
         _ = Task.Run(() => s2Publisher.BroadcastDeltaGameStateAsync(tick, session.PlayerId, nearbyEntities, forceFullState, playerCombatEvents, activeEvent, playerRewardEvents, playerLevelUpEvents, streamName));
     }
 
@@ -756,7 +765,38 @@ app.MapPost("/game/join", async (HttpContext context, World world, IStatsService
                     existingEntity.EquippedItems = existingEquippedItems;
 
                     // Generate read token for player's stream
-                    var existingReadToken = await s2TokenService.CreatePlayerReadTokenAsync(existingSession.PlayerId);
+                    var existingPlayer = await db.Players.FindAsync(existingSession.PlayerId);
+                    var existingReadToken = existingPlayer != null
+                        ? await s2TokenService.GetOrCreatePlayerReadTokenAsync(existingPlayer)
+                        : null;
+                    if (existingPlayer != null) await db.SaveChangesAsync();
+
+                    // Get initial state of all nearby entities (prevents "Unknown" names on reconnect)
+                    var existingInitialState = world.GetEntitiesInRange(existingEntity.X, existingEntity.Y, GameConstants.RaioBroadcast)
+                        .Select(e => new EntityInfo(
+                            e.Id,
+                            e.GithubLogin,
+                            e.X,
+                            e.Y,
+                            e.CurrentHp,
+                            e.MaxHp,
+                            e.State.ToString().ToLowerInvariant(),
+                            e.Reino,
+                            e.Type.ToString().ToLowerInvariant(),
+                            e.Level,
+                            e.Exp,
+                            e.Gold,
+                            e.Dano,
+                            e.Critico,
+                            e.Evasao,
+                            e.Armadura,
+                            e.VelocidadeAtaque,
+                            e.VelocidadeMovimento,
+                            e.Elo,
+                            e.Vitorias,
+                            e.Derrotas
+                        ))
+                        .ToList();
 
                     return Results.Ok(new JoinResponse(
                         existingSession.PlayerId,
@@ -765,7 +805,8 @@ app.MapPost("/game/join", async (HttpContext context, World world, IStatsService
                         existingEntity.Reino,
                         existingEntity.X,
                         existingEntity.Y,
-                        new StreamInfo(existingSession.StreamName, config.Basin, config.BaseUrl, existingReadToken)
+                        new StreamInfo(existingSession.StreamName, config.Basin, config.BaseUrl, existingReadToken),
+                        existingInitialState
                     ));
                 }
             }
@@ -827,8 +868,9 @@ app.MapPost("/game/join", async (HttpContext context, World world, IStatsService
         var displayUsername = githubAccount?.Username ?? loginUsername;
 
         // Find or create player in database
-        // Check by username first, then by provider UserId to avoid duplicate key constraint
+        // Check by ClerkId first, then by username, then by provider UserId
         var player = await db.Players.FirstOrDefaultAsync(p =>
+            p.ClerkId == clerkUser.ClerkId ||
             p.GitHubLogin.ToLower() == loginUsername.ToLower() ||
             p.GitHubId == profile.UserId);
         if (player == null)
@@ -836,6 +878,7 @@ app.MapPost("/game/join", async (HttpContext context, World world, IStatsService
             player = new Player
             {
                 Id = Guid.NewGuid(),
+                ClerkId = clerkUser.ClerkId,
                 GitHubId = profile.UserId,
                 GitHubLogin = loginUsername,
                 Hp = playerStats.Hp,
@@ -856,7 +899,11 @@ app.MapPost("/game/join", async (HttpContext context, World world, IStatsService
         }
         else
         {
-            // Update stats from provider
+            // Update stats from provider and ensure ClerkId is set
+            if (string.IsNullOrEmpty(player.ClerkId))
+            {
+                player.ClerkId = clerkUser.ClerkId;
+            }
             player.Hp = playerStats.Hp;
             player.HpMax = playerStats.Hp;
             player.Dano = playerStats.Dano;
@@ -940,7 +987,35 @@ app.MapPost("/game/join", async (HttpContext context, World world, IStatsService
         _ = Task.Run(async () => await s2Publisher.EnsureStreamExistsAsync(streamName));
 
         // Generate read token for player's stream
-        var readToken = await s2TokenService.CreatePlayerReadTokenAsync(player.Id);
+        var readToken = await s2TokenService.GetOrCreatePlayerReadTokenAsync(player);
+        await db.SaveChangesAsync();
+
+        // Get initial state of all nearby entities (prevents "Unknown" names on join)
+        var initialState = world.GetEntitiesInRange(entity.X, entity.Y, GameConstants.RaioBroadcast)
+            .Select(e => new EntityInfo(
+                e.Id,
+                e.GithubLogin,
+                e.X,
+                e.Y,
+                e.CurrentHp,
+                e.MaxHp,
+                e.State.ToString().ToLowerInvariant(),
+                e.Reino,
+                e.Type.ToString().ToLowerInvariant(),
+                e.Level,
+                e.Exp,
+                e.Gold,
+                e.Dano,
+                e.Critico,
+                e.Evasao,
+                e.Armadura,
+                e.VelocidadeAtaque,
+                e.VelocidadeMovimento,
+                e.Elo,
+                e.Vitorias,
+                e.Derrotas
+            ))
+            .ToList();
 
         return Results.Ok(new JoinResponse(
             player.Id,
@@ -949,7 +1024,8 @@ app.MapPost("/game/join", async (HttpContext context, World world, IStatsService
             playerStats.Reino,
             entity.X,
             entity.Y,
-            new StreamInfo(streamName, config.Basin, config.BaseUrl, readToken)
+            new StreamInfo(streamName, config.Basin, config.BaseUrl, readToken),
+            initialState
         ));
     }
     catch (Exception ex)
@@ -974,7 +1050,8 @@ app.MapGet("/game/player/{id}", async (Guid id, World world, AppDbContext db, S2
         return Results.NotFound(new { error = "Entity not found", playerId = id });
 
     // Generate read token for player's stream
-    var readToken = await s2TokenService.CreatePlayerReadTokenAsync(player.Id);
+    var readToken = await s2TokenService.GetOrCreatePlayerReadTokenAsync(player);
+    await db.SaveChangesAsync();
 
     return Results.Ok(new JoinResponse(
         player.Id,
@@ -1200,7 +1277,7 @@ app.MapGet("/player/inventory", async (HttpContext context, IItemService itemSer
     if (clerkUser == null || string.IsNullOrEmpty(clerkUser.Username))
         return Results.Unauthorized();
 
-    var player = await db.Players.FirstOrDefaultAsync(p => p.GitHubLogin.ToLower() == clerkUser.Username.ToLower());
+    var player = await db.Players.FirstOrDefaultAsync(p => p.ClerkId == clerkUser.ClerkId);
     if (player == null)
         return Results.NotFound(new { error = "Player not found" });
 
@@ -1244,7 +1321,7 @@ app.MapPost("/player/items/acquire", async (HttpContext context, IItemService it
     if (clerkUser == null || string.IsNullOrEmpty(clerkUser.Username))
         return Results.Unauthorized();
 
-    var player = await db.Players.FirstOrDefaultAsync(p => p.GitHubLogin.ToLower() == clerkUser.Username.ToLower());
+    var player = await db.Players.FirstOrDefaultAsync(p => p.ClerkId == clerkUser.ClerkId);
     if (player == null)
         return Results.NotFound(new { error = "Player not found" });
 
@@ -1301,7 +1378,7 @@ app.MapPost("/player/items/{playerItemId}/equip", async (HttpContext context, II
     if (clerkUser == null || string.IsNullOrEmpty(clerkUser.Username))
         return Results.Unauthorized();
 
-    var player = await db.Players.FirstOrDefaultAsync(p => p.GitHubLogin.ToLower() == clerkUser.Username.ToLower());
+    var player = await db.Players.FirstOrDefaultAsync(p => p.ClerkId == clerkUser.ClerkId);
     if (player == null)
         return Results.NotFound(new { error = "Player not found" });
 
@@ -1352,7 +1429,7 @@ app.MapPost("/player/items/{playerItemId}/unequip", async (HttpContext context, 
     if (clerkUser == null || string.IsNullOrEmpty(clerkUser.Username))
         return Results.Unauthorized();
 
-    var player = await db.Players.FirstOrDefaultAsync(p => p.GitHubLogin.ToLower() == clerkUser.Username.ToLower());
+    var player = await db.Players.FirstOrDefaultAsync(p => p.ClerkId == clerkUser.ClerkId);
     if (player == null)
         return Results.NotFound(new { error = "Player not found" });
 
@@ -1403,7 +1480,7 @@ app.MapGet("/player/bonuses", async (HttpContext context, IItemService itemServi
     if (clerkUser == null || string.IsNullOrEmpty(clerkUser.Username))
         return Results.Unauthorized();
 
-    var player = await db.Players.FirstOrDefaultAsync(p => p.GitHubLogin.ToLower() == clerkUser.Username.ToLower());
+    var player = await db.Players.FirstOrDefaultAsync(p => p.ClerkId == clerkUser.ClerkId);
     if (player == null)
         return Results.NotFound(new { error = "Player not found" });
 
@@ -1638,7 +1715,7 @@ app.MapGet("/player/script", async (HttpContext context, AppDbContext db, IClerk
     if (clerkUser == null || string.IsNullOrEmpty(clerkUser.Username))
         return Results.Unauthorized();
 
-    var player = await db.Players.FirstOrDefaultAsync(p => p.GitHubLogin.ToLower() == clerkUser.Username.ToLower());
+    var player = await db.Players.FirstOrDefaultAsync(p => p.ClerkId == clerkUser.ClerkId);
     if (player == null) return Results.NotFound(new { error = "Player not found" });
 
     return Results.Ok(new
@@ -1662,7 +1739,7 @@ app.MapPost("/player/script", async (HttpContext context, AppDbContext db, ICler
     if (clerkUser == null || string.IsNullOrEmpty(clerkUser.Username))
         return Results.Unauthorized();
 
-    var player = await db.Players.FirstOrDefaultAsync(p => p.GitHubLogin.ToLower() == clerkUser.Username.ToLower());
+    var player = await db.Players.FirstOrDefaultAsync(p => p.ClerkId == clerkUser.ClerkId);
     if (player == null) return Results.NotFound(new { error = "Player not found" });
 
     // Validate script syntax
@@ -1713,7 +1790,7 @@ app.MapPost("/player/script/toggle", async (HttpContext context, AppDbContext db
     if (clerkUser == null || string.IsNullOrEmpty(clerkUser.Username))
         return Results.Unauthorized();
 
-    var player = await db.Players.FirstOrDefaultAsync(p => p.GitHubLogin.ToLower() == clerkUser.Username.ToLower());
+    var player = await db.Players.FirstOrDefaultAsync(p => p.ClerkId == clerkUser.ClerkId);
     if (player == null) return Results.NotFound(new { error = "Player not found" });
 
     // If enabling, validate that script is valid first
@@ -1758,7 +1835,7 @@ app.MapGet("/player/script/status", async (HttpContext context, AppDbContext db,
     if (clerkUser == null || string.IsNullOrEmpty(clerkUser.Username))
         return Results.Unauthorized();
 
-    var player = await db.Players.FirstOrDefaultAsync(p => p.GitHubLogin.ToLower() == clerkUser.Username.ToLower());
+    var player = await db.Players.FirstOrDefaultAsync(p => p.ClerkId == clerkUser.ClerkId);
     if (player == null) return Results.NotFound(new { error = "Player not found" });
 
     var errorCount = scriptExecutor.GetErrorCount(player.Id);
@@ -1786,7 +1863,7 @@ app.MapPost("/player/script/reset", async (HttpContext context, AppDbContext db,
     if (clerkUser == null || string.IsNullOrEmpty(clerkUser.Username))
         return Results.Unauthorized();
 
-    var player = await db.Players.FirstOrDefaultAsync(p => p.GitHubLogin.ToLower() == clerkUser.Username.ToLower());
+    var player = await db.Players.FirstOrDefaultAsync(p => p.ClerkId == clerkUser.ClerkId);
     if (player == null) return Results.NotFound(new { error = "Player not found" });
 
     player.CustomScript = null;

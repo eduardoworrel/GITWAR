@@ -15,7 +15,7 @@ public static class GameConstants
     public const float SpawnX = 1800f;
     public const float SpawnY = 2300f;
 
-    public const float RaioBroadcast = 500f; // raio de visao do cliente
+    public const float RaioBroadcast = 1000f; // raio de broadcast do backend (frontend usa LOD para distantes)
 
     // Collision zones for desk objects (X, Y, Width, Height)
     // These objects block player movement
