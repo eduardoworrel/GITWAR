@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GitWorld.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260115002323_AddClerkId")]
-    partial class AddClerkId
+    [Migration("20260115182052_AddClerkIdAndScriptDefaults")]
+    partial class AddClerkIdAndScriptDefaults
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -184,7 +184,8 @@ namespace GitWorld.Api.Data.Migrations
                         .HasColumnName("critico");
 
                     b.Property<string>("CustomScript")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("CustomScript");
 
                     b.Property<int>("Dano")
                         .HasColumnType("integer")
@@ -253,16 +254,22 @@ namespace GitWorld.Api.Data.Migrations
                         .HasColumnName("reino");
 
                     b.Property<string>("S2ReadToken")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("S2ReadToken");
 
                     b.Property<DateTime?>("S2ReadTokenExpiresAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("S2ReadTokenExpiresAt");
 
                     b.Property<bool>("ScriptEnabled")
-                        .HasColumnType("boolean");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("ScriptEnabled");
 
                     b.Property<DateTime?>("ScriptUpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ScriptUpdatedAt");
 
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()

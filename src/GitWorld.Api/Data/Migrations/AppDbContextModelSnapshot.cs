@@ -165,6 +165,11 @@ namespace GitWorld.Api.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("armadura");
 
+                    b.Property<string>("ClerkId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("clerk_id");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -176,7 +181,8 @@ namespace GitWorld.Api.Data.Migrations
                         .HasColumnName("critico");
 
                     b.Property<string>("CustomScript")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("CustomScript");
 
                     b.Property<int>("Dano")
                         .HasColumnType("integer")
@@ -245,16 +251,22 @@ namespace GitWorld.Api.Data.Migrations
                         .HasColumnName("reino");
 
                     b.Property<string>("S2ReadToken")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("S2ReadToken");
 
                     b.Property<DateTime?>("S2ReadTokenExpiresAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("S2ReadTokenExpiresAt");
 
                     b.Property<bool>("ScriptEnabled")
-                        .HasColumnType("boolean");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("ScriptEnabled");
 
                     b.Property<DateTime?>("ScriptUpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ScriptUpdatedAt");
 
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
@@ -289,6 +301,9 @@ namespace GitWorld.Api.Data.Migrations
                         .HasColumnName("y");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ClerkId")
+                        .IsUnique();
 
                     b.HasIndex("GitHubId")
                         .IsUnique();

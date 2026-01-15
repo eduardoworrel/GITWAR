@@ -16,12 +16,28 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: gitworld-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    command: redis-server --appendonly yes
+
   api:
     build: .
     container_name: gitworld-api
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=${POSTGRES_DB:-gitworld};Username=${POSTGRES_USER:-gitworld};Password=${POSTGRES_PASSWORD}
+      - Redis__Enabled=true
+      - Redis__ConnectionString=redis:6379
       - S2__Enabled=true
       - S2__Token=${S2_TOKEN}
       - S2__Basin=${S2_BASIN:-gitworld}
@@ -31,10 +47,13 @@ services:
       - Clerk__SecretKey=${CLERK_SECRET_KEY}
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
     ports:
-      - "5138:5138"
+      - "5138:8080"
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
 volumes:
   postgres_data:
+  redis_data:

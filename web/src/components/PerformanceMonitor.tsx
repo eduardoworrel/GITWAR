@@ -73,7 +73,6 @@ export function PerformanceStats({ onUpdate }: { onUpdate: (stats: Stats) => voi
 
 // UI Overlay component (outside Canvas)
 export function PerformanceMonitorUI() {
-  const [visible, setVisible] = useState(false);
   const [stats, setStats] = useState<Stats>({
     fps: 0,
     frameTime: 0,
@@ -98,101 +97,30 @@ export function PerformanceMonitorUI() {
     return '#ef4444';
   };
 
-  const logSnapshot = () => {
-    console.log('📊 Performance Snapshot:', {
-      ...stats,
-      timestamp: new Date().toISOString(),
-    });
-  };
-
   return (
-    <>
-      {/* Toggle button - always visible */}
-      <button
-        onClick={() => setVisible((v) => !v)}
-        style={{
-          position: 'fixed',
-          top: 10,
-          left: 10,
-          background: visible ? '#7c3aed' : 'rgba(0, 0, 0, 0.7)',
-          color: '#fff',
-          border: 'none',
-          borderRadius: 8,
-          padding: '8px 12px',
-          fontFamily: 'monospace',
-          fontSize: 12,
-          cursor: 'pointer',
-          zIndex: 99999,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-        }}
-      >
-        <span style={{ color: getFpsColor(stats.fps), fontWeight: 'bold' }}>
-          {stats.fps} FPS
-        </span>
-        <span style={{ opacity: 0.7 }}>|</span>
-        <span>{stats.playerCount} players</span>
-      </button>
-
-      {/* Expanded stats panel */}
-      {visible && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 50,
-            left: 10,
-            background: 'rgba(0, 0, 0, 0.9)',
-            color: '#fff',
-            padding: '12px 16px',
-            borderRadius: 8,
-            fontFamily: 'monospace',
-            fontSize: 13,
-            zIndex: 99998,
-            minWidth: 200,
-            backdropFilter: 'blur(4px)',
-            border: '1px solid rgba(255,255,255,0.1)',
-          }}
-        >
-          <div style={{ fontWeight: 'bold', marginBottom: 8, color: '#a78bfa' }}>
-            Performance Details
-          </div>
-
-          <div style={{ color: getFpsColor(stats.fps), fontSize: 24, fontWeight: 'bold' }}>
-            {stats.fps} FPS
-          </div>
-
-          <div style={{ marginTop: 8, color: '#9ca3af', fontSize: 12 }}>
-            <div>Frame Time: {stats.frameTime}ms</div>
-            <div>Min: {stats.minFps === Infinity ? '-' : stats.minFps} | Avg: {stats.avgFps} | Max: {stats.maxFps}</div>
-          </div>
-
-          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #333' }}>
-            <div>Players: {stats.playerCount}</div>
-            <div>Draw Calls: {stats.drawCalls}</div>
-            <div>Triangles: {(stats.triangles / 1000).toFixed(1)}K</div>
-            {stats.memory && <div>Memory: {stats.memory}MB</div>}
-          </div>
-
-          <button
-            onClick={logSnapshot}
-            style={{
-              marginTop: 10,
-              background: '#374151',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 4,
-              padding: '6px 12px',
-              cursor: 'pointer',
-              fontSize: 11,
-              width: '100%',
-            }}
-          >
-            Log to Console
-          </button>
-        </div>
-      )}
-    </>
+    <div
+      style={{
+        position: 'fixed',
+        top: 10,
+        right: 10,
+        background: 'rgba(0, 0, 0, 0.6)',
+        color: '#fff',
+        borderRadius: 6,
+        padding: '6px 10px',
+        fontFamily: 'monospace',
+        fontSize: 11,
+        zIndex: 99999,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+      }}
+    >
+      <span style={{ color: getFpsColor(stats.fps), fontWeight: 'bold' }}>
+        {stats.fps} FPS
+      </span>
+      <span style={{ opacity: 0.5 }}>|</span>
+      <span>{stats.playerCount} entities</span>
+    </div>
   );
 }
 

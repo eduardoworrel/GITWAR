@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useAuth } from '@clerk/clerk-react';
+import { useAuth, useClerk } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../stores/gameStore';
 import { PlayerModal } from './PlayerModal';
@@ -59,6 +59,14 @@ const CodeIcon = () => (
   </svg>
 );
 
+const LogoutIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+    <polyline points="16 17 21 12 16 7"/>
+    <line x1="21" y1="12" x2="9" y2="12"/>
+  </svg>
+);
+
 interface DockItemProps {
   icon: React.ReactNode;
   label: string;
@@ -104,6 +112,7 @@ function DockSeparator() {
 
 export function Dock() {
   const { isSignedIn } = useAuth();
+  const { signOut } = useClerk();
   const { t } = useTranslation();
   const [showShop, setShowShop] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -111,8 +120,14 @@ export function Dock() {
   const [showScriptEditor, setShowScriptEditor] = useState(false);
 
   const currentPlayerId = useGameStore((s) => s.currentPlayerId);
+  const setCurrentPlayer = useGameStore((s) => s.setCurrentPlayer);
   const players = useGameStore((s) => s.players);
   const currentPlayer = currentPlayerId ? players.get(currentPlayerId) : null;
+
+  const handleLogout = async () => {
+    setCurrentPlayer(null);
+    await signOut();
+  };
 
   // Don't show dock for spectators (not signed in)
   if (!isSignedIn) {
@@ -170,6 +185,15 @@ export function Dock() {
             icon={<DiscordIcon />}
             label={t('dock.discord')}
             href="https://discord.gg/bG2s53BcGh"
+          />
+
+          <DockSeparator />
+
+          {/* Logout */}
+          <DockItem
+            icon={<LogoutIcon />}
+            label={t('dock.logout', 'Logout')}
+            onClick={handleLogout}
           />
         </div>
       </div>

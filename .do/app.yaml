@@ -24,7 +24,7 @@ services:
     routes:
       - path: /api
       - path: /health
-      - path: /game
+        preserve_path_prefix: true
     envs:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
@@ -49,6 +49,11 @@ services:
         # Configure via DigitalOcean dashboard or doctl
       - key: Clerk__Domain
         value: thankful-sponge-61.clerk.accounts.dev
+      - key: Redis__Enabled
+        value: "true"
+      - key: Redis__ConnectionString
+        type: SECRET
+        # Upstash Redis - configure via DigitalOcean dashboard
 
   - name: web
     image:

@@ -5,11 +5,20 @@
 namespace GitWorld.Api.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class AddClerkId : Migration
+    public partial class AddClerkIdAndScriptDefaults : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AlterColumn<bool>(
+                name: "ScriptEnabled",
+                table: "players",
+                type: "boolean",
+                nullable: false,
+                defaultValue: false,
+                oldClrType: typeof(bool),
+                oldType: "boolean");
+
             migrationBuilder.AddColumn<string>(
                 name: "clerk_id",
                 table: "players",
@@ -34,6 +43,15 @@ namespace GitWorld.Api.Data.Migrations
             migrationBuilder.DropColumn(
                 name: "clerk_id",
                 table: "players");
+
+            migrationBuilder.AlterColumn<bool>(
+                name: "ScriptEnabled",
+                table: "players",
+                type: "boolean",
+                nullable: false,
+                oldClrType: typeof(bool),
+                oldType: "boolean",
+                oldDefaultValue: false);
         }
     }
 }

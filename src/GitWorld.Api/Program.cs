@@ -1,4 +1,5 @@
 using GitWorld.Api.Auth;
+using GitWorld.Api.Caching;
 using GitWorld.Api.Core;
 using GitWorld.Api.Core.Scripting;
 using GitWorld.Api.Core.Systems;
@@ -11,6 +12,8 @@ using GitWorld.Api.Stream;
 using GitWorld.Shared;
 using GitWorld.Shared.Entities;
 using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
+using StreamInfo = GitWorld.Api.Models.StreamInfo;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,6 +47,34 @@ builder.Services.AddHttpClient<IS2TokenService, S2TokenService>(client =>
 
 // Memory Cache (para GitHub)
 builder.Services.AddMemoryCache();
+
+// Redis Cache
+var redisEnabled = builder.Configuration.GetValue<bool>("Redis:Enabled", false);
+var redisConnectionString = builder.Configuration["Redis:ConnectionString"];
+
+if (redisEnabled && !string.IsNullOrEmpty(redisConnectionString))
+{
+    try
+    {
+        var redisOptions = ConfigurationOptions.Parse(redisConnectionString);
+        redisOptions.AbortOnConnectFail = false;
+        var redis = ConnectionMultiplexer.Connect(redisOptions);
+        builder.Services.AddSingleton<IConnectionMultiplexer>(redis);
+        Console.WriteLine("[Redis] Connected to Redis");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Redis] Failed to connect: {ex.Message}. Using memory cache fallback.");
+        builder.Services.AddSingleton<IConnectionMultiplexer?>(sp => null);
+    }
+}
+else
+{
+    Console.WriteLine("[Redis] Disabled or not configured. Using memory cache only.");
+    builder.Services.AddSingleton<IConnectionMultiplexer?>(sp => null);
+}
+
+builder.Services.AddSingleton<ICacheService, RedisCacheService>();
 
 // GitHub Integration Services
 builder.Services.AddHttpClient<IGitHubFetcher, GitHubFetcher>();
@@ -1718,6 +1749,53 @@ app.MapPost("/admin/reset-elo", async (HttpContext ctx, AppDbContext db, World w
     return Results.Ok(new { message = $"Reset ELO for {players.Count} players" });
 }).WithName("ResetAllElo");
 
+// Temporary: Import players (remove after migration)
+app.MapPost("/admin/import-players", async (HttpContext ctx, AppDbContext db) =>
+{
+    var adminKey = "gw-admin-2026-x7k9m";
+    if (ctx.Request.Headers["X-Admin-Key"].FirstOrDefault() != adminKey) return Results.Unauthorized();
+
+    var body = await new StreamReader(ctx.Request.Body).ReadToEndAsync();
+    var data = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(body);
+    var players = data.GetProperty("players");
+    var count = 0;
+
+    foreach (var p in players.EnumerateArray())
+    {
+        var player = new Player
+        {
+            Id = Guid.Parse(p.GetProperty("id").GetString()!),
+            GitHubId = p.GetProperty("gitHubId").GetInt64(),
+            GitHubLogin = p.GetProperty("gitHubLogin").GetString()!,
+            ClerkId = p.TryGetProperty("clerkId", out var c) && c.ValueKind != System.Text.Json.JsonValueKind.Null ? c.GetString() : null,
+            Hp = p.GetProperty("hp").GetInt32(),
+            HpMax = p.GetProperty("hpMax").GetInt32(),
+            Dano = p.GetProperty("dano").GetInt32(),
+            VelocidadeAtaque = p.GetProperty("velocidadeAtaque").GetInt32(),
+            VelocidadeMovimento = p.GetProperty("velocidadeMovimento").GetInt32(),
+            Critico = p.GetProperty("critico").GetInt32(),
+            Evasao = p.GetProperty("evasao").GetInt32(),
+            Armadura = p.GetProperty("armadura").GetInt32(),
+            Reino = p.GetProperty("reino").GetString()!,
+            X = (float)p.GetProperty("x").GetDouble(),
+            Y = (float)p.GetProperty("y").GetDouble(),
+            Elo = p.GetProperty("elo").GetInt32(),
+            Vitorias = p.GetProperty("vitorias").GetInt32(),
+            Derrotas = p.GetProperty("derrotas").GetInt32(),
+            Level = p.GetProperty("level").GetInt32(),
+            Exp = p.GetProperty("exp").GetInt32(),
+            Gold = p.GetProperty("gold").GetInt32(),
+            CustomScript = p.TryGetProperty("customScript", out var cs) && cs.ValueKind != System.Text.Json.JsonValueKind.Null ? cs.GetString() : null,
+            ScriptEnabled = p.TryGetProperty("scriptEnabled", out var se) && se.GetBoolean(),
+            LastGitHubSync = DateTime.UtcNow
+        };
+        db.Players.Add(player);
+        count++;
+    }
+    await db.SaveChangesAsync();
+    return Results.Ok(new { imported = count });
+}).WithName("AdminImportPlayers");
+
 // ============================================================================
 // SCRIPTING ENDPOINTS
 // ============================================================================
@@ -1780,7 +1858,7 @@ app.MapPost("/player/script", async (HttpContext context, AppDbContext db, ICler
         entity.CustomScript = request.Script;
     }
 
-    // Clear cache so new script takes effect
+    // Clear script executor cache so new script takes effect
     scriptExecutor.InvalidateCache(player.Id);
 
     return Results.Ok(new

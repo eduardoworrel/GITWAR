@@ -24,7 +24,15 @@ public class ScriptExecutor
 
     // Error tracking for auto-disable
     private readonly ConcurrentDictionary<Guid, int> _errorCounts = new();
-    private const int MaxErrorsBeforeDisable = 10;
+    private readonly ConcurrentDictionary<Guid, DateTime> _disabledUntil = new();
+    private const int MaxErrorsBeforeDisable = 3;  // Reduced from 10 to 3
+    private static readonly TimeSpan DisableCooldown = TimeSpan.FromMinutes(5);  // Cooldown after disable
+
+    // TEMPORARY: Blacklist known problematic scripts until they can be fixed in the database
+    private static readonly HashSet<Guid> _blacklistedPlayers = new()
+    {
+        Guid.Parse("1f4e4e3c-ed69-4c84-bde9-7e046b0aa427")  // Player with infinite loop script
+    };
 
     // Pool of CancellationTokenSources to reduce allocations
     private readonly ConcurrentQueue<CancellationTokenSource> _ctsPool = new();
@@ -41,10 +49,27 @@ public class ScriptExecutor
     /// </summary>
     public ScriptAction? Execute(Guid playerId, string scriptCode, ScriptContext context)
     {
+        // Check blacklist first (for known problematic scripts)
+        if (_blacklistedPlayers.Contains(playerId))
+        {
+            return null; // Script permanently blacklisted
+        }
+
+        // Check if player is in cooldown from previous errors
+        if (_disabledUntil.TryGetValue(playerId, out var disabledUntil) && DateTime.UtcNow < disabledUntil)
+        {
+            return null; // Script disabled, in cooldown
+        }
+
         // Check if player has too many errors
         if (_errorCounts.TryGetValue(playerId, out var errorCount) && errorCount >= MaxErrorsBeforeDisable)
         {
-            return null; // Script disabled due to errors
+            // Start cooldown and reset error count
+            _disabledUntil[playerId] = DateTime.UtcNow.Add(DisableCooldown);
+            _errorCounts.TryRemove(playerId, out _);
+            _logger.LogWarning("Script for player {PlayerId} disabled for {Minutes} minutes due to repeated failures",
+                playerId, DisableCooldown.TotalMinutes);
+            return null;
         }
 
         // Get or reuse a CancellationTokenSource from pool
@@ -188,6 +213,7 @@ public class ScriptExecutor
     {
         _scriptCache.TryRemove(playerId, out _);
         _errorCounts.TryRemove(playerId, out _);
+        _disabledUntil.TryRemove(playerId, out _);  // Clear cooldown when script is updated
     }
 
     /// <summary>
@@ -203,6 +229,11 @@ public class ScriptExecutor
     /// </summary>
     public bool IsDisabled(Guid playerId)
     {
+        // Check cooldown first
+        if (_disabledUntil.TryGetValue(playerId, out var disabledUntil) && DateTime.UtcNow < disabledUntil)
+        {
+            return true;
+        }
         return _errorCounts.TryGetValue(playerId, out var count) && count >= MaxErrorsBeforeDisable;
     }
 

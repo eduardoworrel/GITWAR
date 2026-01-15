@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Text.Json;
+using GitWorld.Api.Caching;
 using Microsoft.IdentityModel.Tokens;
 
 namespace GitWorld.Api.Auth;
@@ -25,6 +26,14 @@ public record LinkedAccount(
     string? AvatarUrl
 );
 
+// Cache model for Clerk user data
+public class CachedClerkUserData
+{
+    public OAuthProvider Provider { get; set; }
+    public string? Username { get; set; }
+    public List<LinkedAccount> LinkedAccounts { get; set; } = new();
+}
+
 public interface IClerkJwtValidator
 {
     Task<ClerkUser?> ValidateTokenAsync(string token);
@@ -35,15 +44,17 @@ public class ClerkJwtValidator : IClerkJwtValidator
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<ClerkJwtValidator> _logger;
+    private readonly ICacheService _cacheService;
     private readonly string _domain;
     private readonly string _secretKey;
     private JsonWebKeySet? _cachedJwks;
     private DateTime _jwksCacheExpiry = DateTime.MinValue;
 
-    public ClerkJwtValidator(HttpClient httpClient, IConfiguration configuration, ILogger<ClerkJwtValidator> logger)
+    public ClerkJwtValidator(HttpClient httpClient, IConfiguration configuration, ILogger<ClerkJwtValidator> logger, ICacheService cacheService)
     {
         _httpClient = httpClient;
         _logger = logger;
+        _cacheService = cacheService;
         _domain = configuration["Clerk:Domain"] ?? throw new ArgumentNullException("Clerk:Domain configuration is required");
         _secretKey = configuration["Clerk:SecretKey"] ?? "";
     }
@@ -115,6 +126,15 @@ public class ClerkJwtValidator : IClerkJwtValidator
 
     public async Task<List<LinkedAccount>> GetLinkedAccountsAsync(string clerkUserId)
     {
+        // Try cache first - we cache this when fetching provider/username
+        var cacheKey = CacheKeys.ClerkUser(clerkUserId);
+        var cached = await _cacheService.GetAsync<CachedClerkUserData>(cacheKey);
+        if (cached != null && cached.LinkedAccounts.Count > 0)
+        {
+            _logger.LogDebug("Cache hit for linked accounts {UserId}", clerkUserId);
+            return cached.LinkedAccounts;
+        }
+
         var accounts = new List<LinkedAccount>();
 
         if (string.IsNullOrEmpty(_secretKey))
@@ -137,6 +157,9 @@ public class ClerkJwtValidator : IClerkJwtValidator
 
             var content = await response.Content.ReadAsStringAsync();
             var json = JsonDocument.Parse(content);
+
+            OAuthProvider foundProvider = OAuthProvider.Unknown;
+            string? foundUsername = null;
 
             if (json.RootElement.TryGetProperty("external_accounts", out var externalAccounts))
             {
@@ -189,11 +212,25 @@ public class ClerkJwtValidator : IClerkJwtValidator
                             if (!string.IsNullOrEmpty(effectiveUsername))
                             {
                                 accounts.Add(new LinkedAccount(provider, effectiveUsername, avatarUrl));
+                                if (foundProvider == OAuthProvider.Unknown)
+                                {
+                                    foundProvider = provider;
+                                    foundUsername = effectiveUsername;
+                                }
                             }
                         }
                     }
                 }
             }
+
+            // Cache the result for future calls
+            var cacheData = new CachedClerkUserData
+            {
+                Provider = foundProvider,
+                Username = foundUsername,
+                LinkedAccounts = accounts
+            };
+            await _cacheService.SetAsync(cacheKey, cacheData, CacheKeys.ClerkUserTtl);
         }
         catch (Exception ex)
         {
@@ -205,6 +242,15 @@ public class ClerkJwtValidator : IClerkJwtValidator
 
     private async Task<(OAuthProvider provider, string? username)> GetProviderAndUsernameFromClerkApi(string userId)
     {
+        // Try cache first
+        var cacheKey = CacheKeys.ClerkUser(userId);
+        var cached = await _cacheService.GetAsync<CachedClerkUserData>(cacheKey);
+        if (cached != null)
+        {
+            _logger.LogDebug("Cache hit for Clerk user {UserId}", userId);
+            return (cached.Provider, cached.Username);
+        }
+
         if (string.IsNullOrEmpty(_secretKey))
         {
             _logger.LogWarning("Clerk secret key not configured");
@@ -227,6 +273,10 @@ public class ClerkJwtValidator : IClerkJwtValidator
             Console.WriteLine($"[ClerkValidator] Clerk API response: {content}");
             var json = JsonDocument.Parse(content);
 
+            OAuthProvider foundProvider = OAuthProvider.Unknown;
+            string? foundUsername = null;
+            var linkedAccounts = new List<LinkedAccount>();
+
             // Check external_accounts for OAuth providers
             if (json.RootElement.TryGetProperty("external_accounts", out var externalAccounts))
             {
@@ -238,43 +288,38 @@ public class ClerkJwtValidator : IClerkJwtValidator
                     {
                         var providerString = providerElement.GetString()?.ToLower() ?? "";
                         string? username = null;
+                        string? avatarUrl = null;
 
                         if (account.TryGetProperty("username", out var usernameElement))
-                        {
                             username = usernameElement.GetString();
-                        }
+                        if (account.TryGetProperty("avatar_url", out var avatarElement))
+                            avatarUrl = avatarElement.GetString();
 
                         Console.WriteLine($"[ClerkValidator] Account - Provider: '{providerString}', Username: '{username ?? "null"}'");
 
+                        OAuthProvider provider = OAuthProvider.Unknown;
+                        if (providerString.Contains("github"))
+                            provider = OAuthProvider.GitHub;
+                        else if (providerString.Contains("gitlab"))
+                            provider = OAuthProvider.GitLab;
+                        else if (providerString.Contains("huggingface") || providerString.Contains("hugging"))
+                            provider = OAuthProvider.HuggingFace;
+
                         // Only return if we have a valid username
-                        if (!string.IsNullOrEmpty(username))
+                        if (!string.IsNullOrEmpty(username) && provider != OAuthProvider.Unknown)
                         {
-                            // GitHub
-                            if (providerString.Contains("github"))
-                            {
-                                return (OAuthProvider.GitHub, username);
-                            }
+                            linkedAccounts.Add(new LinkedAccount(provider, username, avatarUrl));
 
-                            // GitLab
-                            if (providerString.Contains("gitlab"))
+                            // Use first valid account as primary
+                            if (foundProvider == OAuthProvider.Unknown)
                             {
-                                return (OAuthProvider.GitLab, username);
-                            }
-
-                            // HuggingFace (custom OAuth)
-                            if (providerString.Contains("huggingface") || providerString.Contains("hugging"))
-                            {
-                                return (OAuthProvider.HuggingFace, username);
+                                foundProvider = provider;
+                                foundUsername = username;
                             }
                         }
                         else
                         {
-                            Console.WriteLine($"[ClerkValidator] Skipping {providerString} - no username");
-                        }
-
-                        if (string.IsNullOrEmpty(username))
-                        {
-                            Console.WriteLine($"[ClerkValidator] Unknown or incomplete provider: '{providerString}'");
+                            Console.WriteLine($"[ClerkValidator] Skipping {providerString} - no username or unknown provider");
                         }
                     }
                 }
@@ -285,12 +330,22 @@ public class ClerkJwtValidator : IClerkJwtValidator
             }
 
             // Fallback: check username field directly
-            if (json.RootElement.TryGetProperty("username", out var directUsername))
+            if (foundProvider == OAuthProvider.Unknown && json.RootElement.TryGetProperty("username", out var directUsername))
             {
-                return (OAuthProvider.Unknown, directUsername.GetString());
+                foundUsername = directUsername.GetString();
             }
 
-            return (OAuthProvider.Unknown, null);
+            // Cache the result
+            var cacheData = new CachedClerkUserData
+            {
+                Provider = foundProvider,
+                Username = foundUsername,
+                LinkedAccounts = linkedAccounts
+            };
+            await _cacheService.SetAsync(cacheKey, cacheData, CacheKeys.ClerkUserTtl);
+            _logger.LogDebug("Cached Clerk user {UserId} for {Ttl}", userId, CacheKeys.ClerkUserTtl);
+
+            return (foundProvider, foundUsername);
         }
         catch (Exception ex)
         {
