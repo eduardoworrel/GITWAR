@@ -85,6 +85,25 @@ try
     db.Database.Migrate();
     Console.WriteLine("[Database] Migrations applied successfully");
 
+    // Fallback: ensure clerk_id column exists (for production compatibility)
+    try
+    {
+        await db.Database.ExecuteSqlRawAsync(@"
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='players' AND column_name='clerk_id') THEN
+                    ALTER TABLE players ADD COLUMN clerk_id VARCHAR(255);
+                    CREATE UNIQUE INDEX IF NOT EXISTS ""IX_players_clerk_id"" ON players (clerk_id);
+                END IF;
+            END $$;
+        ");
+        Console.WriteLine("[Database] ClerkId column verified");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Database] ClerkId fallback check: {ex.Message}");
+    }
+
     // Seed items if none exist
     if (!db.Items.Any())
     {
