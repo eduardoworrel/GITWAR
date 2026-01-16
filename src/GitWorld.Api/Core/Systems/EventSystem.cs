@@ -83,6 +83,10 @@ public class EventSystem
     // Track spawned monsters
     private readonly HashSet<Guid> _spawnedMonsterIds = new();
 
+    // Track when monsters died (for death animation delay)
+    private readonly Dictionary<Guid, long> _monsterDeathTicks = new();
+    private const int DEATH_DELAY_TICKS = 20; // 1 second delay before removal
+
     // Timers (in ticks)
     private long _lastBugEventTick;
     private long _lastIntermediateEventTick;
@@ -105,8 +109,8 @@ public class EventSystem
 
     public void Update(long currentTick)
     {
-        // Clean up dead monsters
-        CleanupDeadMonsters();
+        // Clean up dead monsters (with delay for death animation)
+        CleanupDeadMonsters(currentTick);
 
         // Unstick monsters that are inside collision zones
         UnstickMonsters();
@@ -272,25 +276,50 @@ public class EventSystem
         CurrentEvent.StartTick = currentTick;
     }
 
-    private void CleanupDeadMonsters()
+    private void CleanupDeadMonsters(long currentTick)
     {
-        var deadMonsters = _spawnedMonsterIds
-            .Where(id =>
-            {
-                var entity = _world.GetEntity(id);
-                return entity == null || !entity.IsAlive;
-            })
-            .ToList();
-
-        foreach (var id in deadMonsters)
+        foreach (var id in _spawnedMonsterIds.ToList())
         {
-            _spawnedMonsterIds.Remove(id);
-            _world.RemoveEntity(id); // Remove dead monsters from world
+            var entity = _world.GetEntity(id);
+
+            // Entity doesn't exist - remove immediately
+            if (entity == null)
+            {
+                _spawnedMonsterIds.Remove(id);
+                _monsterDeathTicks.Remove(id);
+                continue;
+            }
+
+            // Entity is alive - nothing to do
+            if (entity.IsAlive)
+            {
+                continue;
+            }
+
+            // Entity just died - record death tick
+            if (!_monsterDeathTicks.ContainsKey(id))
+            {
+                _monsterDeathTicks[id] = currentTick;
+                continue; // Don't remove yet - let death animation play
+            }
+
+            // Entity has been dead long enough - remove it
+            var ticksSinceDeath = currentTick - _monsterDeathTicks[id];
+            if (ticksSinceDeath >= DEATH_DELAY_TICKS)
+            {
+                _spawnedMonsterIds.Remove(id);
+                _monsterDeathTicks.Remove(id);
+                _world.RemoveEntity(id);
+            }
         }
 
         if (IsEventActive)
         {
-            CurrentEvent.MonstersRemaining = _spawnedMonsterIds.Count;
+            CurrentEvent.MonstersRemaining = _spawnedMonsterIds.Count(id =>
+            {
+                var e = _world.GetEntity(id);
+                return e != null && e.IsAlive;
+            });
         }
     }
 
