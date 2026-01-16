@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../stores/gameStore';
-import { MAP_WIDTH, MAP_HEIGHT } from '../three/constants';
+import { MAP_WIDTH, MAP_HEIGHT, RAIO_BROADCAST } from '../three/constants';
 
 // Proporção do mapa real: 5000 x 3000 (5:3)
 const MINIMAP_WIDTH = 200;
@@ -39,6 +39,25 @@ export function Minimap() {
   const currentPlayerRotation = useGameStore((s) => s.currentPlayerRotation);
 
   const playerList = Array.from(players.values());
+
+  // Filter to show only nearby entities (within broadcast range)
+  // Spectator mode (no currentPlayerId) shows all entities
+  const currentPlayer = currentPlayerId ? players.get(currentPlayerId) : null;
+  const currentPos = currentPlayer ? getInterpolatedPosition(currentPlayer.id) : null;
+  const isSpectatorMode = !currentPlayerId;
+
+  const nearbyPlayers = playerList.filter(player => {
+    if (player.id === currentPlayerId) return true; // always show current player
+    if (isSpectatorMode) return true; // spectator: show all
+    if (!currentPos) return false; // logged in but no position yet
+
+    const pos = getInterpolatedPosition(player.id);
+    if (!pos) return false;
+
+    const dx = pos.x - currentPos.x;
+    const dy = pos.y - currentPos.y;
+    return Math.sqrt(dx * dx + dy * dy) <= RAIO_BROADCAST;
+  });
 
   return (
     <div
@@ -196,8 +215,8 @@ export function Minimap() {
           />
         </div>
 
-        {/* Player dots */}
-        {playerList.map((player) => {
+        {/* Player dots - filtered by distance */}
+        {nearbyPlayers.map((player) => {
           const pos = getInterpolatedPosition(player.id);
           if (!pos) return null;
 

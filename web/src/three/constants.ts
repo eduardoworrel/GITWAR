@@ -1,7 +1,7 @@
 // GitWorld - Constantes visuais e do jogo
 
-// S2 Stream
-export const RAIO_BROADCAST = 500;
+// S2 Stream - matches backend GameConstants.RaioBroadcast
+export const RAIO_BROADCAST = 1000;
 export const INTERPOLATION_DURATION_MS = 150;
 
 // Câmera isométrica
