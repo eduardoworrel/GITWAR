@@ -2,7 +2,6 @@ import { useAuth, useClerk, AuthenticateWithRedirectCallback } from '@clerk/cler
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GameScene } from './three/Scene';
-import { PlayerList } from './components/PlayerList';
 import { Minimap } from './components/Minimap';
 import { Killfeed } from './components/Killfeed';
 import { LoadingScreen } from './components/LoadingScreen';
@@ -129,7 +128,6 @@ function App() {
   return (
     <>
       <GameScene />
-      <PlayerList />
       <Minimap />
       <Killfeed />
       <PiPButton />
