@@ -147,12 +147,12 @@ try
 
         var items = new List<Item>
         {
-            // Notebooks
-            new() { Id = Guid.NewGuid(), Name = "ThinkPad X1", Category = "Notebook", Tier = "B", DanoBonus = 5, VelocidadeAtaqueBonus = 3, Price = tierPrices["B"] },
-            new() { Id = Guid.NewGuid(), Name = "MacBook Pro M3", Category = "Notebook", Tier = "A", DanoBonus = 10, CriticoBonus = 5, VelocidadeAtaqueBonus = 5, Price = tierPrices["A"] },
-            new() { Id = Guid.NewGuid(), Name = "Alienware X17", Category = "Notebook", Tier = "S", DanoBonus = 20, CriticoBonus = 10, VelocidadeAtaqueBonus = 8, Price = tierPrices["S"] },
-            new() { Id = Guid.NewGuid(), Name = "Razer Blade 18", Category = "Notebook", Tier = "S", DanoBonus = 25, CriticoBonus = 12, VelocidadeAtaqueBonus = 10, VisualDescription = "RGB gaming beast", Price = tierPrices["S"] },
-            new() { Id = Guid.NewGuid(), Name = "ASUS ROG Zephyrus", Category = "Notebook", Tier = "A", DanoBonus = 18, CriticoBonus = 8, VelocidadeAtaqueBonus = 7, VisualDescription = "Slim powerhouse", Price = tierPrices["A"] },
+            // Notebooks - all have ranged attacks with projectiles
+            new() { Id = Guid.NewGuid(), Name = "ThinkPad X1", Category = "Notebook", Tier = "B", DanoBonus = 5, VelocidadeAtaqueBonus = 3, RangeBonus = 50, ProjectileColor = "#3776AB", ProjectileSize = 1f, Price = tierPrices["B"] },
+            new() { Id = Guid.NewGuid(), Name = "MacBook Pro M3", Category = "Notebook", Tier = "A", DanoBonus = 10, CriticoBonus = 5, VelocidadeAtaqueBonus = 5, RangeBonus = 80, ProjectileColor = "#FFFFFF", ProjectileSize = 1.2f, Price = tierPrices["A"] },
+            new() { Id = Guid.NewGuid(), Name = "Alienware X17", Category = "Notebook", Tier = "S", DanoBonus = 20, CriticoBonus = 10, VelocidadeAtaqueBonus = 8, RangeBonus = 120, ProjectileColor = "#00FF00", ProjectileSize = 1.5f, Price = tierPrices["S"] },
+            new() { Id = Guid.NewGuid(), Name = "Razer Blade 18", Category = "Notebook", Tier = "S", DanoBonus = 25, CriticoBonus = 12, VelocidadeAtaqueBonus = 10, RangeBonus = 150, ProjectileColor = "#00FF88", ProjectileSize = 1.6f, VisualDescription = "RGB gaming beast", Price = tierPrices["S"] },
+            new() { Id = Guid.NewGuid(), Name = "ASUS ROG Zephyrus", Category = "Notebook", Tier = "A", DanoBonus = 18, CriticoBonus = 8, VelocidadeAtaqueBonus = 7, RangeBonus = 100, ProjectileColor = "#FF0000", ProjectileSize = 1.3f, VisualDescription = "Slim powerhouse", Price = tierPrices["A"] },
 
             // Processadores
             new() { Id = Guid.NewGuid(), Name = "Intel i5", Category = "Processador", Tier = "C", VelocidadeAtaqueBonus = 5, Price = tierPrices["C"] },
@@ -581,6 +581,12 @@ try
             entity.Evasao += pi.Item.EvasaoBonus;
             entity.VelocidadeAtaque += pi.Item.VelocidadeAtaqueBonus;
             entity.VelocidadeMovimento += pi.Item.VelocidadeMovimentoBonus;
+            // Projectile properties (take the highest RangeBonus, last color/size)
+            entity.RangeBonus += pi.Item.RangeBonus;
+            if (!string.IsNullOrEmpty(pi.Item.ProjectileColor))
+                entity.ProjectileColor = pi.Item.ProjectileColor;
+            if (pi.Item.ProjectileSize > entity.ProjectileSize)
+                entity.ProjectileSize = pi.Item.ProjectileSize;
         }
         entity.CurrentHp = Math.Min(entity.CurrentHp, entity.MaxHp);
 
@@ -637,6 +643,59 @@ app.MapGet("/game/state", (World world, GameLoop loop) =>
         })
     });
 }).WithName("GetGameState");
+
+// Get online players for spectators (to follow their streams)
+app.MapGet("/game/spectate/players", async (World world, AppDbContext db, S2Config config, IS2TokenService s2TokenService) =>
+{
+    var sessions = world.PlayerSessions.ToList();
+    if (sessions.Count == 0)
+    {
+        return Results.Ok(new { players = Array.Empty<object>() });
+    }
+
+    var playerIds = sessions.Select(s => s.PlayerId).ToList();
+    var players = await db.Players
+        .Where(p => playerIds.Contains(p.Id))
+        .ToListAsync();
+
+    var result = new List<object>();
+    foreach (var session in sessions)
+    {
+        var player = players.FirstOrDefault(p => p.Id == session.PlayerId);
+        if (player == null) continue;
+
+        var entity = world.GetEntity(session.EntityId);
+        if (entity == null || !entity.IsAlive) continue;
+
+        // Get or create read token for spectators
+        var readToken = await s2TokenService.GetOrCreatePlayerReadTokenAsync(player);
+        if (readToken == null) continue;
+
+        result.Add(new
+        {
+            playerId = player.Id,
+            entityId = session.EntityId,
+            githubLogin = session.GithubLogin,
+            reino = entity.Reino,
+            level = entity.Level,
+            elo = entity.Elo,
+            x = entity.X,
+            y = entity.Y,
+            stream = new
+            {
+                streamName = session.StreamName,
+                basin = config.Basin,
+                baseUrl = $"https://{config.Basin}.b.aws.s2.dev",
+                readToken = readToken
+            }
+        });
+    }
+
+    // Save any new tokens generated
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { players = result });
+}).WithName("GetSpectatePlayers");
 
 // Add test player with custom name and reino (for PvP testing)
 app.MapPost("/game/test-player", (World world, string? name, string? reino) =>
@@ -1010,6 +1069,12 @@ app.MapPost("/game/join", async (HttpContext context, World world, IStatsService
             entity.Evasao += pi.Item.EvasaoBonus;
             entity.VelocidadeAtaque += pi.Item.VelocidadeAtaqueBonus;
             entity.VelocidadeMovimento += pi.Item.VelocidadeMovimentoBonus;
+            // Projectile properties (take the highest RangeBonus, last color/size)
+            entity.RangeBonus += pi.Item.RangeBonus;
+            if (!string.IsNullOrEmpty(pi.Item.ProjectileColor))
+                entity.ProjectileColor = pi.Item.ProjectileColor;
+            if (pi.Item.ProjectileSize > entity.ProjectileSize)
+                entity.ProjectileSize = pi.Item.ProjectileSize;
         }
         entity.CurrentHp = entity.MaxHp; // Full HP on join
 

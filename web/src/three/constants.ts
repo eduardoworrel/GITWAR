@@ -12,20 +12,26 @@ export const CAMERA_DIAGONAL_OFFSET = 0.35; // radianos (~20°) - levemente diag
 
 // Character dimensions are now defined in Player.tsx (Minecraft-style blocky character)
 
-// Mapa - Mesa de escritório
-export const MAP_WIDTH = 5000;
-export const MAP_HEIGHT = 3000;
+// Mapa expandido (10k x 10k) - mesa de escritório fica no centro
+export const MAP_WIDTH = 10000;
+export const MAP_HEIGHT = 10000;
 
-// Drone mode (spectator camera)
+// Área original da mesa (fica plana no centro do mapa)
+export const DESK_WIDTH = 5000;
+export const DESK_HEIGHT = 3000;
+export const DESK_OFFSET_X = (MAP_WIDTH - DESK_WIDTH) / 2;   // 2500
+export const DESK_OFFSET_Z = (MAP_HEIGHT - DESK_HEIGHT) / 2; // 3500
+
+// Drone mode (spectator camera) - orbits around desk center
 export const DRONE_HEIGHT = 800;
 export const DRONE_ORBIT_RADIUS_X = 2000;
 export const DRONE_ORBIT_RADIUS_Z = 1200;
 export const DRONE_ORBIT_SPEED = 0.002;
-export const DRONE_CENTER_X = MAP_WIDTH / 2;
-export const DRONE_CENTER_Z = MAP_HEIGHT / 2;
+export const DRONE_CENTER_X = DESK_OFFSET_X + DESK_WIDTH / 2;  // Center of desk
+export const DRONE_CENTER_Z = DESK_OFFSET_Z + DESK_HEIGHT / 2; // Center of desk
 
-// Spawn único no centro
-export const SPAWN_POINT = { x: 2500, y: 1500 };
+// Spawn único no centro do desk
+export const SPAWN_POINT = { x: DESK_OFFSET_X + DESK_WIDTH / 2, y: DESK_OFFSET_Z + DESK_HEIGHT / 2 };
 
 // Cores por reino (linguagens de programação) - ainda usadas para colorir jogadores
 export const CORES_REINO: Record<string, number> = {

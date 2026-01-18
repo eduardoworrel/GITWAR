@@ -47,7 +47,14 @@ public class EntityStateTracker
         }
 
         // Compare and build delta
-        var delta = new EntityPayload { Id = entity.Id };
+        // Always include identity fields (Login, Type, Reino) to prevent "Unknown" issues after respawn
+        var delta = new EntityPayload
+        {
+            Id = entity.Id,
+            Login = entity.GithubLogin,
+            Type = entity.Type.ToString().ToLowerInvariant(),
+            Reino = entity.Reino
+        };
         bool hasChanges = false;
 
         // Position (most frequent changes)
@@ -425,6 +432,7 @@ public class S2Publisher : IS2Publisher
             {
                 Tick = tick,
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                IsFullState = true, // Always full state for global stream - enables entity removal
                 Entidades = entities.Select(e => new EntityPayload
                 {
                     Id = e.Id,
@@ -468,7 +476,17 @@ public class S2Publisher : IS2Publisher
                     TargetId = e.TargetId,
                     TargetName = e.TargetName,
                     Damage = e.Damage,
-                    IsCritical = e.IsCritical
+                    IsCritical = e.IsCritical,
+                    Projectile = e.Projectile != null ? new ProjectilePayload
+                    {
+                        StartX = e.Projectile.StartX,
+                        StartY = e.Projectile.StartY,
+                        EndX = e.Projectile.EndX,
+                        EndY = e.Projectile.EndY,
+                        Color = e.Projectile.Color,
+                        Size = e.Projectile.Size,
+                        AttackSpeed = e.Projectile.AttackSpeed
+                    } : null
                 }).ToList() ?? new List<GameEventPayload>(),
                 Rewards = rewardEvents?.Select(r => new RewardEventPayload
                 {
@@ -561,7 +579,17 @@ public class S2Publisher : IS2Publisher
                     TargetId = e.TargetId,
                     TargetName = e.TargetName,
                     Damage = e.Damage,
-                    IsCritical = e.IsCritical
+                    IsCritical = e.IsCritical,
+                    Projectile = e.Projectile != null ? new ProjectilePayload
+                    {
+                        StartX = e.Projectile.StartX,
+                        StartY = e.Projectile.StartY,
+                        EndX = e.Projectile.EndX,
+                        EndY = e.Projectile.EndY,
+                        Color = e.Projectile.Color,
+                        Size = e.Projectile.Size,
+                        AttackSpeed = e.Projectile.AttackSpeed
+                    } : null
                 }).ToList() ?? new List<GameEventPayload>(),
                 Rewards = rewardEvents?.Select(r => new RewardEventPayload
                 {
@@ -694,6 +722,18 @@ public class GameEventPayload
     public string TargetName { get; set; } = string.Empty;
     public int? Damage { get; set; }
     public bool IsCritical { get; set; }
+    public ProjectilePayload? Projectile { get; set; }
+}
+
+public class ProjectilePayload
+{
+    public float StartX { get; set; }
+    public float StartY { get; set; }
+    public float EndX { get; set; }
+    public float EndY { get; set; }
+    public string Color { get; set; } = "#FF8800";
+    public float Size { get; set; } = 1f;
+    public int AttackSpeed { get; set; }
 }
 
 public class RewardEventPayload

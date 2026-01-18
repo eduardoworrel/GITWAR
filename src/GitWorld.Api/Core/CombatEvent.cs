@@ -12,6 +12,16 @@ public enum CombatEventType
     Respawn
 }
 
+/// <summary>
+/// Projectile info for visual rendering - purely cosmetic
+/// </summary>
+public record ProjectileInfo(
+    float StartX, float StartY,
+    float EndX, float EndY,
+    string Color, float Size,
+    int AttackSpeed  // Attacker's VelocidadeAtaque - determines projectile speed
+);
+
 public record CombatEvent(
     long Tick,
     CombatEventType Type,
@@ -20,7 +30,8 @@ public record CombatEvent(
     Guid TargetId,
     string TargetName,
     int? Damage = null,
-    bool IsCritical = false
+    bool IsCritical = false,
+    ProjectileInfo? Projectile = null
 )
 {
     public long Timestamp { get; init; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();

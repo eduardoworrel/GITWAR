@@ -162,6 +162,16 @@ export interface InterpolatedPlayer extends Player {
 
 export type CombatEventType = 'damage' | 'miss' | 'critical' | 'kill' | 'death' | 'respawn';
 
+export interface ProjectileInfo {
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  color: string;
+  size: number;
+  attackSpeed: number; // VelocidadeAtaque - determines projectile speed
+}
+
 export interface CombatEvent {
   id: string;
   type: CombatEventType;
@@ -173,6 +183,7 @@ export interface CombatEvent {
   targetName: string;
   damage?: number;
   isCritical?: boolean;
+  projectile?: ProjectileInfo;
   createdAt: number; // Local timestamp for cleanup
 }
 

@@ -8,6 +8,7 @@ import { FloatingDamage } from './FloatingDamage';
 import { FloatingReward } from './FloatingReward';
 import { LevelUpEffect } from './LevelUpEffect';
 import { CombatEffects } from './CombatEffects';
+import { Projectiles } from './Projectile';
 import { RadialMenuOverlay } from '../components/RadialMenuOverlay';
 import { PerformanceStatsConnector, PerformanceMonitorUI } from '../components/PerformanceMonitor';
 import { useGameStore } from '../stores/gameStore';
@@ -136,6 +137,9 @@ function SceneContent() {
 
       {/* Combat particle effects (sparks, explosions, respawn) */}
       <CombatEffects />
+
+      {/* Projectiles for ranged attacks */}
+      <Projectiles />
 
       {/* Floating damage numbers */}
       <FloatingDamage />

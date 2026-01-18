@@ -1,6 +1,12 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
-import { MAP_WIDTH, MAP_HEIGHT } from './constants';
+import { MAP_WIDTH, MAP_HEIGHT, DESK_WIDTH, DESK_HEIGHT, DESK_OFFSET_X, DESK_OFFSET_Z } from './constants';
+import { getTerrainHeight } from './TerrainHeight';
+import { Buildings } from './Buildings';
+
+// Desk center position (for positioning desk elements)
+const DESK_CENTER_X = DESK_OFFSET_X + DESK_WIDTH / 2;
+const DESK_CENTER_Z = DESK_OFFSET_Z + DESK_HEIGHT / 2;
 
 // Cores da mesa
 const WOOD_DARK = 0x654321;        // Marrom escuro (borda)
@@ -42,7 +48,7 @@ function useWoodTexture() {
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(MAP_WIDTH / 400, MAP_HEIGHT / 400);
+    texture.repeat.set(DESK_WIDTH / 400, DESK_HEIGHT / 400);
     texture.minFilter = THREE.LinearMipmapLinearFilter;
     texture.magFilter = THREE.LinearFilter;
 
@@ -50,7 +56,7 @@ function useWoodTexture() {
   }, []);
 }
 
-// Monitor component
+// Monitor component - positioned relative to desk center
 function Monitor() {
   const screenWidth = 1200;
   const screenHeight = 700;
@@ -62,8 +68,9 @@ function Monitor() {
   const standWidth = 60;
   const standDepth = 30;
 
-  const posX = MAP_WIDTH / 2;
-  const posZ = 600;
+  // Position relative to desk (original: center X, Z=600 from desk top)
+  const posX = DESK_CENTER_X;
+  const posZ = DESK_OFFSET_Z + 600;
 
   return (
     <group position={[posX, 0, posZ]}>
@@ -176,7 +183,7 @@ function KeyCap({ position, width: w = 26, depth: d = 26, color = 0x2d2d2d, isSp
   );
 }
 
-// Keyboard component
+// Keyboard component - positioned relative to desk center
 function Keyboard() {
   const width = 580;
   const height = 16;
@@ -184,8 +191,9 @@ function Keyboard() {
   const keySize = 26;
   const keyGap = 3;
 
-  const posX = MAP_WIDTH / 2;
-  const posZ = MAP_HEIGHT / 2 - 100;
+  // Position relative to desk center
+  const posX = DESK_CENTER_X;
+  const posZ = DESK_CENTER_Z - 100;
 
   return (
     <group position={[posX, 0, posZ]}>
@@ -297,14 +305,15 @@ function Keyboard() {
   );
 }
 
-// Mouse and Mousepad component - Ultra detailed
+// Mouse and Mousepad component - positioned relative to desk center
 function MouseAndPad() {
   const padWidth = 900;
   const padDepth = 400;
   const padThickness = 4;
 
-  const posX = MAP_WIDTH / 2 + 550;
-  const posZ = MAP_HEIGHT / 2;
+  // Position relative to desk center
+  const posX = DESK_CENTER_X + 550;
+  const posZ = DESK_CENTER_Z;
 
   return (
     <group position={[posX, 0, posZ]}>
@@ -548,40 +557,40 @@ function MouseAndPad() {
   );
 }
 
-// Desk edge walls
+// Desk edge walls - positioned relative to desk in the expanded map
 function DeskEdges() {
   const edgeColor = WOOD_DARK;
 
   return (
     <group>
-      {/* North edge (Z = 0) */}
-      <mesh position={[MAP_WIDTH / 2, -WALL_DEPTH / 2, 0]}>
-        <planeGeometry args={[MAP_WIDTH, WALL_DEPTH]} />
+      {/* North edge (desk top) */}
+      <mesh position={[DESK_CENTER_X, -WALL_DEPTH / 2, DESK_OFFSET_Z]}>
+        <planeGeometry args={[DESK_WIDTH, WALL_DEPTH]} />
         <meshBasicMaterial color={edgeColor} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* South edge (Z = MAP_HEIGHT) */}
-      <mesh position={[MAP_WIDTH / 2, -WALL_DEPTH / 2, MAP_HEIGHT]}>
-        <planeGeometry args={[MAP_WIDTH, WALL_DEPTH]} />
+      {/* South edge (desk bottom) */}
+      <mesh position={[DESK_CENTER_X, -WALL_DEPTH / 2, DESK_OFFSET_Z + DESK_HEIGHT]}>
+        <planeGeometry args={[DESK_WIDTH, WALL_DEPTH]} />
         <meshBasicMaterial color={edgeColor} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* West edge (X = 0) */}
-      <mesh position={[0, -WALL_DEPTH / 2, MAP_HEIGHT / 2]} rotation={[0, Math.PI / 2, 0]}>
-        <planeGeometry args={[MAP_HEIGHT, WALL_DEPTH]} />
+      {/* West edge (desk left) */}
+      <mesh position={[DESK_OFFSET_X, -WALL_DEPTH / 2, DESK_CENTER_Z]} rotation={[0, Math.PI / 2, 0]}>
+        <planeGeometry args={[DESK_HEIGHT, WALL_DEPTH]} />
         <meshBasicMaterial color={edgeColor} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* East edge (X = MAP_WIDTH) */}
-      <mesh position={[MAP_WIDTH, -WALL_DEPTH / 2, MAP_HEIGHT / 2]} rotation={[0, Math.PI / 2, 0]}>
-        <planeGeometry args={[MAP_HEIGHT, WALL_DEPTH]} />
+      {/* East edge (desk right) */}
+      <mesh position={[DESK_OFFSET_X + DESK_WIDTH, -WALL_DEPTH / 2, DESK_CENTER_Z]} rotation={[0, Math.PI / 2, 0]}>
+        <planeGeometry args={[DESK_HEIGHT, WALL_DEPTH]} />
         <meshBasicMaterial color={edgeColor} side={THREE.DoubleSide} />
       </mesh>
     </group>
   );
 }
 
-// Table legs component
+// Table legs component - positioned relative to desk in the expanded map
 function TableLegs() {
   const legColor = 0x2a2a2a;
   const legWidth = 60;
@@ -589,79 +598,226 @@ function TableLegs() {
   const legDepth = 60;
   const inset = 150; // How far from edge
 
+  // Desk boundaries
+  const deskMinX = DESK_OFFSET_X;
+  const deskMaxX = DESK_OFFSET_X + DESK_WIDTH;
+  const deskMinZ = DESK_OFFSET_Z;
+  const deskMaxZ = DESK_OFFSET_Z + DESK_HEIGHT;
+
   return (
     <group>
       {/* Front left leg */}
-      <mesh position={[inset, -legHeight / 2, inset]}>
+      <mesh position={[deskMinX + inset, -legHeight / 2, deskMinZ + inset]}>
         <boxGeometry args={[legWidth, legHeight, legDepth]} />
         <meshBasicMaterial color={legColor} />
       </mesh>
 
       {/* Front right leg */}
-      <mesh position={[MAP_WIDTH - inset, -legHeight / 2, inset]}>
+      <mesh position={[deskMaxX - inset, -legHeight / 2, deskMinZ + inset]}>
         <boxGeometry args={[legWidth, legHeight, legDepth]} />
         <meshBasicMaterial color={legColor} />
       </mesh>
 
       {/* Back left leg */}
-      <mesh position={[inset, -legHeight / 2, MAP_HEIGHT - inset]}>
+      <mesh position={[deskMinX + inset, -legHeight / 2, deskMaxZ - inset]}>
         <boxGeometry args={[legWidth, legHeight, legDepth]} />
         <meshBasicMaterial color={legColor} />
       </mesh>
 
       {/* Back right leg */}
-      <mesh position={[MAP_WIDTH - inset, -legHeight / 2, MAP_HEIGHT - inset]}>
+      <mesh position={[deskMaxX - inset, -legHeight / 2, deskMaxZ - inset]}>
         <boxGeometry args={[legWidth, legHeight, legDepth]} />
         <meshBasicMaterial color={legColor} />
       </mesh>
 
       {/* Cross bars for stability */}
       {/* Front bar */}
-      <mesh position={[MAP_WIDTH / 2, -legHeight + 30, inset]}>
-        <boxGeometry args={[MAP_WIDTH - inset * 2 - legWidth, 20, 20]} />
+      <mesh position={[DESK_CENTER_X, -legHeight + 30, deskMinZ + inset]}>
+        <boxGeometry args={[DESK_WIDTH - inset * 2 - legWidth, 20, 20]} />
         <meshBasicMaterial color={legColor} />
       </mesh>
 
       {/* Back bar */}
-      <mesh position={[MAP_WIDTH / 2, -legHeight + 30, MAP_HEIGHT - inset]}>
-        <boxGeometry args={[MAP_WIDTH - inset * 2 - legWidth, 20, 20]} />
+      <mesh position={[DESK_CENTER_X, -legHeight + 30, deskMaxZ - inset]}>
+        <boxGeometry args={[DESK_WIDTH - inset * 2 - legWidth, 20, 20]} />
         <meshBasicMaterial color={legColor} />
       </mesh>
 
       {/* Left bar */}
-      <mesh position={[inset, -legHeight + 30, MAP_HEIGHT / 2]}>
-        <boxGeometry args={[20, 20, MAP_HEIGHT - inset * 2 - legDepth]} />
+      <mesh position={[deskMinX + inset, -legHeight + 30, DESK_CENTER_Z]}>
+        <boxGeometry args={[20, 20, DESK_HEIGHT - inset * 2 - legDepth]} />
         <meshBasicMaterial color={legColor} />
       </mesh>
 
       {/* Right bar */}
-      <mesh position={[MAP_WIDTH - inset, -legHeight + 30, MAP_HEIGHT / 2]}>
-        <boxGeometry args={[20, 20, MAP_HEIGHT - inset * 2 - legDepth]} />
+      <mesh position={[deskMaxX - inset, -legHeight + 30, DESK_CENTER_Z]}>
+        <boxGeometry args={[20, 20, DESK_HEIGHT - inset * 2 - legDepth]} />
         <meshBasicMaterial color={legColor} />
       </mesh>
 
       {/* Desk frame/apron - just the edges, not solid */}
       {/* Front apron */}
-      <mesh position={[MAP_WIDTH / 2, -20, 0]}>
-        <boxGeometry args={[MAP_WIDTH + 40, 40, 30]} />
+      <mesh position={[DESK_CENTER_X, -20, deskMinZ]}>
+        <boxGeometry args={[DESK_WIDTH + 40, 40, 30]} />
         <meshBasicMaterial color={0x5a3a2a} />
       </mesh>
       {/* Back apron */}
-      <mesh position={[MAP_WIDTH / 2, -20, MAP_HEIGHT]}>
-        <boxGeometry args={[MAP_WIDTH + 40, 40, 30]} />
+      <mesh position={[DESK_CENTER_X, -20, deskMaxZ]}>
+        <boxGeometry args={[DESK_WIDTH + 40, 40, 30]} />
         <meshBasicMaterial color={0x5a3a2a} />
       </mesh>
       {/* Left apron */}
-      <mesh position={[0, -20, MAP_HEIGHT / 2]}>
-        <boxGeometry args={[30, 40, MAP_HEIGHT]} />
+      <mesh position={[deskMinX, -20, DESK_CENTER_Z]}>
+        <boxGeometry args={[30, 40, DESK_HEIGHT]} />
         <meshBasicMaterial color={0x5a3a2a} />
       </mesh>
       {/* Right apron */}
-      <mesh position={[MAP_WIDTH, -20, MAP_HEIGHT / 2]}>
-        <boxGeometry args={[30, 40, MAP_HEIGHT]} />
+      <mesh position={[deskMaxX, -20, DESK_CENTER_Z]}>
+        <boxGeometry args={[30, 40, DESK_HEIGHT]} />
         <meshBasicMaterial color={0x5a3a2a} />
       </mesh>
     </group>
+  );
+}
+
+// Terrain colors for height-based coloring
+const TERRAIN_COLORS = {
+  low: new THREE.Color(0x4a6741),     // Dark green grass
+  mid: new THREE.Color(0x5d8a47),     // Green (grassy hills)
+  high: new THREE.Color(0x8b7355),    // Lighter brown (rocky peaks)
+};
+
+const TERRAIN_MAX_HEIGHT = 150;
+
+// Create terrain geometry for a specific region (outside the desk)
+function createTerrainGeometry(
+  startX: number,
+  startZ: number,
+  width: number,
+  height: number,
+  segmentsX: number,
+  segmentsZ: number
+): THREE.PlaneGeometry {
+  const geo = new THREE.PlaneGeometry(width, height, segmentsX, segmentsZ);
+  const positions = geo.attributes.position;
+  const colors: number[] = [];
+
+  for (let i = 0; i < positions.count; i++) {
+    const localX = positions.getX(i);
+    const localY = positions.getY(i);
+
+    // Convert to world coordinates
+    const worldX = localX + startX + width / 2;
+    const worldZ = localY + startZ + height / 2;
+
+    // Get terrain height (returns 0 for desk area)
+    const terrainHeight = getTerrainHeight(worldX, worldZ);
+    // After -90° X rotation, local +Z becomes world +Y (elevation)
+    positions.setZ(i, terrainHeight);
+
+    // Vertex color based on height
+    const normalizedHeight = terrainHeight / TERRAIN_MAX_HEIGHT;
+    let color: THREE.Color;
+    if (normalizedHeight < 0.3) {
+      color = TERRAIN_COLORS.low.clone();
+    } else if (normalizedHeight < 0.7) {
+      const t = (normalizedHeight - 0.3) / 0.4;
+      color = TERRAIN_COLORS.low.clone().lerp(TERRAIN_COLORS.mid, t);
+    } else {
+      const t = (normalizedHeight - 0.7) / 0.3;
+      color = TERRAIN_COLORS.mid.clone().lerp(TERRAIN_COLORS.high, t);
+    }
+    colors.push(color.r, color.g, color.b);
+  }
+
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+// Terrain meshes ONLY for expanded areas (outside desk)
+function ExpandedTerrain() {
+  // Create terrain for 4 regions: North, South, West, East (and corners)
+  const geometries = useMemo(() => {
+    const segments = 40;
+
+    // North area (above desk)
+    const northGeo = createTerrainGeometry(0, 0, MAP_WIDTH, DESK_OFFSET_Z, segments * 2, segments);
+
+    // South area (below desk)
+    const southGeo = createTerrainGeometry(0, DESK_OFFSET_Z + DESK_HEIGHT, MAP_WIDTH, MAP_HEIGHT - DESK_OFFSET_Z - DESK_HEIGHT, segments * 2, segments);
+
+    // West area (left of desk, between north and south)
+    const westGeo = createTerrainGeometry(0, DESK_OFFSET_Z, DESK_OFFSET_X, DESK_HEIGHT, segments, segments);
+
+    // East area (right of desk, between north and south)
+    const eastGeo = createTerrainGeometry(DESK_OFFSET_X + DESK_WIDTH, DESK_OFFSET_Z, MAP_WIDTH - DESK_OFFSET_X - DESK_WIDTH, DESK_HEIGHT, segments, segments);
+
+    return { northGeo, southGeo, westGeo, eastGeo };
+  }, []);
+
+  // Base Y position - terrain starts below desk level (Y=0)
+  // With maxHeight=150, terrain peaks will reach Y=150 at highest points
+  const baseY = -50; // Valleys are 50 units below desk, peaks reach up to 100 above
+
+  return (
+    <group>
+      {/* North terrain */}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[MAP_WIDTH / 2, baseY, DESK_OFFSET_Z / 2]}
+        geometry={geometries.northGeo}
+      >
+        <meshBasicMaterial vertexColors side={THREE.DoubleSide} />
+      </mesh>
+
+      {/* South terrain */}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[MAP_WIDTH / 2, baseY, DESK_OFFSET_Z + DESK_HEIGHT + (MAP_HEIGHT - DESK_OFFSET_Z - DESK_HEIGHT) / 2]}
+        geometry={geometries.southGeo}
+      >
+        <meshBasicMaterial vertexColors side={THREE.DoubleSide} />
+      </mesh>
+
+      {/* West terrain */}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[DESK_OFFSET_X / 2, baseY, DESK_CENTER_Z]}
+        geometry={geometries.westGeo}
+      >
+        <meshBasicMaterial vertexColors side={THREE.DoubleSide} />
+      </mesh>
+
+      {/* East terrain */}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[DESK_OFFSET_X + DESK_WIDTH + (MAP_WIDTH - DESK_OFFSET_X - DESK_WIDTH) / 2, baseY, DESK_CENTER_Z]}
+        geometry={geometries.eastGeo}
+      >
+        <meshBasicMaterial vertexColors side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+}
+
+// Flat desk surface (wood texture) - ONLY the desk area
+function DeskSurface({ woodTexture }: { woodTexture: THREE.Texture }) {
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[DESK_CENTER_X, 0, DESK_CENTER_Z]}>
+      <planeGeometry args={[DESK_WIDTH, DESK_HEIGHT]} />
+      <meshBasicMaterial map={woodTexture} />
+    </mesh>
+  );
+}
+
+// Ground base for the entire map (dark grass under terrain)
+function GroundBase() {
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[MAP_WIDTH / 2, -1, MAP_HEIGHT / 2]}>
+      <planeGeometry args={[MAP_WIDTH, MAP_HEIGHT]} />
+      <meshBasicMaterial color={0x2a3a2a} />
+    </mesh>
   );
 }
 
@@ -670,23 +826,28 @@ export function GameMap() {
 
   return (
     <group>
+      {/* Ground base under everything */}
+      <GroundBase />
+
+      {/* Expanded terrain (outside desk area) */}
+      <ExpandedTerrain />
+
       {/* Table legs and structure */}
       <TableLegs />
 
       {/* Desk edge walls */}
       <DeskEdges />
 
-      {/* Desk surface (wood texture) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[MAP_WIDTH / 2, -0.1, MAP_HEIGHT / 2]}>
-        <planeGeometry args={[MAP_WIDTH, MAP_HEIGHT]} />
-        <meshBasicMaterial map={woodTexture} />
-      </mesh>
+      {/* Desk surface (wood texture) - flat, at Y=0 */}
+      <DeskSurface woodTexture={woodTexture} />
 
       {/* Desk elements */}
       <Monitor />
       <Keyboard />
       <MouseAndPad />
 
+      {/* Tech buildings in expanded areas */}
+      <Buildings />
     </group>
   );
 }

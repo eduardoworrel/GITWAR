@@ -8,35 +8,69 @@ public static class GameConstants
     public const int TempoRespawnMs = 5000;  // 5 segundos
     public const float VelocidadeBase = 100f; // unidades/s (dobrado)
 
-    public const int MapaWidth = 5000;    // Mesa de escritório
-    public const int MapaHeight = 3000;
+    // Mapa expandido (10k x 10k) - mesa de escritório fica no centro
+    public const int MapaWidth = 10000;
+    public const int MapaHeight = 10000;
 
-    // Spawn único - área livre da mesa (entre teclado e borda inferior)
-    public const float SpawnX = 1800f;
-    public const float SpawnY = 2300f;
+    // Área original da mesa (centralizada no mapa expandido)
+    public const int DeskWidth = 5000;
+    public const int DeskHeight = 3000;
+    public const int DeskOffsetX = (MapaWidth - DeskWidth) / 2;   // 2500
+    public const int DeskOffsetZ = (MapaHeight - DeskHeight) / 2; // 3500
+
+    // Spawn único - área da mesa (centro do desk)
+    public const float SpawnX = DeskOffsetX + DeskWidth / 2;  // 5000 (centro X do desk)
+    public const float SpawnY = DeskOffsetZ + DeskHeight / 2; // 5000 (centro Z do desk)
 
     public const float RaioBroadcast = 1000f; // raio de broadcast do backend (frontend usa LOD para distantes)
 
     // Collision zones for desk objects (X, Y, Width, Height)
+    // Positions are relative to the expanded map (desk is centered)
     // These objects block player movement
     public static readonly (float X, float Y, float Width, float Height)[] DeskCollisionZones = new[]
     {
-        // Monitor base (center: 2500, 600)
-        (2500f - 150f, 600f - 100f, 300f, 200f),
-        // Keyboard (center: 2500, 1400)
-        (2500f - 275f, 1400f - 90f, 550f, 180f),
-        // Mouse only (center: 3050, 1500) - mousepad is walkable
-        (3050f - 40f, 1500f - 50f, 80f, 100f),
-        // Coffee cup (center: 3300, 500)
-        (3300f - 50f, 500f - 50f, 100f, 100f),
-        // Plant pot (center: 300, 600)
-        (300f - 60f, 600f - 60f, 120f, 120f),
-        // Pen holder (center: 600, 400)
-        (600f - 50f, 400f - 50f, 100f, 100f),
-        // Paper stack (center: 400, 1800)
-        (400f - 110f, 1800f - 150f, 220f, 300f),
-        // Headphones (center: 3700, 1700)
-        (3700f - 100f, 1700f - 100f, 200f, 200f),
+        // === Desk Objects (positioned relative to desk center at 5000, 5000) ===
+        // Monitor base (desk center X, desk top + 600)
+        (DeskOffsetX + DeskWidth / 2f - 150f, DeskOffsetZ + 600f - 100f, 300f, 200f),
+        // Keyboard (desk center X, desk center Z - 100)
+        (DeskOffsetX + DeskWidth / 2f - 275f, DeskOffsetZ + DeskHeight / 2f - 100f - 90f, 550f, 180f),
+        // Mouse only (desk center X + 550, desk center Z) - mousepad is walkable
+        (DeskOffsetX + DeskWidth / 2f + 550f - 40f, DeskOffsetZ + DeskHeight / 2f - 50f, 80f, 100f),
+
+        // === Tech Buildings in EXPANDED areas (outside desk) ===
+        // North area buildings (z < DeskOffsetZ = 3500)
+        (3000f - 40f, 1500f - 20f, 80f, 40f),       // Server rack
+        (7000f - 40f, 1500f - 20f, 80f, 40f),       // Server rack
+        (5000f - 100f, 1000f - 75f, 200f, 150f),    // Data center
+        (4000f - 75f, 2500f - 10f, 150f, 20f),      // Whiteboard
+        (6000f - 75f, 2500f - 10f, 150f, 20f),      // Whiteboard
+
+        // South area buildings (z > DeskOffsetZ + DeskHeight = 6500)
+        (3000f - 40f, 8500f - 20f, 80f, 40f),       // Server rack
+        (7000f - 40f, 8500f - 20f, 80f, 40f),       // Server rack
+        (5000f - 100f, 9000f - 75f, 200f, 150f),    // Data center
+        (4000f - 50f, 7500f - 30f, 100f, 60f),      // Coffee station
+        (6000f - 50f, 7500f - 30f, 100f, 60f),      // Coffee station
+
+        // West area buildings (x < DeskOffsetX = 2500)
+        (1000f - 40f, 4000f - 20f, 80f, 40f),       // Server rack
+        (1000f - 40f, 6000f - 20f, 80f, 40f),       // Server rack
+        (500f - 40f, 5000f - 25f, 80f, 50f),        // UPS
+        (1500f - 30f, 4500f - 15f, 60f, 30f),       // Network switch
+        (1500f - 30f, 5500f - 15f, 60f, 30f),       // Network switch
+
+        // East area buildings (x > DeskOffsetX + DeskWidth = 7500)
+        (9000f - 40f, 4000f - 20f, 80f, 40f),       // Server rack
+        (9000f - 40f, 6000f - 20f, 80f, 40f),       // Server rack
+        (9500f - 40f, 5000f - 25f, 80f, 50f),       // UPS
+        (8500f - 30f, 4500f - 15f, 60f, 30f),       // Network switch
+        (8500f - 30f, 5500f - 15f, 60f, 30f),       // Network switch
+
+        // Corner data centers
+        (1000f - 100f, 1000f - 75f, 200f, 150f),    // Northwest
+        (9000f - 100f, 1000f - 75f, 200f, 150f),    // Northeast
+        (1000f - 100f, 9000f - 75f, 200f, 150f),    // Southwest
+        (9000f - 100f, 9000f - 75f, 200f, 150f),    // Southeast
     };
 
     // Combat constants

@@ -28,38 +28,104 @@ GitWorld is a 3D passive MMO game where players login via OAuth (GitHub, GitLab,
 
 **Game Features:**
 - Spectator mode for non-authenticated users (auto-cycles players every 20s)
-- PerspectiveCamera with follow/free modes and zoom controls
+- PerspectiveCamera with follow/free/drone modes and zoom controls
 - Floating damage numbers with arc animations
-- Real-time connection status with auto-reconnect
-- Item shop and inventory system
-- Monster events (Bug, AI Hallucination, Manager, Boss)
+- Real-time connection via individual S2.dev player streams
+- Item shop and inventory system with tier-based pricing
+- Monster events (Bug, AI Hallucination, Manager, Boss, 50+ Language Error types)
+- Player scripting system with Monaco editor (JavaScript via Jint engine)
+- Redis caching (Upstash in production) with memory fallback
 
 ## Project Structure
 
 ```
 .
 ├── src/
-│   ├── GitWorld.Api/          # Backend .NET 10
-│   │   ├── Program.cs         # Entry point + game loop (~1000 lines)
-│   │   ├── Core/              # Game systems
-│   │   │   ├── World.cs       # World state management
-│   │   │   ├── Systems/       # MovementSystem, EventSystem
-│   │   ├── Auth/              # Clerk JWT validation
-│   │   ├── Stream/            # S2.dev integration
-│   │   ├── GitHub/            # GitHub stats fetcher
-│   │   ├── Providers/         # GitLab, HuggingFace fetchers
-│   │   └── Data/              # Entity Framework + PostgreSQL
-│   └── GitWorld.Shared/       # Shared types and constants
-├── web/                       # Frontend React 19
-│   ├── src/three/             # 3D components (React Three Fiber)
-│   ├── src/components/        # UI components
-│   ├── src/stores/            # Zustand state management
-│   └── src/hooks/             # Custom hooks (useS2Stream, etc)
-├── .do/app.yaml               # DigitalOcean App Platform config
-├── docker-compose.yml         # Local development
-├── deploy.sh                  # Production deployment script
-├── .env.example               # Environment variables template
-└── .env                       # Local secrets (gitignored)
+│   ├── GitWorld.Api/              # Backend .NET 10
+│   │   ├── Program.cs             # Entry point + game loop + endpoints (~2000 lines)
+│   │   ├── Core/
+│   │   │   ├── World.cs           # Entity management, world state
+│   │   │   ├── Entity.cs          # Base entity class
+│   │   │   ├── GameLoop.cs        # Game loop at 20 ticks/s
+│   │   │   ├── PlayerSession.cs   # Player session management
+│   │   │   ├── Scripting/         # Player custom scripting
+│   │   │   │   ├── ScriptContext.cs
+│   │   │   │   └── ScriptExecutor.cs  # Jint JavaScript engine
+│   │   │   └── Systems/
+│   │   │       ├── MovementSystem.cs      # A* pathfinding + collision
+│   │   │       ├── CombatSystem.cs        # Damage, critical, evasion
+│   │   │       ├── AISystem.cs            # NPC/Monster AI behavior
+│   │   │       ├── EventSystem.cs         # Monster spawn events
+│   │   │       ├── ProgressionSystem.cs   # XP, leveling, rewards
+│   │   │       ├── PlayerBehaviorSystem.cs
+│   │   │       ├── PlayerScriptSystem.cs  # Execute custom scripts
+│   │   │       └── HealthBehaviorSystem.cs
+│   │   ├── Auth/
+│   │   │   ├── ClerkJwtValidator.cs   # Clerk JWT validation
+│   │   │   └── ClerkAuthMiddleware.cs
+│   │   ├── Stream/
+│   │   │   ├── S2Publisher.cs         # Publishes game state to S2
+│   │   │   ├── S2TokenService.cs      # Generate player read tokens
+│   │   │   └── EntityStateTracker.cs  # Delta state tracking
+│   │   ├── GitHub/                # GitHub stats fetcher
+│   │   ├── Providers/             # GitLab, HuggingFace fetchers
+│   │   ├── Caching/
+│   │   │   └── RedisCacheService.cs   # Redis with memory fallback
+│   │   ├── Services/
+│   │   │   └── ItemService.cs     # Shop/Inventory system
+│   │   └── Data/                  # Entity Framework + PostgreSQL
+│   │
+│   └── GitWorld.Shared/           # Shared types and constants
+│       ├── Constants.cs           # Game constants (~220+ lines)
+│       ├── PlayerStats.cs
+│       ├── Territories.cs         # Language kingdoms
+│       └── Entities/              # Player, Item, PlayerItem, Battle
+│
+├── web/                           # Frontend React 19
+│   ├── src/
+│   │   ├── App.tsx                # Main orchestration
+│   │   ├── three/                 # 3D components (React Three Fiber)
+│   │   │   ├── Scene.tsx          # Canvas + WebGL setup
+│   │   │   ├── Player.tsx         # Player model rendering
+│   │   │   ├── Players.tsx        # Multiple players with LOD
+│   │   │   ├── InstancedPlayers.tsx   # Instanced rendering
+│   │   │   ├── IsometricCamera.tsx    # Camera (follow/free/drone)
+│   │   │   ├── Map.tsx            # Desk environment
+│   │   │   ├── FloatingDamage.tsx # Damage numbers animation
+│   │   │   ├── FloatingReward.tsx # Reward numbers
+│   │   │   ├── CombatEffects.tsx  # Hit effects, blood splats
+│   │   │   ├── LevelUpEffect.tsx  # Level up visual
+│   │   │   ├── MonsterModels.tsx  # Bug/Manager/Boss models
+│   │   │   ├── AIErrorModels.tsx  # AI/ML error monsters
+│   │   │   ├── LanguageErrorModels.tsx   # 50+ language error types
+│   │   │   ├── LanguageErrorModels2.tsx
+│   │   │   ├── LanguageErrorModels3.tsx
+│   │   │   ├── AnimationManager.tsx   # Centralized animation pooling
+│   │   │   └── constants.ts       # Map dimensions (5000x3000)
+│   │   ├── components/            # UI overlays
+│   │   │   ├── LoginBar.tsx       # OAuth login buttons
+│   │   │   ├── SpectatorBanner.tsx    # Spectator mode banner
+│   │   │   ├── PlayerModal.tsx    # Player details + Shop/Attributes (~1200 lines)
+│   │   │   ├── PlayerHUD.tsx      # Stats, level, ELO display
+│   │   │   ├── Minimap.tsx        # Top-left minimap (5:3 ratio)
+│   │   │   ├── ConnectionStatus.tsx   # Connection state indicator
+│   │   │   ├── ScriptEditor.tsx   # Monaco editor for custom scripts
+│   │   │   ├── Killfeed.tsx       # Combat event feed
+│   │   │   └── EventBanner.tsx    # Active event banner
+│   │   ├── stores/
+│   │   │   └── gameStore.ts       # Zustand state (~250+ lines)
+│   │   ├── hooks/
+│   │   │   ├── useS2Stream.ts     # S2 SSE connection (~400 lines)
+│   │   │   └── useSpectatorMode.ts    # Auto-cycle players (~150 lines)
+│   │   └── i18n/                  # Internationalization
+│   ├── Dockerfile                 # Node + Nginx
+│   ├── nginx.conf
+│   └── package.json               # React 19.2, Three.js 0.182, Zustand 5.0
+│
+├── .do/app.yaml                   # DigitalOcean App Platform config
+├── docker-compose.yml             # Local: PostgreSQL + Redis + API
+├── deploy.sh                      # Production deployment script
+└── .env.example                   # Environment variables template
 ```
 
 ## Build & Run Commands
@@ -70,7 +136,7 @@ GitWorld is a 3D passive MMO game where players login via OAuth (GitHub, GitLab,
 cp .env.example .env
 # Edit .env with your secrets
 
-# Start everything (PostgreSQL + API)
+# Start everything (PostgreSQL + Redis + API)
 docker compose build && docker compose up -d
 
 # View logs
@@ -116,51 +182,61 @@ doctl apps logs a85bc799-f622-4953-a8d9-1c256133b924 web
 
 #### Route Configuration (Important)
 DO App Platform REMOVES the route prefix before forwarding to container:
-- Route `/api` in app.yaml → Request `/api/health` → Container receives `/health`
+- Route `/api` in app.yaml -> Request `/api/health` -> Container receives `/health`
 - Endpoints in code should NOT include the route prefix
 
 **Routes configured in `.do/app.yaml`:**
-- `/api` → API
-- `/game` → API
-- `/health` → API
-- `/` → Web (fallback)
+- `/api` -> API
+- `/game` -> API
+- `/health` -> API
+- `/` -> Web (fallback)
 
 ## Architecture
 
 ### Backend (.NET 10)
-- **Program.cs** - Main entry point, configures services and game loop
-- **Core/World.cs** - World state, player management, combat logic
-- **Core/Systems/** - Game systems
-  - `MovementSystem.cs` - Player movement and pathfinding
-  - `EventSystem.cs` - Monster spawning and world events
-- **Stream/S2Publisher.cs** - S2.dev integration for real-time state broadcasting
-- **Auth/ClerkJwtValidator.cs** - Validates JWT tokens and extracts username from external_accounts
-- **GitHub/, Providers/** - Fetches user stats from GitHub, GitLab, HuggingFace APIs
-- **Data/** - Entity Framework with PostgreSQL
+- **Program.cs** - Main entry point, game loop, all endpoints (~2000 lines)
+- **Core/World.cs** - Entity management, world state
+- **Core/GameLoop.cs** - 20 ticks/s game loop
+- **Core/Systems/** - Game systems (Movement, Combat, AI, Events, Progression, Scripting)
+- **Core/Scripting/** - Jint JavaScript engine for player custom scripts
+- **Stream/S2Publisher.cs** - S2.dev integration with delta state tracking
+- **Stream/S2TokenService.cs** - Generates individual player read tokens
+- **Auth/ClerkJwtValidator.cs** - Validates JWT tokens from Clerk
+- **GitHub/, Providers/** - Fetches stats from GitHub, GitLab, HuggingFace APIs
+- **Caching/RedisCacheService.cs** - Redis with memory fallback
+- **Data/** - Entity Framework Core with PostgreSQL
 
 The game loop runs at 20 ticks/second, broadcasting state every 2 ticks (~100ms) via S2.dev streams.
 
-### Frontend (React + Three.js)
-- **src/three/** - All 3D rendering components using React Three Fiber
+### Frontend (React 19 + Three.js)
+- **src/three/** - All 3D rendering using React Three Fiber
   - `Scene.tsx` - Main canvas with WebGL config
-  - `Player.tsx` - Minecraft-style blocky character with avatar textures
+  - `Player.tsx` - Player model with avatar textures
+  - `Players.tsx` / `InstancedPlayers.tsx` - Optimized multi-player rendering
+  - `IsometricCamera.tsx` - Camera with follow/free/drone modes
   - `Map.tsx` - Desk environment (monitor, keyboard, mousepad)
-  - `IsometricCamera.tsx` - PerspectiveCamera with follow/free modes
-  - `FloatingDamage.tsx` - Animated damage numbers with arc trajectory
-  - `constants.ts` - Map dimensions (5000x3000), camera settings
+  - `FloatingDamage.tsx` / `FloatingReward.tsx` - Animated damage/reward numbers
+  - `MonsterModels.tsx`, `AIErrorModels.tsx`, `LanguageErrorModels*.tsx` - 50+ monster types
+  - `AnimationManager.tsx` - Centralized animation pooling for performance
 - **src/components/** - UI overlays
-  - `LoginBar.tsx` - Bottom bar with OAuth login buttons
-  - `SpectatorBanner.tsx` - Top banner showing spectated player
-  - `PlayerModal.tsx` - Player details with Shop/Attributes tabs
-  - `Minimap.tsx` - Top-left minimap reflecting desk layout
-  - `ConnectionStatus.tsx` - Connection state with reconnect handling
+  - `LoginBar.tsx` - OAuth login buttons
+  - `SpectatorBanner.tsx` - Spectator mode banner
+  - `PlayerModal.tsx` - Player details with Shop/Attributes tabs (~1200 lines)
+  - `PlayerHUD.tsx` - Stats, level, ELO display
+  - `Minimap.tsx` - Top-left minimap (filtered by 1000-unit broadcast range)
+  - `ScriptEditor.tsx` - Monaco editor for custom player scripts
+  - `Killfeed.tsx` - Combat event feed
 - **src/stores/gameStore.ts** - Zustand store with position interpolation
-- **src/hooks/useS2Stream.ts** - SSE connection with heartbeat monitoring
+- **src/hooks/useS2Stream.ts** - Individual player S2 SSE connection
 - **src/hooks/useSpectatorMode.ts** - Auto-cycles through players every 20s
+- **src/i18n/** - Internationalization support
 
 ### Real-time Data Flow
 ```
-API GameLoop (20 ticks/s) → S2.dev stream → Web polls S2 → Zustand store → Three.js renders
+API GameLoop (20 ticks/s) -> EntityStateTracker (delta) -> S2Publisher -> S2.dev
+                                                                            |
+                                                                            v
+Three.js <- Zustand store <- useS2Stream hook <- Individual Player Stream (SSE)
 ```
 
 Position interpolation smooths movement between server updates (INTERPOLATION_DURATION_MS = 150ms).
@@ -173,11 +249,13 @@ Position interpolation smooths movement between server updates (INTERPOLATION_DU
 - PerspectiveCamera with near=20, far=10000 to avoid flickering
 - Use `zIndexRange={[0, 1]}` on Html components to prevent overlapping modals
 
-### UI/UX
-- Login buttons use native emojis for provider icons
-- SpectatorBanner at top, LoginBar at bottom (translucent with backdrop blur)
-- PlayerModal shows tabs (Shop/Attributes) only for authenticated user's own character
-- Minimap positioned top-left, proportional to map (5:3 ratio)
+### Performance Optimizations
+- Position interpolation: 150ms client-side smoothing
+- Material pooling in AnimationManager
+- Instanced rendering for multiple players
+- LOD culling by distance
+- Broadcast filtering by 1000-unit range
+- Delta state updates instead of full broadcasts
 
 ### Deployment
 - Web Docker images must be built with `--platform linux/amd64` on Mac
@@ -195,50 +273,113 @@ All secrets should be in `.env` file (gitignored). See `.env.example` for templa
 | `ConnectionStrings__DefaultConnection` | PostgreSQL connection string |
 | `S2__Token` | S2.dev access token |
 | `S2__Basin` | S2.dev basin name |
+| `S2__StreamName` | S2.dev stream name |
 | `GITHUB_TOKEN` | GitHub PAT for fetching player stats |
 | `Clerk__SecretKey` | Clerk secret key for JWT validation |
 | `Clerk__Domain` | Clerk domain |
+| `Redis__Enabled` | Enable Redis caching (true/false) |
+| `Redis__ConnectionString` | Redis connection string (Upstash in prod) |
 
-### Web
+### Web (build-time)
 | Variable | Description |
 |----------|-------------|
-| `VITE_API_URL` | Backend API URL (build-time) |
+| `VITE_API_URL` | Backend API URL |
 | `VITE_CLERK_PUBLISHABLE_KEY` | Clerk publishable key |
+| `VITE_S2_BASIN` | S2 basin name |
+| `VITE_S2_STREAM` | S2 stream name |
+| `VITE_S2_READ_TOKEN` | S2 read-only token (optional) |
+
+## API Endpoints (~45 total)
+
+### Health & Debug
+- `GET /health` - Service health check
+- `GET /game/state` - Full world state (debug)
+
+### Game Core
+- `GET /game/spectate/players` - List online players for spectating
+- `GET /game/player/{id}` - Get player entity info
+- `POST /game/join` - Authenticate and join (returns playerId + streamInfo)
+- `POST /game/player/{id}/heartbeat` - Keep-alive signal
+- `POST /game/player/{id}/leave` - Leave game
+- `POST /game/entity/{id}/move` - Command player movement
+
+### Stats Integration
+- `GET /github/{username}` - Get cached player profile
+- `POST /github/{username}/refresh` - Refresh GitHub cache
+- `GET /gitlab/{username}/raw` - Raw GitLab data
+- `GET /huggingface/{username}/raw` - Raw HuggingFace data
+- `GET /profile/linked-accounts` - User's linked OAuth accounts
+
+### Stream
+- `GET /stream/info` - S2 configuration info
+- `GET /stream/s2` - S2 stream endpoint (SSE)
+
+### Shop & Inventory
+- `GET /shop/items` - List all shop items
+- `GET /player/inventory` - Get player inventory
+- `POST /player/items/acquire` - Buy item from shop
+- `POST /player/items/{playerItemId}/equip` - Equip item
+- `POST /player/items/{playerItemId}/unequip` - Unequip item
+- `GET /player/bonuses` - Get current item stat bonuses
+
+### Player Scripting
+- `GET /player/script` - Get player's custom script
+- `POST /player/script` - Update custom script
+- `POST /player/script/validate` - Validate script syntax
+- `POST /player/script/toggle` - Enable/disable script
+- `GET /player/script/status` - Get script execution status
+- `POST /player/script/reset` - Reset script to default
+- `GET /player/script/default` - Get default template
+- `GET /player/script/docs` - Get script API documentation
+
+### Admin
+- `POST /admin/spawn-monster` - Spawn single monster
+- `POST /admin/spawn-all-monsters` - Spawn all monster types
+- `POST /admin/clear-monsters` - Clear monsters
+- `POST /admin/spawn-fake-players` - Spawn N fake players
+- `POST /admin/clear-fake-players` - Remove fake players
 
 ## Game Systems
 
+### Game Loop
+- **Tick Rate:** 20 ticks/second (50ms per tick)
+- **Update Order:** Movement -> Combat -> AI -> Events -> Progression -> Broadcasting
+- **Broadcast:** Every 2 ticks (~100ms) via S2.dev
+
+### World Configuration
+- **Map Size:** 5000 x 3000 units (desk environment)
+- **Spawn Position:** 1800, 2300 (safe area)
+- **Broadcast Range:** 1000 units (entities beyond this are culled)
+
 ### Combat
-- Players auto-attack nearby enemies
-- Damage based on player stats (derived from GitHub activity)
-- Critical hits with floating damage numbers
-- ELO-based matchmaking consideration
+- **Attack Cooldown:** 60 ticks (3 seconds base)
+- **Range:** 30 units melee
+- **Damage Formula:** Base damage +/- variance + critical multiplier
+- **Critical Hit Multiplier:** 1.5x
+- **ELO Protection:** Players ignore targets 200+ ELO below them
+- **ELO Danger Threshold:** Avoid targets 300+ ELO above
+
+### Entity Types
+- **player** - User character
+- **bug** - Basic enemy (10 XP, 5 gold)
+- **aihallucination** - AI error monster (25 XP, 15 gold)
+- **manager** - Manager monster (30 XP, 20 gold)
+- **unexplainedbug** - Rare high-HP boss (150 XP, 75 gold)
+- **boss** - Daily boss at 18h UTC (200 XP, 100 gold)
+- **Language Error Monsters** - 50+ types (JavaScript, Python, Java, C#, Go, Rust, etc.)
+- **AI/ML Error Monsters** - VanishingGradient, ExplodingGradient, DyingReLU, Overfitting, etc.
 
 ### Events (EventSystem)
-- Monster spawning: Bug, AI Hallucination, Manager, Unexplained Bug, Boss
-- AI Invasion event spawns ML/AI error monsters (Vanishing Gradient, Exploding Gradient, etc.)
-- Monsters have health pools and drop rewards
-- Events trigger based on player activity
+- **Bug Swarm:** Every 1 minute - spawns 1-3 bugs per online player
+- **Intermediate Event:** Every 5 minutes - AI Hallucinations + Managers + Language errors
+- **Unexplained Bug:** Every 1 hour - single high-HP boss
+- **Boss Event:** Daily at 18:00 UTC - major boss encounter
+- **Death Animation:** 1-second delay before monster removal
 
-### Progression System (XP & Gold)
-
-**Level System:**
-- Max Level: 100
-- XP Formula: `BaseExp * (1.15 ^ level)` where BaseExp = 100
-- Stats increase per level (damage, HP, etc.)
-
-**XP Rewards per kill:**
-| Source | XP | Gold |
-|--------|------|------|
-| Bug | 10 | 5 |
-| AI Hallucination | 25 | 15 |
-| Manager | 30 | 20 |
-| Unexplained Bug | 150 | 75 |
-| Boss | 200 | 100 |
-| Player Kill | 50 (scales with level) | 25 |
-
-**Key Files:**
-- `Core/Systems/ProgressionSystem.cs` - XP/Gold/LevelUp logic
-- `GitWorld.Shared/Constants.cs` - All reward values
+### Progression System
+- **Max Level:** 100
+- **XP Formula:** `BaseExp * (1.15 ^ (level - 1))` where BaseExp = 100
+- **Level-up Bonuses:** +2 HP max, +1 damage, +0.5 attack speed
 
 ### Item Shop & Inventory
 
@@ -253,24 +394,18 @@ All secrets should be in `.env` file (gitignored). See `.env.example` for templa
 | S | 5000 |
 
 **Item Categories:**
-- Notebook, Processador, Café, Energético, Teclado, Fone, Camiseta, IDE, Comida, Pet, Acessório
+- Notebook, Processor, Coffee, Energy Drink, Keyboard, Headphones, T-Shirt, IDE, Food, Pet, Accessory
 
 **Item Stats (bonuses can be positive or negative):**
-- DanoBonus, ArmaduraBonus, HpBonus, CriticoBonus, EvasaoBonus
-- VelocidadeAtaqueBonus, VelocidadeMovimentoBonus
+- DamageBonus, ArmorBonus, HpBonus, CriticalBonus, EvasionBonus
+- AttackSpeedBonus, MovementSpeedBonus
 
-**Duration:**
-- Permanent items: `DurationMinutes = null`
-- Temporary items: Coffee, Food, Energy drinks have `DurationMinutes` set
+**Duration Types:**
+- Permanent: `DurationMinutes = null`
+- Temporary: Coffee (30min), Food (10min), Energy drinks (60min)
 
-**Key Files:**
-- `Services/ItemService.cs` - Buy, equip, unequip logic
-- `Program.cs` (lines 84-174) - Item seeding with all items
-- `Data/Entities/Item.cs`, `PlayerItem.cs` - Data models
-
-**API Endpoints:**
-- `GET /api/items` - List all shop items
-- `GET /api/inventory/{playerId}` - Player inventory
-- `POST /api/items/buy` - Purchase item
-- `POST /api/items/equip` - Equip item
-- `POST /api/items/unequip` - Unequip item
+### Player Scripting
+- **Engine:** Jint (JavaScript)
+- **Editor:** Monaco Editor in frontend
+- **Execution:** Sandboxed context per player
+- **Features:** Custom behavior logic, script validation, toggle on/off

@@ -4,9 +4,17 @@ import { useGameStore } from '../stores/gameStore';
 import type { CombatEvent, CombatEventType, EntityType, EventType, RewardEvent, LevelUpEvent, EntityPayload } from '../stores/gameStore';
 
 // S2 Configuration from environment
-const S2_TOKEN = import.meta.env.VITE_S2_READ_TOKEN;
 const S2_BASIN = import.meta.env.VITE_S2_BASIN || 'gitworld';
-const S2_STREAM = import.meta.env.VITE_S2_STREAM || 'game-state';
+
+interface ProjectilePayload {
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  color: string;
+  size: number;
+  attackSpeed: number;
+}
 
 interface EventPayload {
   type: string;
@@ -18,6 +26,7 @@ interface EventPayload {
   targetName: string;
   damage?: number;
   isCritical?: boolean;
+  projectile?: ProjectilePayload;
 }
 
 interface ActiveEventPayload {
@@ -69,9 +78,10 @@ interface UseS2StreamOptions {
 export function useS2Stream(options: UseS2StreamOptions = {}) {
   const { enabled = true, streamName: customStreamName, readToken: customReadToken } = options;
 
-  // Determine which stream to use (individual or global)
-  const effectiveStreamName = customStreamName || S2_STREAM;
-  const effectiveToken = customReadToken || S2_TOKEN;
+  // Use individual player stream only - no fallback to global stream
+  // If no stream name is provided, the hook will not connect
+  const effectiveStreamName = customStreamName || '';
+  const effectiveToken = customReadToken || '';
 
   // Store selectors
   const addCombatEvents = useGameStore((s) => s.addCombatEvents);
@@ -126,6 +136,15 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
       targetName: e.targetName,
       damage: e.damage,
       isCritical: e.isCritical,
+      projectile: e.projectile ? {
+        startX: e.projectile.startX,
+        startY: e.projectile.startY,
+        endX: e.projectile.endX,
+        endY: e.projectile.endY,
+        color: e.projectile.color,
+        size: e.projectile.size,
+        attackSpeed: e.projectile.attackSpeed,
+      } : undefined,
       createdAt: Date.now(),
     }));
 
@@ -240,9 +259,9 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
   const connectToS2 = useCallback(async () => {
     if (isConnectingRef.current) return;
 
-    // Use effective token (individual player token or global token)
-    if (!effectiveToken) {
-      await connectViaProxy();
+    // Don't connect if no stream name or token
+    if (!effectiveStreamName || !effectiveToken) {
+      console.log('[S2 Stream] No stream configured, waiting...');
       return;
     }
 
@@ -299,8 +318,9 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
         return;
       }
 
+      console.error('[S2 Stream] Connection error:', error.message);
       isConnectingRef.current = false;
-      connectViaProxyRef.current();
+      handleDisconnected();
     }
   }, [processPayload, handleConnected, handleDisconnected, effectiveToken, effectiveStreamName]);
 

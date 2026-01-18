@@ -38,6 +38,12 @@ public class CombatSystem
     }
 
     /// <summary>
+    /// Get effective attack range for an entity (base + item bonus)
+    /// </summary>
+    private float GetEffectiveRange(Entity entity)
+        => GameConstants.RangeAtaque + entity.RangeBonus;
+
+    /// <summary>
     /// Process auto-combat for players: validates and maintains combat state.
     /// Target selection is now handled by PlayerBehaviorSystem.
     /// This just ensures combat state consistency.
@@ -98,9 +104,10 @@ public class CombatSystem
             return;
         }
 
-        // Check if in attack range
+        // Check if in attack range (base + item bonus)
         var distance = entity.DistanceTo(target);
-        if (distance > GameConstants.RangeAtaque)
+        var effectiveRange = GetEffectiveRange(entity);
+        if (distance > effectiveRange)
         {
             // Move towards target while maintaining attack state
             entity.SetTarget(target.X, target.Y, preserveAttackState: true);
@@ -129,6 +136,16 @@ public class CombatSystem
             var critText = isCritical ? " CRIT!" : "";
             Console.WriteLine($"[Combat] {entity.GithubLogin} hits {target.GithubLogin} for {damage} damage{critText} ({target.CurrentHp}/{target.MaxHp} HP)");
 
+            // Create projectile info if entity has ranged attack (RangeBonus > 0)
+            ProjectileInfo? projectile = entity.RangeBonus > 0
+                ? new ProjectileInfo(
+                    entity.X, entity.Y,
+                    target.X, target.Y,
+                    entity.ProjectileColor ?? "#FF8800",
+                    entity.ProjectileSize,
+                    entity.VelocidadeAtaque)
+                : null;
+
             // Emit combat event
             _eventQueue.Add(new CombatEvent(
                 currentTick,
@@ -138,7 +155,8 @@ public class CombatSystem
                 target.Id,
                 target.GithubLogin,
                 damage,
-                isCritical
+                isCritical,
+                projectile
             ));
 
             // Notify listeners (e.g., AISystem for NPC aggro)
@@ -189,6 +207,16 @@ public class CombatSystem
             // Attack missed (evasion)
             Console.WriteLine($"[Combat] {entity.GithubLogin} missed {target.GithubLogin} (evaded)");
 
+            // Create projectile info for miss event too (projectile still travels)
+            ProjectileInfo? projectile = entity.RangeBonus > 0
+                ? new ProjectileInfo(
+                    entity.X, entity.Y,
+                    target.X, target.Y,
+                    entity.ProjectileColor ?? "#FF8800",
+                    entity.ProjectileSize,
+                    entity.VelocidadeAtaque)
+                : null;
+
             // Emit miss event
             _eventQueue.Add(new CombatEvent(
                 currentTick,
@@ -196,7 +224,10 @@ public class CombatSystem
                 entity.Id,
                 entity.GithubLogin,
                 target.Id,
-                target.GithubLogin
+                target.GithubLogin,
+                null,
+                false,
+                projectile
             ));
         }
     }
@@ -217,7 +248,7 @@ public class CombatSystem
 
         // If in range, stay in place; otherwise move towards target
         var distance = attacker.DistanceTo(target);
-        if (distance > GameConstants.RangeAtaque)
+        if (distance > GetEffectiveRange(attacker))
         {
             attacker.SetTarget(target.X, target.Y);
         }

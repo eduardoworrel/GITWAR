@@ -168,6 +168,11 @@ public class Entity
     public int Evasao { get; set; }
     public int Armadura { get; set; }
 
+    // Projectile properties (from equipped items)
+    public int RangeBonus { get; set; } = 0;
+    public string? ProjectileColor { get; set; }
+    public float ProjectileSize { get; set; } = 1f;
+
     // Estado atual
     public int CurrentHp { get; set; }
     public EntityState State { get; set; } = EntityState.Idle;

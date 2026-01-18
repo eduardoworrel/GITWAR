@@ -14,8 +14,15 @@ import { ConnectionStatus } from './components/ConnectionStatus';
 import { Dock } from './components/Dock';
 import { PlayerHUD } from './components/PlayerHUD';
 import { useGameStore } from './stores/gameStore';
+import type { EntityType } from './stores/gameStore';
 import { useSpectatorMode } from './hooks/useSpectatorMode';
 import { useS2Stream } from './hooks/useS2Stream';
+
+// Parse entity type from server string
+const parseEntityType = (typeStr?: string): EntityType => {
+  if (!typeStr) return 'player';
+  return typeStr.toLowerCase() as EntityType;
+};
 
 function App() {
   const { t } = useTranslation();
@@ -28,9 +35,10 @@ function App() {
   const setStreamInfo = useGameStore((s) => s.setStreamInfo);
   const streamInfo = useGameStore((s) => s.streamInfo);
 
-  // S2 stream - uses individual stream when authenticated, global stream for spectators
+  // S2 stream - uses individual player stream (both authenticated and spectators)
+  // Spectators get stream info from useSpectatorMode which cycles through online players
   useS2Stream({
-    enabled: true,
+    enabled: !!streamInfo?.streamName, // Only enable when we have a stream to connect to
     streamName: streamInfo?.streamName,
     readToken: streamInfo?.readToken ?? undefined,
   });
@@ -87,6 +95,13 @@ function App() {
             baseUrl: data.stream.baseUrl,
             readToken: data.stream.readToken,
           });
+        }
+        // Process initial state to prevent "Unknown" names
+        if (data.initialState && Array.isArray(data.initialState)) {
+          const mergeEntitiesRaw = useGameStore.getState().mergeEntitiesRaw;
+          if (mergeEntitiesRaw) {
+            mergeEntitiesRaw(data.initialState, false, parseEntityType);
+          }
         }
       }
     } catch (err) {

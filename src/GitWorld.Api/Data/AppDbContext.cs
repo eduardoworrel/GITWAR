@@ -133,6 +133,11 @@ public class AppDbContext : DbContext
             entity.Property(e => e.VelocidadeAtaqueBonus).HasColumnName("velocidade_ataque_bonus").HasDefaultValue(0);
             entity.Property(e => e.VelocidadeMovimentoBonus).HasColumnName("velocidade_movimento_bonus").HasDefaultValue(0);
 
+            // Projectile properties
+            entity.Property(e => e.RangeBonus).HasColumnName("range_bonus").HasDefaultValue(0);
+            entity.Property(e => e.ProjectileColor).HasColumnName("projectile_color").HasMaxLength(20);
+            entity.Property(e => e.ProjectileSize).HasColumnName("projectile_size").HasDefaultValue(1f);
+
             // Duration
             entity.Property(e => e.DurationMinutes).HasColumnName("duration_minutes");
             entity.Property(e => e.DurationCondition).HasColumnName("duration_condition").HasMaxLength(50);

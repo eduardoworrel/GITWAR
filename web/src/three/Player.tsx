@@ -5,6 +5,7 @@ import { Text, Billboard } from '@react-three/drei';
 import { useTranslation } from 'react-i18next';
 import { getCorReino } from './constants';
 import { getHpBarGeometry, getHpBarPositionX } from './optimizations';
+import { getTerrainHeight } from './TerrainHeight';
 import {
   NotebookPreview,
   TecladoPreview,
@@ -657,8 +658,21 @@ export function Player({
     ? (MONSTER_HEIGHTS[type] ?? 30) + (10 / scale)
     : HEAD_SIZE + BODY_HEIGHT + LEG_HEIGHT + (20 / scale);
 
+  // Base Y offset for terrain (must match Map.tsx and Buildings.tsx)
+  const TERRAIN_BASE_Y = -50;
+
+  // Update position with terrain height every frame
+  useFrame(() => {
+    if (!groupRef.current) return;
+    const [x, y, z] = position;
+    const terrainHeight = getTerrainHeight(x, z);
+    // Only apply terrain height for areas outside the desk (where terrainHeight > 0)
+    const adjustedY = terrainHeight > 0 ? y + TERRAIN_BASE_Y + terrainHeight : y;
+    groupRef.current.position.set(x, adjustedY, z);
+  });
+
   return (
-    <group position={position} ref={groupRef}>
+    <group ref={groupRef}>
       {/* Name and HP as 3D Billboard */}
       <Billboard position={[0, hpBarHeight, 0]} follow={true}>
         {/* HP Bar background */}

@@ -16,6 +16,11 @@ public class Item
     public int VelocidadeAtaqueBonus { get; set; }
     public int VelocidadeMovimentoBonus { get; set; }
 
+    // Projectile properties (for ranged attacks)
+    public int RangeBonus { get; set; }            // Extra attack range (units)
+    public string? ProjectileColor { get; set; }   // Hex color "#FF8800"
+    public float ProjectileSize { get; set; } = 1f;
+
     // Duracao em minutos (NULL = permanente)
     public int? DurationMinutes { get; set; }
 
