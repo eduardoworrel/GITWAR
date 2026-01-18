@@ -47,13 +47,14 @@ public class EntityStateTracker
         }
 
         // Compare and build delta
-        // Always include identity fields (Login, Type, Reino) to prevent "Unknown" issues after respawn
+        // Always include identity fields (Login, Type, Reino, Estado) to prevent issues after respawn/reconnect
         var delta = new EntityPayload
         {
             Id = entity.Id,
             Login = entity.GithubLogin,
             Type = entity.Type.ToString().ToLowerInvariant(),
-            Reino = entity.Reino
+            Reino = entity.Reino,
+            Estado = newSnapshot.Estado
         };
         bool hasChanges = false;
 
@@ -73,10 +74,9 @@ public class EntityStateTracker
             hasChanges = true;
         }
 
-        // State
+        // State (already included in delta, just track if changed)
         if (oldSnapshot.Estado != newSnapshot.Estado)
         {
-            delta.Estado = newSnapshot.Estado;
             hasChanges = true;
         }
 

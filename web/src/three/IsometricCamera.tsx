@@ -13,6 +13,7 @@ import {
   DRONE_CENTER_X,
   DRONE_CENTER_Z,
 } from './constants';
+import { TERRAIN_CONFIG } from './TerrainHeight';
 import { useGameStore } from '../stores/gameStore';
 import type { OrbitControls as OrbitControlsType } from 'three-stdlib';
 
@@ -24,6 +25,38 @@ interface IsometricCameraProps {
 // Reusable vectors to avoid garbage collection
 const _targetVec = new THREE.Vector3();
 const _offsetVec = new THREE.Vector3();
+
+// Camera angle constraints based on terrain height
+// The camera shouldn't be able to look "under" terrain hills
+const TERRAIN_MAX_HEIGHT = TERRAIN_CONFIG.maxHeight; // 150
+
+/**
+ * Calculate the maximum polar angle based on camera distance.
+ * This prevents the camera from seeing under terrain hills.
+ *
+ * polarAngle: 0 = top-down, π/2 = horizontal
+ *
+ * At close distances, camera must stay more "top-down" to avoid seeing under terrain.
+ * At far distances, camera can be more horizontal safely.
+ */
+function calculateMaxPolarAngle(distance: number): number {
+  // Add some margin to terrain height for safety
+  const terrainHeightWithMargin = TERRAIN_MAX_HEIGHT * 1.2;
+
+  // Calculate minimum angle from horizontal needed to not see under terrain
+  // atan(height / distance) gives the angle from horizontal
+  const minAngleFromHorizontal = Math.atan(terrainHeightWithMargin / distance);
+
+  // maxPolarAngle is measured from vertical (0 = top, π/2 = horizontal)
+  // So maxPolarAngle = π/2 - minAngleFromHorizontal
+  const maxPolar = Math.PI / 2 - minAngleFromHorizontal;
+
+  // Clamp to reasonable range
+  const MIN_POLAR = 0.02; // ~1° - almost perfectly top-down allowed
+  const MAX_POLAR = 1.31; // ~75° - not too horizontal
+
+  return Math.max(MIN_POLAR, Math.min(MAX_POLAR, maxPolar));
+}
 
 export function IsometricCamera({
   targetRef,
@@ -169,6 +202,30 @@ export function IsometricCamera({
 
     // Store current target for next frame
     prevTargetRef.current.copy(_targetVec);
+
+    // Update maxPolarAngle based on current camera distance
+    // This prevents seeing under terrain at close zoom levels
+    if (controlsRef.current) {
+      const distance = cameraRef.current.position.distanceTo(controlsRef.current.target);
+      const newMaxPolar = calculateMaxPolarAngle(distance);
+      controlsRef.current.maxPolarAngle = newMaxPolar;
+
+      // If current polar angle exceeds new max, clamp it
+      const currentPolar = controlsRef.current.getPolarAngle();
+      if (currentPolar > newMaxPolar) {
+        // Force the camera to respect the new limit by adjusting position
+        const azimuth = controlsRef.current.getAzimuthalAngle();
+        const targetPos = controlsRef.current.target;
+
+        // Calculate new camera position at the clamped polar angle
+        const newX = targetPos.x + distance * Math.sin(newMaxPolar) * Math.sin(azimuth);
+        const newY = targetPos.y + distance * Math.cos(newMaxPolar);
+        const newZ = targetPos.z + distance * Math.sin(newMaxPolar) * Math.cos(azimuth);
+
+        cameraRef.current.position.set(newX, newY, newZ);
+        controlsRef.current.update();
+      }
+    }
   });
 
   // Start at map center - camera will follow player once their data arrives
@@ -196,8 +253,8 @@ export function IsometricCamera({
         enablePan={false}
         minDistance={50}
         maxDistance={1000}
-        minPolarAngle={0.05}
-        maxPolarAngle={Math.PI / 2 - 0.035}
+        minPolarAngle={0.02}
+        maxPolarAngle={1.2}
         onStart={handleControlsStart}
       />
     </>
