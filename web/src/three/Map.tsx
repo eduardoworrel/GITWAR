@@ -1,12 +1,15 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import { MAP_WIDTH, MAP_HEIGHT, DESK_WIDTH, DESK_HEIGHT, DESK_OFFSET_X, DESK_OFFSET_Z } from './constants';
-import { getTerrainHeight } from './TerrainHeight';
+import { getTerrainHeight, TERRAIN_CONFIG } from './TerrainHeight';
 import { Buildings } from './Buildings';
 
 // Desk center position (for positioning desk elements)
 const DESK_CENTER_X = DESK_OFFSET_X + DESK_WIDTH / 2;
 const DESK_CENTER_Z = DESK_OFFSET_Z + DESK_HEIGHT / 2;
+
+// Base Y for terrain - must match Players.tsx, InstancedPlayers.tsx, Buildings.tsx
+const TERRAIN_BASE_Y = -50;
 
 // Cores da mesa
 const WOOD_DARK = 0x654321;        // Marrom escuro (borda)
@@ -687,121 +690,75 @@ const TERRAIN_COLORS = {
   high: new THREE.Color(0x8b7355),    // Lighter brown (rocky peaks)
 };
 
-const TERRAIN_MAX_HEIGHT = 150;
+/**
+ * Creates a single terrain mesh that covers the entire map.
+ * Uses getTerrainHeight directly for each vertex to ensure
+ * visual terrain matches entity positioning exactly.
+ */
+function Terrain() {
+  const geometry = useMemo(() => {
+    // Higher resolution for smoother terrain
+    const segmentsX = 100;
+    const segmentsZ = 100;
 
-// Create terrain geometry for a specific region (outside the desk)
-function createTerrainGeometry(
-  startX: number,
-  startZ: number,
-  width: number,
-  height: number,
-  segmentsX: number,
-  segmentsZ: number
-): THREE.PlaneGeometry {
-  const geo = new THREE.PlaneGeometry(width, height, segmentsX, segmentsZ);
-  const positions = geo.attributes.position;
-  const colors: number[] = [];
+    // Create a flat plane covering the entire map
+    const geo = new THREE.PlaneGeometry(MAP_WIDTH, MAP_HEIGHT, segmentsX, segmentsZ);
 
-  for (let i = 0; i < positions.count; i++) {
-    const localX = positions.getX(i);
-    const localY = positions.getY(i);
+    // Rotate to be horizontal (XZ plane)
+    geo.rotateX(-Math.PI / 2);
 
-    // Convert to world coordinates
-    const worldX = localX + startX + width / 2;
-    const worldZ = localY + startZ + height / 2;
+    // Center on the map
+    geo.translate(MAP_WIDTH / 2, 0, MAP_HEIGHT / 2);
 
-    // Get terrain height (returns 0 for desk area)
-    const terrainHeight = getTerrainHeight(worldX, worldZ);
-    // After -90° X rotation, local +Z becomes world +Y (elevation)
-    positions.setZ(i, terrainHeight);
+    const positions = geo.attributes.position;
+    const colors: number[] = [];
+    const maxHeight = TERRAIN_CONFIG.maxHeight;
 
-    // Vertex color based on height
-    const normalizedHeight = terrainHeight / TERRAIN_MAX_HEIGHT;
-    let color: THREE.Color;
-    if (normalizedHeight < 0.3) {
-      color = TERRAIN_COLORS.low.clone();
-    } else if (normalizedHeight < 0.7) {
-      const t = (normalizedHeight - 0.3) / 0.4;
-      color = TERRAIN_COLORS.low.clone().lerp(TERRAIN_COLORS.mid, t);
-    } else {
-      const t = (normalizedHeight - 0.7) / 0.3;
-      color = TERRAIN_COLORS.mid.clone().lerp(TERRAIN_COLORS.high, t);
+    // Modify each vertex
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i);
+      const z = positions.getZ(i);
+
+      // Get terrain height using the EXACT same function entities use
+      const terrainHeight = getTerrainHeight(x, z);
+
+      // Apply the EXACT same Y calculation as entities:
+      // terrainY = terrainHeight > 0 ? TERRAIN_BASE_Y + terrainHeight : 0
+      // But for the visual terrain, we want it to be at TERRAIN_BASE_Y when terrainHeight is 0
+      // This creates a continuous surface
+      const y = TERRAIN_BASE_Y + terrainHeight;
+
+      positions.setY(i, y);
+
+      // Vertex color based on height (0 to maxHeight range)
+      const normalizedHeight = terrainHeight / maxHeight;
+      let color: THREE.Color;
+      if (normalizedHeight < 0.3) {
+        color = TERRAIN_COLORS.low.clone();
+      } else if (normalizedHeight < 0.7) {
+        const t = (normalizedHeight - 0.3) / 0.4;
+        color = TERRAIN_COLORS.low.clone().lerp(TERRAIN_COLORS.mid, t);
+      } else {
+        const t = (normalizedHeight - 0.7) / 0.3;
+        color = TERRAIN_COLORS.mid.clone().lerp(TERRAIN_COLORS.high, t);
+      }
+      colors.push(color.r, color.g, color.b);
     }
-    colors.push(color.r, color.g, color.b);
-  }
 
-  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-  geo.computeVertexNormals();
-  return geo;
-}
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    geo.computeVertexNormals();
 
-// Terrain meshes ONLY for expanded areas (outside desk)
-function ExpandedTerrain() {
-  // Create terrain for 4 regions: North, South, West, East (and corners)
-  const geometries = useMemo(() => {
-    const segments = 40;
-
-    // North area (above desk)
-    const northGeo = createTerrainGeometry(0, 0, MAP_WIDTH, DESK_OFFSET_Z, segments * 2, segments);
-
-    // South area (below desk)
-    const southGeo = createTerrainGeometry(0, DESK_OFFSET_Z + DESK_HEIGHT, MAP_WIDTH, MAP_HEIGHT - DESK_OFFSET_Z - DESK_HEIGHT, segments * 2, segments);
-
-    // West area (left of desk, between north and south)
-    const westGeo = createTerrainGeometry(0, DESK_OFFSET_Z, DESK_OFFSET_X, DESK_HEIGHT, segments, segments);
-
-    // East area (right of desk, between north and south)
-    const eastGeo = createTerrainGeometry(DESK_OFFSET_X + DESK_WIDTH, DESK_OFFSET_Z, MAP_WIDTH - DESK_OFFSET_X - DESK_WIDTH, DESK_HEIGHT, segments, segments);
-
-    return { northGeo, southGeo, westGeo, eastGeo };
+    return geo;
   }, []);
 
-  // Base Y position - terrain starts below desk level (Y=0)
-  // With maxHeight=150, terrain peaks will reach Y=150 at highest points
-  const baseY = -50; // Valleys are 50 units below desk, peaks reach up to 100 above
-
   return (
-    <group>
-      {/* North terrain */}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[MAP_WIDTH / 2, baseY, DESK_OFFSET_Z / 2]}
-        geometry={geometries.northGeo}
-      >
-        <meshBasicMaterial vertexColors side={THREE.DoubleSide} />
-      </mesh>
-
-      {/* South terrain */}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[MAP_WIDTH / 2, baseY, DESK_OFFSET_Z + DESK_HEIGHT + (MAP_HEIGHT - DESK_OFFSET_Z - DESK_HEIGHT) / 2]}
-        geometry={geometries.southGeo}
-      >
-        <meshBasicMaterial vertexColors side={THREE.DoubleSide} />
-      </mesh>
-
-      {/* West terrain */}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[DESK_OFFSET_X / 2, baseY, DESK_CENTER_Z]}
-        geometry={geometries.westGeo}
-      >
-        <meshBasicMaterial vertexColors side={THREE.DoubleSide} />
-      </mesh>
-
-      {/* East terrain */}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[DESK_OFFSET_X + DESK_WIDTH + (MAP_WIDTH - DESK_OFFSET_X - DESK_WIDTH) / 2, baseY, DESK_CENTER_Z]}
-        geometry={geometries.eastGeo}
-      >
-        <meshBasicMaterial vertexColors side={THREE.DoubleSide} />
-      </mesh>
-    </group>
+    <mesh geometry={geometry}>
+      <meshBasicMaterial vertexColors side={THREE.DoubleSide} />
+    </mesh>
   );
 }
 
-// Flat desk surface (wood texture) - ONLY the desk area
+// Flat desk surface (wood texture) - ONLY the desk area, at Y=0
 function DeskSurface({ woodTexture }: { woodTexture: THREE.Texture }) {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[DESK_CENTER_X, 0, DESK_CENTER_Z]}>
@@ -811,10 +768,10 @@ function DeskSurface({ woodTexture }: { woodTexture: THREE.Texture }) {
   );
 }
 
-// Ground base for the entire map (dark grass under terrain)
+// Ground base below terrain (in case terrain has gaps)
 function GroundBase() {
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[MAP_WIDTH / 2, -1, MAP_HEIGHT / 2]}>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[MAP_WIDTH / 2, TERRAIN_BASE_Y - 10, MAP_HEIGHT / 2]}>
       <planeGeometry args={[MAP_WIDTH, MAP_HEIGHT]} />
       <meshBasicMaterial color={0x2a3a2a} />
     </mesh>
@@ -826,11 +783,11 @@ export function GameMap() {
 
   return (
     <group>
-      {/* Ground base under everything */}
+      {/* Ground base under terrain */}
       <GroundBase />
 
-      {/* Expanded terrain (outside desk area) */}
-      <ExpandedTerrain />
+      {/* Single terrain mesh covering entire map */}
+      <Terrain />
 
       {/* Table legs and structure */}
       <TableLegs />

@@ -12,6 +12,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../stores/gameStore';
 import { getCorReino } from './constants';
+import { getTerrainHeight } from './TerrainHeight';
 
 // Maximum instances per reino group
 const MAX_INSTANCES_PER_GROUP = 500;
@@ -20,6 +21,9 @@ const MAX_INSTANCES_PER_GROUP = 500;
 const BODY_HEIGHT = 14;
 const LEG_HEIGHT = 14;
 const HEAD_SIZE = 12;
+
+// Base Y offset for terrain (must match Map.tsx, Buildings.tsx, Player.tsx)
+const TERRAIN_BASE_Y = -50;
 
 // Shared geometries - created once
 const BODY_GEOMETRY = new THREE.BoxGeometry(10, BODY_HEIGHT, 6);
@@ -161,7 +165,12 @@ function ReinoGroup({ reino }: { reino: string }) {
       }
 
       const legSwing = isWalking ? Math.sin(instance.walkPhase) * 0.8 : 0;
-      const baseY = LEG_HEIGHT + (isDead ? 0 : 0);
+
+      // Calculate terrain height for this player's position
+      // pos.x = world X, pos.y = world Z (in Three.js coordinates)
+      const terrainHeight = getTerrainHeight(pos.x, pos.y);
+      const terrainOffset = terrainHeight > 0 ? TERRAIN_BASE_Y + terrainHeight : 0;
+      const baseY = LEG_HEIGHT + terrainOffset;
 
       // === BODY ===
       tempPosition.set(pos.x, baseY + BODY_HEIGHT / 2, pos.y);

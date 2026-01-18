@@ -105,8 +105,8 @@ export function useSpectatorMode(enabled: boolean) {
   // Effect: Main spectator mode logic
   useEffect(() => {
     if (enabled) {
-      // Enable drone mode for spectators
-      setCameraMode('drone');
+      // Enable follow mode for spectators (camera follows the spectated player)
+      setCameraMode('follow');
 
       // Fetch players immediately
       fetchSpectatePlayers();

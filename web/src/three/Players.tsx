@@ -6,6 +6,7 @@ import type { InterpolatedPlayer } from '../stores/gameStore';
 import { Player } from './Player';
 import type { EquippableItem } from './ItemPreviewComponents';
 import { incrementGlobalFrameCount } from './optimizations';
+import { getTerrainHeight } from './TerrainHeight';
 
 // Frustum culling - reusable objects
 const frustum = new THREE.Frustum();
@@ -17,6 +18,9 @@ const MAX_RENDER_DISTANCE_SQ = 300 * 300; // Max distance to render entities (sq
 
 // Shared geometry for click hitbox
 const HITBOX_GEOMETRY = new THREE.CylinderGeometry(15, 15, 50, 8);
+
+// Base Y offset for terrain (must match Map.tsx, Buildings.tsx, Player.tsx, InstancedPlayers.tsx)
+const TERRAIN_BASE_Y = -50;
 
 interface InterpolatedPlayerMeshProps {
   player: InterpolatedPlayer;
@@ -79,7 +83,12 @@ function InterpolatedPlayerMesh({ player, isCurrentPlayer, equippedItems = [] }:
       smoothedPosRef.current.x += (pos.x - smoothedPosRef.current.x) * smoothFactor;
       smoothedPosRef.current.z += (pos.y - smoothedPosRef.current.z) * smoothFactor;
 
+      // Calculate terrain height for this entity's position
+      const terrainHeight = getTerrainHeight(smoothedPosRef.current.x, smoothedPosRef.current.z);
+      const terrainY = terrainHeight > 0 ? TERRAIN_BASE_Y + terrainHeight : 0;
+
       groupRef.current.position.x = smoothedPosRef.current.x;
+      groupRef.current.position.y = terrainY;
       groupRef.current.position.z = smoothedPosRef.current.z;
 
       // Calculate rotation based on movement direction or nearest enemy
