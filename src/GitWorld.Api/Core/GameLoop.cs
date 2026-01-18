@@ -36,10 +36,10 @@ public class GameLoop : IDisposable
     public EventSystem EventSystem => _eventSystem;
     public ProgressionSystem ProgressionSystem => _progressionSystem;
 
-    public GameLoop(World world, ScriptExecutor scriptExecutor)
+    public GameLoop(World world, ScriptExecutor scriptExecutor, Pathfinding pathfinding)
     {
         _world = world;
-        _movementSystem = new MovementSystem(world);
+        _movementSystem = new MovementSystem(world, pathfinding);
         _combatSystem = new CombatSystem(world);
         _aiSystem = new AISystem(world, _combatSystem);
         _playerBehaviorSystem = new PlayerBehaviorSystem(world);

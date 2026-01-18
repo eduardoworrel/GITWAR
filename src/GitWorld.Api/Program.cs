@@ -93,11 +93,16 @@ builder.Services.AddScoped<IItemService, ItemService>();
 // Game services
 builder.Services.AddSingleton<World>();
 builder.Services.AddSingleton<ScriptExecutor>();
+builder.Services.AddSingleton<Pathfinding>();
 builder.Services.AddSingleton<GameLoop>(sp => new GameLoop(
     sp.GetRequiredService<World>(),
-    sp.GetRequiredService<ScriptExecutor>()
+    sp.GetRequiredService<ScriptExecutor>(),
+    sp.GetRequiredService<Pathfinding>()
 ));
-builder.Services.AddSingleton<MovementSystem>();
+builder.Services.AddSingleton<MovementSystem>(sp => new MovementSystem(
+    sp.GetRequiredService<World>(),
+    sp.GetRequiredService<Pathfinding>()
+));
 
 // Clerk JWT Validation
 builder.Services.AddHttpClient<IClerkJwtValidator, ClerkJwtValidator>();

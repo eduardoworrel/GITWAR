@@ -13,7 +13,6 @@ import {
   DRONE_CENTER_X,
   DRONE_CENTER_Z,
 } from './constants';
-import { TERRAIN_CONFIG } from './TerrainHeight';
 import { useGameStore } from '../stores/gameStore';
 import type { OrbitControls as OrbitControlsType } from 'three-stdlib';
 
@@ -26,37 +25,14 @@ interface IsometricCameraProps {
 const _targetVec = new THREE.Vector3();
 const _offsetVec = new THREE.Vector3();
 
-// Camera angle constraints based on terrain height
-// The camera shouldn't be able to look "under" terrain hills
-const TERRAIN_MAX_HEIGHT = TERRAIN_CONFIG.maxHeight; // 150
+// Camera distance constraints based on polar angle
+// When looking towards horizon/sky, smoothly zoom in to avoid seeing under terrain
+const DEFAULT_MIN_DISTANCE = 50;
+const DEFAULT_MAX_DISTANCE = 1000;
+const FORCED_ZOOM_DISTANCE = 40; // Max distance when looking at horizon/sky
+const ANGLE_THRESHOLD = 0.7; // ~40° from top - start transition here
+const ANGLE_HORIZON = 1.4; // ~80° - fully zoomed in by here
 
-/**
- * Calculate the maximum polar angle based on camera distance.
- * This prevents the camera from seeing under terrain hills.
- *
- * polarAngle: 0 = top-down, π/2 = horizontal
- *
- * At close distances, camera must stay more "top-down" to avoid seeing under terrain.
- * At far distances, camera can be more horizontal safely.
- */
-function calculateMaxPolarAngle(distance: number): number {
-  // Add some margin to terrain height for safety
-  const terrainHeightWithMargin = TERRAIN_MAX_HEIGHT * 1.2;
-
-  // Calculate minimum angle from horizontal needed to not see under terrain
-  // atan(height / distance) gives the angle from horizontal
-  const minAngleFromHorizontal = Math.atan(terrainHeightWithMargin / distance);
-
-  // maxPolarAngle is measured from vertical (0 = top, π/2 = horizontal)
-  // So maxPolarAngle = π/2 - minAngleFromHorizontal
-  const maxPolar = Math.PI / 2 - minAngleFromHorizontal;
-
-  // Clamp to reasonable range
-  const MIN_POLAR = 0.02; // ~1° - almost perfectly top-down allowed
-  const MAX_POLAR = 1.31; // ~75° - not too horizontal
-
-  return Math.max(MIN_POLAR, Math.min(MAX_POLAR, maxPolar));
-}
 
 export function IsometricCamera({
   targetRef,
@@ -72,6 +48,13 @@ export function IsometricCamera({
 
   // Drone mode state
   const droneAngleRef = useRef(0);
+
+  // User's preferred distance (saved continuously when in normal/unrestricted angle)
+  const userPreferredDistanceRef = useRef<number>(CAMERA_DISTANCE);
+  // Track if we're currently in restricted angle mode
+  const isInRestrictedModeRef = useRef<boolean>(false);
+  // Track if we're restoring zoom after exiting restricted mode
+  const isRestoringZoomRef = useRef<boolean>(false);
 
   const cameraMode = useGameStore((s) => s.cameraMode);
   const setCameraMode = useGameStore((s) => s.setCameraMode);
@@ -203,27 +186,73 @@ export function IsometricCamera({
     // Store current target for next frame
     prevTargetRef.current.copy(_targetVec);
 
-    // Update maxPolarAngle based on current camera distance
-    // This prevents seeing under terrain at close zoom levels
-    if (controlsRef.current) {
-      const distance = cameraRef.current.position.distanceTo(controlsRef.current.target);
-      const newMaxPolar = calculateMaxPolarAngle(distance);
-      controlsRef.current.maxPolarAngle = newMaxPolar;
+    // Dynamic zoom based on polar angle - smooth transitions
+    if (controlsRef.current && cameraRef.current) {
+      const polarAngle = controlsRef.current.getPolarAngle();
+      const currentDistance = cameraRef.current.position.distanceTo(controlsRef.current.target);
 
-      // If current polar angle exceeds new max, clamp it
-      const currentPolar = controlsRef.current.getPolarAngle();
-      if (currentPolar > newMaxPolar) {
-        // Force the camera to respect the new limit by adjusting position
-        const azimuth = controlsRef.current.getAzimuthalAngle();
-        const targetPos = controlsRef.current.target;
+      // Determine if we're in the restricted angle range (looking towards horizon/sky)
+      const isRestricted = polarAngle >= ANGLE_THRESHOLD;
 
-        // Calculate new camera position at the clamped polar angle
-        const newX = targetPos.x + distance * Math.sin(newMaxPolar) * Math.sin(azimuth);
-        const newY = targetPos.y + distance * Math.cos(newMaxPolar);
-        const newZ = targetPos.z + distance * Math.sin(newMaxPolar) * Math.cos(azimuth);
+      // Calculate the maximum allowed distance based on current angle
+      // Smoothly transitions from DEFAULT_MAX_DISTANCE to FORCED_ZOOM_DISTANCE
+      let maxAllowedDistance = DEFAULT_MAX_DISTANCE;
+      if (polarAngle >= ANGLE_THRESHOLD) {
+        // How far into the restricted zone are we? (0 at threshold, 1 at horizon)
+        const restrictedProgress = Math.min(1, (polarAngle - ANGLE_THRESHOLD) / (ANGLE_HORIZON - ANGLE_THRESHOLD));
+        // Smooth easing for gradual transition
+        const eased = restrictedProgress * restrictedProgress * (3 - 2 * restrictedProgress); // smoothstep
+        maxAllowedDistance = DEFAULT_MAX_DISTANCE - (DEFAULT_MAX_DISTANCE - FORCED_ZOOM_DISTANCE) * eased;
+      }
 
-        cameraRef.current.position.set(newX, newY, newZ);
+      // Update OrbitControls constraint
+      controlsRef.current.maxDistance = maxAllowedDistance;
+      controlsRef.current.minDistance = DEFAULT_MIN_DISTANCE;
+
+      // === STATE MANAGEMENT (order matters!) ===
+
+      // 1. EXITING RESTRICTED MODE: Start restoring zoom (must check FIRST!)
+      if (!isRestricted && isInRestrictedModeRef.current) {
+        isInRestrictedModeRef.current = false;
+        isRestoringZoomRef.current = true;
+      }
+      // 2. ENTERING RESTRICTED MODE
+      else if (isRestricted && !isInRestrictedModeRef.current) {
+        isInRestrictedModeRef.current = true;
+        isRestoringZoomRef.current = false;
+        // userPreferredDistanceRef already has the last saved distance
+      }
+      // 3. NORMAL MODE: Not restricted, not restoring -> save distance continuously
+      else if (!isRestricted && !isRestoringZoomRef.current) {
+        userPreferredDistanceRef.current = currentDistance;
+      }
+
+      // IN RESTRICTED MODE: Smoothly zoom in if beyond allowed distance
+      if (isRestricted && currentDistance > maxAllowedDistance + 1) {
+        const excess = currentDistance - maxAllowedDistance;
+        const lerpFactor = Math.min(0.18, 0.05 + (excess / maxAllowedDistance) * 0.13);
+
+        const direction = _offsetVec.subVectors(cameraRef.current.position, controlsRef.current.target).normalize();
+        const targetPosition = controlsRef.current.target.clone().add(direction.multiplyScalar(maxAllowedDistance));
+        cameraRef.current.position.lerp(targetPosition, lerpFactor);
         controlsRef.current.update();
+      }
+
+      // RESTORING ZOOM: Smoothly zoom out to user's preferred distance
+      if (isRestoringZoomRef.current && !isRestricted) {
+        const targetDistance = userPreferredDistanceRef.current;
+        const distanceDiff = targetDistance - currentDistance;
+
+        if (Math.abs(distanceDiff) > 3) {
+          const lerpFactor = 0.1;
+          const direction = _offsetVec.subVectors(cameraRef.current.position, controlsRef.current.target).normalize();
+          const targetPosition = controlsRef.current.target.clone().add(direction.multiplyScalar(targetDistance));
+          cameraRef.current.position.lerp(targetPosition, lerpFactor);
+          controlsRef.current.update();
+        } else {
+          // Close enough - stop restoring
+          isRestoringZoomRef.current = false;
+        }
       }
     }
   });
@@ -251,10 +280,10 @@ export function IsometricCamera({
         enableRotate={cameraMode !== 'drone'}
         enableZoom={cameraMode !== 'drone'}
         enablePan={false}
-        minDistance={50}
-        maxDistance={1000}
+        minDistance={DEFAULT_MIN_DISTANCE}
+        maxDistance={DEFAULT_MAX_DISTANCE}
         minPolarAngle={0.02}
-        maxPolarAngle={1.2}
+        maxPolarAngle={2.5}
         onStart={handleControlsStart}
       />
     </>

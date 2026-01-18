@@ -14,6 +14,10 @@ import { PerformanceStatsConnector, PerformanceMonitorUI } from '../components/P
 import { useGameStore } from '../stores/gameStore';
 import { MAP_WIDTH, MAP_HEIGHT } from './constants';
 import { AnimationManagerProvider } from './AnimationManager';
+import { getTerrainHeight } from './TerrainHeight';
+
+// Base Y for terrain - must match other files
+const TERRAIN_BASE_Y = -50;
 
 // Smooth lerp for menu position
 const menuPosRef = { x: 0, y: 0, initialized: false };
@@ -47,8 +51,11 @@ function RadialMenuPositionCalculator() {
       return;
     }
 
+    // Calculate terrain height at player position
+    const terrainHeight = getTerrainHeight(pos.x, pos.y);
+    const terrainY = terrainHeight > 0 ? TERRAIN_BASE_Y + terrainHeight : 0;
     // Set 3D vector at player position (above head) - reuse to avoid GC
-    _worldPos.set(pos.x, 70, pos.y);
+    _worldPos.set(pos.x, terrainY + 70, pos.y);
 
     // Project to normalized device coordinates (project modifies in place)
     _worldPos.project(camera);
@@ -96,8 +103,11 @@ function SceneContent() {
     if (currentPlayerId) {
       const pos = getInterpolatedPosition(currentPlayerId);
       if (pos) {
-        // Y=30 targets the body/chest area instead of feet
-        targetRef.current = [pos.x, 30, pos.y];
+        // Calculate terrain height at player position
+        const terrainHeight = getTerrainHeight(pos.x, pos.y);
+        const terrainY = terrainHeight > 0 ? TERRAIN_BASE_Y + terrainHeight : 0;
+        // Y targets the body/chest area (30 units above terrain)
+        targetRef.current = [pos.x, terrainY + 30, pos.y];
 
         // Only update Zustand if position changed significantly (> 0.1 units)
         // This prevents unnecessary re-renders while still caching position for jitter prevention
