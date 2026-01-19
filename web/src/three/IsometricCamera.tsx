@@ -25,13 +25,15 @@ interface IsometricCameraProps {
 const _targetVec = new THREE.Vector3();
 const _offsetVec = new THREE.Vector3();
 
-// Camera distance constraints based on polar angle
-// When looking towards horizon/sky, smoothly zoom in to avoid seeing under terrain
+// Camera distance constraints
 const DEFAULT_MIN_DISTANCE = 50;
 const DEFAULT_MAX_DISTANCE = 1000;
-const FORCED_ZOOM_DISTANCE = 40; // Max distance when looking at horizon/sky
-const ANGLE_THRESHOLD = 0.7; // ~40° from top - start transition here
-const ANGLE_HORIZON = 1.4; // ~80° - fully zoomed in by here
+
+// Angle where we start limiting max distance (radians from top)
+// 0 = looking straight down, PI/2 = looking at horizon
+const ANGLE_START_LIMIT = 1.0; // ~57° from top
+const ANGLE_FULL_LIMIT = 1.5;  // ~86° from top (near horizon)
+const MIN_DISTANCE_AT_HORIZON = 60; // Minimum max distance when looking at horizon
 
 
 export function IsometricCamera({
@@ -49,12 +51,12 @@ export function IsometricCamera({
   // Drone mode state
   const droneAngleRef = useRef(0);
 
-  // User's preferred distance (saved continuously when in normal/unrestricted angle)
-  const userPreferredDistanceRef = useRef<number>(CAMERA_DISTANCE);
-  // Track if we're currently in restricted angle mode
-  const isInRestrictedModeRef = useRef<boolean>(false);
-  // Track if we're restoring zoom after exiting restricted mode
-  const isRestoringZoomRef = useRef<boolean>(false);
+  // Distance saved when ENTERING restricted angle (to restore later)
+  const savedDistanceRef = useRef<number>(CAMERA_DISTANCE);
+  // Was the camera in restricted angle last frame?
+  const wasRestrictedRef = useRef<boolean>(false);
+  // Are we currently restoring zoom after exiting restricted angle?
+  const isRestoringRef = useRef<boolean>(false);
 
   const cameraMode = useGameStore((s) => s.cameraMode);
   const setCameraMode = useGameStore((s) => s.setCameraMode);
@@ -186,74 +188,74 @@ export function IsometricCamera({
     // Store current target for next frame
     prevTargetRef.current.copy(_targetVec);
 
-    // Dynamic zoom based on polar angle - smooth transitions
+    // === ZOOM LOGIC ===
+    // Only intervene when looking at horizon to prevent seeing under terrain
+    // Otherwise let user zoom freely without interference
     if (controlsRef.current && cameraRef.current) {
       const polarAngle = controlsRef.current.getPolarAngle();
       const currentDistance = cameraRef.current.position.distanceTo(controlsRef.current.target);
 
-      // Determine if we're in the restricted angle range (looking towards horizon/sky)
-      const isRestricted = polarAngle >= ANGLE_THRESHOLD;
+      // Is the viewing angle restricted? (looking towards horizon)
+      const isRestricted = polarAngle > ANGLE_START_LIMIT;
 
-      // Calculate the maximum allowed distance based on current angle
-      // Smoothly transitions from DEFAULT_MAX_DISTANCE to FORCED_ZOOM_DISTANCE
+      // Calculate max allowed distance when restricted
       let maxAllowedDistance = DEFAULT_MAX_DISTANCE;
-      if (polarAngle >= ANGLE_THRESHOLD) {
-        // How far into the restricted zone are we? (0 at threshold, 1 at horizon)
-        const restrictedProgress = Math.min(1, (polarAngle - ANGLE_THRESHOLD) / (ANGLE_HORIZON - ANGLE_THRESHOLD));
-        // Smooth easing for gradual transition
-        const eased = restrictedProgress * restrictedProgress * (3 - 2 * restrictedProgress); // smoothstep
-        maxAllowedDistance = DEFAULT_MAX_DISTANCE - (DEFAULT_MAX_DISTANCE - FORCED_ZOOM_DISTANCE) * eased;
+      if (isRestricted) {
+        const t = Math.min(1, (polarAngle - ANGLE_START_LIMIT) / (ANGLE_FULL_LIMIT - ANGLE_START_LIMIT));
+        const smooth = t * t * (3 - 2 * t); // smoothstep
+        maxAllowedDistance = DEFAULT_MAX_DISTANCE - (DEFAULT_MAX_DISTANCE - MIN_DISTANCE_AT_HORIZON) * smooth;
       }
 
-      // Update OrbitControls constraint
-      controlsRef.current.maxDistance = maxAllowedDistance;
+      // Set OrbitControls constraints
+      controlsRef.current.maxDistance = DEFAULT_MAX_DISTANCE;
       controlsRef.current.minDistance = DEFAULT_MIN_DISTANCE;
 
-      // === STATE MANAGEMENT (order matters!) ===
+      // STATE TRANSITIONS:
 
-      // 1. EXITING RESTRICTED MODE: Start restoring zoom (must check FIRST!)
-      if (!isRestricted && isInRestrictedModeRef.current) {
-        isInRestrictedModeRef.current = false;
-        isRestoringZoomRef.current = true;
-      }
-      // 2. ENTERING RESTRICTED MODE
-      else if (isRestricted && !isInRestrictedModeRef.current) {
-        isInRestrictedModeRef.current = true;
-        isRestoringZoomRef.current = false;
-        // userPreferredDistanceRef already has the last saved distance
-      }
-      // 3. NORMAL MODE: Not restricted, not restoring -> save distance continuously
-      else if (!isRestricted && !isRestoringZoomRef.current) {
-        userPreferredDistanceRef.current = currentDistance;
+      // Just ENTERED restricted angle -> save distance
+      if (isRestricted && !wasRestrictedRef.current) {
+        savedDistanceRef.current = currentDistance;
+        isRestoringRef.current = false;
       }
 
-      // IN RESTRICTED MODE: Smoothly zoom in if beyond allowed distance
-      if (isRestricted && currentDistance > maxAllowedDistance + 1) {
-        const excess = currentDistance - maxAllowedDistance;
-        const lerpFactor = Math.min(0.18, 0.05 + (excess / maxAllowedDistance) * 0.13);
+      // Just EXITED restricted angle -> start restore if we were zoomed in
+      if (!isRestricted && wasRestrictedRef.current) {
+        if (currentDistance < savedDistanceRef.current - 5) {
+          isRestoringRef.current = true;
+        }
+      }
 
-        const direction = _offsetVec.subVectors(cameraRef.current.position, controlsRef.current.target).normalize();
-        const targetPosition = controlsRef.current.target.clone().add(direction.multiplyScalar(maxAllowedDistance));
-        cameraRef.current.position.lerp(targetPosition, lerpFactor);
+      // WHILE RESTRICTED: zoom in if needed
+      if (isRestricted && currentDistance > maxAllowedDistance + 2) {
+        const direction = _offsetVec
+          .subVectors(cameraRef.current.position, controlsRef.current.target)
+          .normalize();
+        const targetPos = controlsRef.current.target.clone().add(
+          direction.multiplyScalar(maxAllowedDistance)
+        );
+        cameraRef.current.position.lerp(targetPos, 0.15);
         controlsRef.current.update();
       }
 
-      // RESTORING ZOOM: Smoothly zoom out to user's preferred distance
-      if (isRestoringZoomRef.current && !isRestricted) {
-        const targetDistance = userPreferredDistanceRef.current;
-        const distanceDiff = targetDistance - currentDistance;
-
-        if (Math.abs(distanceDiff) > 3) {
-          const lerpFactor = 0.1;
-          const direction = _offsetVec.subVectors(cameraRef.current.position, controlsRef.current.target).normalize();
-          const targetPosition = controlsRef.current.target.clone().add(direction.multiplyScalar(targetDistance));
-          cameraRef.current.position.lerp(targetPosition, lerpFactor);
+      // RESTORING: zoom out to saved distance
+      if (isRestoringRef.current && !isRestricted) {
+        const diff = savedDistanceRef.current - currentDistance;
+        if (diff > 3) {
+          const direction = _offsetVec
+            .subVectors(cameraRef.current.position, controlsRef.current.target)
+            .normalize();
+          const targetPos = controlsRef.current.target.clone().add(
+            direction.multiplyScalar(savedDistanceRef.current)
+          );
+          cameraRef.current.position.lerp(targetPos, 0.08);
           controlsRef.current.update();
         } else {
-          // Close enough - stop restoring
-          isRestoringZoomRef.current = false;
+          // Restore complete
+          isRestoringRef.current = false;
         }
       }
+
+      wasRestrictedRef.current = isRestricted;
     }
   });
 
