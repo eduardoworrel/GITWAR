@@ -5,26 +5,8 @@ import * as THREE from 'three';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@clerk/clerk-react';
 import { useGameStore, type InterpolatedPlayer, type PlayerItem, type Item } from '../stores/gameStore';
-import { getCorReino } from '../three/constants';
+import { getCorElo, getCorEloHex } from '../three/constants';
 import { ScriptEditor } from './ScriptEditor';
-
-const reinoColors: Record<string, string> = {
-  Python: '#3776AB',
-  JavaScript: '#F7DF1E',
-  TypeScript: '#3178C6',
-  Java: '#ED8B00',
-  CSharp: '#239120',
-  Go: '#00ADD8',
-  Rust: '#DEA584',
-  Ruby: '#CC342D',
-  PHP: '#777BB4',
-  'C++': '#00599C',
-  C: '#555555',
-  Swift: '#FA7343',
-  Kotlin: '#7F52FF',
-  Shell: '#89E051',
-  Scala: '#DC322F',
-};
 
 const tierColors: Record<string, string> = {
   SS: '#ff00ff',
@@ -2119,13 +2101,13 @@ function ComidaPreview({ itemName }: { itemName: string; tier: string }) {
 }
 
 interface PreviewCharacterProps {
-  reino: string;
+  elo: number;
   githubLogin: string;
   estado: string;
   previewItem?: Item | null;
 }
 
-function PreviewCharacter({ reino, githubLogin, estado, previewItem }: PreviewCharacterProps) {
+function PreviewCharacter({ elo, githubLogin, estado, previewItem }: PreviewCharacterProps) {
   const groupRef = useRef<THREE.Group>(null);
   const leftLegRef = useRef<THREE.Group>(null);
   const rightLegRef = useRef<THREE.Group>(null);
@@ -2133,7 +2115,7 @@ function PreviewCharacter({ reino, githubLogin, estado, previewItem }: PreviewCh
   const headRef = useRef<THREE.Mesh>(null);
   const walkPhaseRef = useRef(0);
 
-  const color = getCorReino(reino);
+  const color = getCorElo(elo);
   const legColor = new THREE.Color(color).multiplyScalar(0.6).getHex();
   const isWalking = estado === 'walking' || estado === 'moving';
   const isAttacking = estado === 'attacking';
@@ -2308,13 +2290,13 @@ function PreviewCharacter({ reino, githubLogin, estado, previewItem }: PreviewCh
 }
 
 interface PlayerPreview3DProps {
-  reino: string;
+  elo: number;
   githubLogin: string;
   estado: string;
   previewItem?: Item | null;
 }
 
-function PlayerPreview3D({ reino, githubLogin, estado, previewItem }: PlayerPreview3DProps) {
+function PlayerPreview3D({ elo, githubLogin, estado, previewItem }: PlayerPreview3DProps) {
   return (
     <div
       style={{
@@ -2329,7 +2311,7 @@ function PlayerPreview3D({ reino, githubLogin, estado, previewItem }: PlayerPrev
       <Canvas camera={{ position: [85, 65, 85], fov: 50 }}>
         <ambientLight intensity={0.6} />
         <directionalLight position={[10, 20, 10]} intensity={0.8} />
-        <PreviewCharacter reino={reino} githubLogin={githubLogin} estado={estado} previewItem={previewItem} />
+        <PreviewCharacter elo={elo} githubLogin={githubLogin} estado={estado} previewItem={previewItem} />
       </Canvas>
       {/* Preview item name overlay */}
       {previewItem && (
@@ -2395,7 +2377,7 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
   const [previewItem, setPreviewItem] = useState<Item | null>(null);
   const addToInventory = useGameStore((s) => s.addToInventory);
 
-  const reinoColor = reinoColors[player.reino] || '#888';
+  const eloColor = getCorEloHex(player.elo ?? 1000);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 600;
 
   // Fetch shop items and inventory when modal opens
@@ -2609,7 +2591,7 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
         {/* Main area: Preview + Content */}
         <div style={{ display: 'flex', flexDirection: 'row', flex: 1 }}>
           {/* 3D Character Preview - always visible */}
-          <PlayerPreview3D reino={player.reino} githubLogin={player.githubLogin} estado={player.estado || 'idle'} previewItem={previewItem} />
+          <PlayerPreview3D elo={player.elo ?? 1000} githubLogin={player.githubLogin} estado={player.estado || 'idle'} previewItem={previewItem} />
 
           {/* Content */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -2618,7 +2600,7 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
           style={{
             padding: '16px 20px',
             paddingRight: '50px', // space for close button
-            background: `linear-gradient(135deg, ${reinoColor}33 0%, transparent 100%)`,
+            background: `linear-gradient(135deg, ${eloColor}33 0%, transparent 100%)`,
             borderBottom: '1px solid rgba(255,255,255,0.06)',
             display: 'flex',
             alignItems: 'center',
@@ -2633,12 +2615,11 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
               width: '48px',
               height: '48px',
               borderRadius: '12px',
-              border: `2px solid ${reinoColor}`,
+              border: `2px solid ${eloColor}`,
             }}
           />
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 600, fontSize: '16px' }}>{player.githubLogin}</div>
-            <div style={{ fontSize: '12px', color: reinoColor, fontWeight: 500 }}>{player.reino}</div>
           </div>
         </div>
 
@@ -2655,7 +2636,7 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
                 padding: '12px 16px',
                 background: 'transparent',
                 border: 'none',
-                borderBottom: activeTab === 'shop' ? `2px solid ${reinoColor}` : '2px solid transparent',
+                borderBottom: activeTab === 'shop' ? `2px solid ${eloColor}` : '2px solid transparent',
                 color: activeTab === 'shop' ? 'white' : 'rgba(255,255,255,0.5)',
                 fontSize: '12px',
                 fontWeight: 600,
@@ -2671,7 +2652,7 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
                 padding: '12px 16px',
                 background: 'transparent',
                 border: 'none',
-                borderBottom: activeTab === 'attributes' ? `2px solid ${reinoColor}` : '2px solid transparent',
+                borderBottom: activeTab === 'attributes' ? `2px solid ${eloColor}` : '2px solid transparent',
                 color: activeTab === 'attributes' ? 'white' : 'rgba(255,255,255,0.5)',
                 fontSize: '12px',
                 fontWeight: 600,
@@ -2687,7 +2668,7 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
                 padding: '12px 16px',
                 background: 'transparent',
                 border: 'none',
-                borderBottom: activeTab === 'script' ? `2px solid ${reinoColor}` : '2px solid transparent',
+                borderBottom: activeTab === 'script' ? `2px solid ${eloColor}` : '2px solid transparent',
                 color: activeTab === 'script' ? 'white' : 'rgba(255,255,255,0.5)',
                 fontSize: '12px',
                 fontWeight: 600,
@@ -2705,7 +2686,7 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
           {/* Script tab content (only for own player) */}
           {isOwnPlayer && activeTab === 'script' && (
             <div style={{ height: '420px' }}>
-              <ScriptEditor reinoColor={reinoColor} />
+              <ScriptEditor accentColor={eloColor} />
             </div>
           )}
 
@@ -2820,8 +2801,8 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
                               width: '20px',
                               height: '20px',
                               borderRadius: '6px',
-                              border: `2px solid ${isExpanded ? reinoColor : 'rgba(255,255,255,0.2)'}`,
-                              background: isExpanded ? `${reinoColor}22` : 'transparent',
+                              border: `2px solid ${isExpanded ? eloColor : 'rgba(255,255,255,0.2)'}`,
+                              background: isExpanded ? `${eloColor}22` : 'transparent',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -2848,7 +2829,7 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
                               padding: '2px 8px',
                               fontSize: '10px',
                               fontWeight: 600,
-                              background: isExpanded ? reinoColor : 'rgba(255,255,255,0.1)',
+                              background: isExpanded ? eloColor : 'rgba(255,255,255,0.1)',
                               color: isExpanded ? 'white' : 'rgba(255,255,255,0.5)',
                               borderRadius: '10px',
                               transition: 'all 0.2s ease',
@@ -2859,7 +2840,7 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
                             {/* Chevron */}
                             <span style={{
                               fontSize: '10px',
-                              color: isExpanded ? reinoColor : 'rgba(255,255,255,0.3)',
+                              color: isExpanded ? eloColor : 'rgba(255,255,255,0.3)',
                               transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
                               transition: 'all 0.2s ease',
                             }}>▶</span>
@@ -2872,7 +2853,7 @@ export function PlayerModal({ player: initialPlayer, onClose }: PlayerModalProps
                             borderRadius: '0 0 8px 8px',
                             padding: '8px',
                             marginLeft: '10px',
-                            borderLeft: `2px solid ${reinoColor}40`,
+                            borderLeft: `2px solid ${eloColor}40`,
                           }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                             {categoryItems.map((item) => {

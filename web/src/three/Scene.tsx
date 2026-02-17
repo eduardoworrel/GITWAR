@@ -1,6 +1,5 @@
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { useRef } from 'react';
-import * as THREE from 'three';
 import { IsometricCamera } from './IsometricCamera';
 import { GameMap } from './Map';
 import { Players } from './Players';
@@ -9,82 +8,14 @@ import { FloatingReward } from './FloatingReward';
 import { LevelUpEffect } from './LevelUpEffect';
 import { CombatEffects } from './CombatEffects';
 import { Projectiles } from './Projectile';
-import { RadialMenuOverlay } from '../components/RadialMenuOverlay';
 import { PerformanceStatsConnector, PerformanceMonitorUI } from '../components/PerformanceMonitor';
 import { useGameStore } from '../stores/gameStore';
 import { MAP_WIDTH, MAP_HEIGHT } from './constants';
 import { AnimationManagerProvider } from './AnimationManager';
-import { getTerrainHeight } from './TerrainHeight';
+import { getTerrainHeight, isInTerrainArea } from './TerrainHeight';
 
 // Base Y for terrain - must match other files
 const TERRAIN_BASE_Y = -50;
-
-// Smooth lerp for menu position
-const menuPosRef = { x: 0, y: 0, initialized: false };
-
-// Reusable vector to avoid garbage collection
-const _worldPos = new THREE.Vector3();
-
-// Component that calculates screen position for radial menu
-// Updates DOM directly via ref to avoid React re-renders
-function RadialMenuPositionCalculator() {
-  const selectedPlayer = useGameStore((s) => s.selectedPlayerForMenu);
-  const getInterpolatedPosition = useGameStore((s) => s.getInterpolatedPosition);
-  const { camera, size } = useThree();
-
-  useFrame(() => {
-    // Find the radial menu element directly
-    const menuEl = document.getElementById('radial-menu-overlay');
-    if (!menuEl) return;
-
-    if (!selectedPlayer) {
-      menuEl.style.opacity = '0';
-      menuEl.style.pointerEvents = 'none';
-      menuPosRef.initialized = false;
-      return;
-    }
-
-    const pos = getInterpolatedPosition(selectedPlayer.id);
-    if (!pos) {
-      menuEl.style.opacity = '0';
-      menuEl.style.pointerEvents = 'none';
-      return;
-    }
-
-    // Calculate terrain height at player position
-    const terrainHeight = getTerrainHeight(pos.x, pos.y);
-    const terrainY = terrainHeight > 0 ? TERRAIN_BASE_Y + terrainHeight : 0;
-    // Set 3D vector at player position (above head) - reuse to avoid GC
-    _worldPos.set(pos.x, terrainY + 70, pos.y);
-
-    // Project to normalized device coordinates (project modifies in place)
-    _worldPos.project(camera);
-
-    // Convert to screen coordinates
-    const targetX = (_worldPos.x * 0.5 + 0.5) * size.width;
-    const targetY = (-_worldPos.y * 0.5 + 0.5) * size.height;
-
-    // Initialize or lerp to target position
-    if (!menuPosRef.initialized) {
-      menuPosRef.x = targetX;
-      menuPosRef.y = targetY;
-      menuPosRef.initialized = true;
-    } else {
-      // Smooth lerp - higher value = more responsive but potentially more jittery
-      // Lower value = smoother but more laggy
-      const lerpFactor = 0.15;
-      menuPosRef.x += (targetX - menuPosRef.x) * lerpFactor;
-      menuPosRef.y += (targetY - menuPosRef.y) * lerpFactor;
-    }
-
-    // Use transform instead of left/top for GPU acceleration
-    menuEl.style.opacity = '1';
-    menuEl.style.pointerEvents = 'auto';
-    menuEl.style.transform = `translate3d(${menuPosRef.x}px, ${menuPosRef.y}px, 0) translate(-50%, -50%)`;
-  });
-
-  return null;
-}
 
 function SceneContent() {
   // Initialize to map center so camera doesn't show map corner while waiting for player data
@@ -93,8 +24,6 @@ function SceneContent() {
   const currentPlayerId = useGameStore((s) => s.currentPlayerId);
   const getInterpolatedPosition = useGameStore((s) => s.getInterpolatedPosition);
   const setCurrentPlayerPos = useGameStore((s) => s.setCurrentPlayerPos);
-  const setSelectedPlayerForMenu = useGameStore((s) => s.setSelectedPlayerForMenu);
-
   // Update camera target every frame
   // Also cache the position for the current player mesh to use (prevents jitter)
   useFrame(() => {
@@ -105,7 +34,9 @@ function SceneContent() {
       if (pos) {
         // Calculate terrain height at player position
         const terrainHeight = getTerrainHeight(pos.x, pos.y);
-        const terrainY = terrainHeight > 0 ? TERRAIN_BASE_Y + terrainHeight : 0;
+        const terrainY = terrainHeight > 0
+        ? (isInTerrainArea(pos.x, pos.y) ? TERRAIN_BASE_Y + terrainHeight : terrainHeight)
+        : 0;
         // Y targets the body/chest area (30 units above terrain)
         targetRef.current = [pos.x, terrainY + 30, pos.y];
 
@@ -132,16 +63,6 @@ function SceneContent() {
       {/* Map (desk) */}
       <GameMap />
 
-      {/* Background click catcher to close radial menu */}
-      <mesh
-        position={[0, -10, 0]}
-        rotation={[-Math.PI / 2, 0, 0]}
-        onClick={() => setSelectedPlayerForMenu(null)}
-      >
-        <planeGeometry args={[10000, 10000]} />
-        <meshBasicMaterial visible={false} />
-      </mesh>
-
       {/* Dynamic players from store */}
       <Players />
 
@@ -159,9 +80,6 @@ function SceneContent() {
 
       {/* Level up effects */}
       <LevelUpEffect />
-
-      {/* Calculate screen position for radial menu */}
-      <RadialMenuPositionCalculator />
 
       {/* Performance stats collector (F3 to show UI) */}
       <PerformanceStatsConnector />
@@ -190,8 +108,6 @@ export function GameScene() {
           <SceneContent />
         </AnimationManagerProvider>
       </Canvas>
-      {/* Radial menu overlay - rendered outside Canvas */}
-      <RadialMenuOverlay />
       {/* Performance monitor UI (F3 to toggle) */}
       <PerformanceMonitorUI />
     </>

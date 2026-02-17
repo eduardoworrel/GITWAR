@@ -289,9 +289,10 @@ public class Pathfinding
         path.Reverse();
 
         // Return nodes to pool for reuse (except the ones in path)
+        var pathSet = new HashSet<PathNode>(path);
         foreach (var node in _allNodes.Values)
         {
-            if (!path.Contains(node))
+            if (!pathSet.Contains(node))
             {
                 _nodePool.Push(node);
             }
@@ -400,6 +401,24 @@ public class Pathfinding
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Find the nearest walkable world position to the given coordinates.
+    /// Used to escape entities stuck on unwalkable grid cells.
+    /// </summary>
+    public (float X, float Y)? FindNearestWalkableWorldPos(float x, float y)
+    {
+        int gridX = (int)(x / CellSize);
+        int gridY = (int)(y / CellSize);
+        gridX = Math.Clamp(gridX, 0, _gridWidth - 1);
+        gridY = Math.Clamp(gridY, 0, _gridHeight - 1);
+
+        var nearest = FindNearestWalkable(gridX, gridY);
+        if (nearest == null) return null;
+
+        // Return center of the nearest walkable cell
+        return ((nearest.Value.X + 0.5f) * CellSize, (nearest.Value.Y + 0.5f) * CellSize);
     }
 
     /// <summary>

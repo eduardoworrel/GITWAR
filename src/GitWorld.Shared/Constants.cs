@@ -32,10 +32,7 @@ public static class GameConstants
         // === Desk Objects (positioned relative to desk center at 5000, 5000) ===
         // Monitor base (desk center X, desk top + 600)
         (DeskOffsetX + DeskWidth / 2f - 150f, DeskOffsetZ + 600f - 100f, 300f, 200f),
-        // Keyboard (desk center X, desk center Z - 100)
-        (DeskOffsetX + DeskWidth / 2f - 275f, DeskOffsetZ + DeskHeight / 2f - 100f - 90f, 550f, 180f),
-        // Mouse only (desk center X + 550, desk center Z) - mousepad is walkable
-        (DeskOffsetX + DeskWidth / 2f + 550f - 40f, DeskOffsetZ + DeskHeight / 2f - 50f, 80f, 100f),
+        // Keyboard and Mouse are now terrain relief (elevation) instead of blockers
 
         // === Tech Buildings in EXPANDED areas (outside desk) ===
         // North area buildings (z < DeskOffsetZ = 3500)

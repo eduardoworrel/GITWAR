@@ -177,7 +177,6 @@ public class PlayerScriptSystem
         {
             if (entity.Id == player.Id) continue;
             if (!entity.IsAlive) continue;
-            if (entity.Reino == player.Reino) continue;
 
             var distance = player.DistanceTo(entity);
             if (distance < nearestDistance)
@@ -203,7 +202,6 @@ public class PlayerScriptSystem
         {
             if (entity.Id == player.Id) continue;
             if (!entity.IsAlive) continue;
-            if (entity.Reino == player.Reino) continue;
 
             var distance = player.DistanceTo(entity);
             if (distance < GameConstants.RaioBroadcast)

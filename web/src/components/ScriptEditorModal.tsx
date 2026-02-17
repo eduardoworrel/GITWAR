@@ -4,11 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { ScriptEditor } from './ScriptEditor';
 
 interface ScriptEditorModalProps {
-  reinoColor: string;
   onClose: () => void;
 }
 
-export function ScriptEditorModal({ reinoColor, onClose }: ScriptEditorModalProps) {
+export function ScriptEditorModal({ onClose }: ScriptEditorModalProps) {
   const { t } = useTranslation();
 
   // Handle escape key to close
@@ -71,7 +70,7 @@ export function ScriptEditorModal({ reinoColor, onClose }: ScriptEditorModalProp
               height="24"
               viewBox="0 0 24 24"
               fill="none"
-              stroke={reinoColor}
+              stroke="#00CED1"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -108,7 +107,7 @@ export function ScriptEditorModal({ reinoColor, onClose }: ScriptEditorModalProp
 
         {/* Content */}
         <div style={{ flex: 1, padding: '16px 24px', overflow: 'hidden' }}>
-          <ScriptEditor reinoColor={reinoColor} />
+          <ScriptEditor />
         </div>
       </div>
     </div>,

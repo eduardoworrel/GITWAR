@@ -1,6 +1,16 @@
 import { createNoise2D, type NoiseFunction2D } from 'simplex-noise';
 import { MAP_WIDTH, MAP_HEIGHT, DESK_WIDTH, DESK_HEIGHT, DESK_OFFSET_X, DESK_OFFSET_Z } from './constants';
 
+// Desk object relief zones - entities walk ON TOP of these
+const DESK_RELIEF_ZONES = [
+  // Mousepad: center (5550, 5000), 900x400, very thin
+  { centerX: DESK_OFFSET_X + DESK_WIDTH / 2 + 550, centerZ: DESK_OFFSET_Z + DESK_HEIGHT / 2, halfW: 450, halfD: 200, height: 5, ramp: 30 },
+  // Keyboard: center (5000, 4900), 580x200, height ~18
+  { centerX: DESK_OFFSET_X + DESK_WIDTH / 2, centerZ: DESK_OFFSET_Z + DESK_HEIGHT / 2 - 100, halfW: 290, halfD: 100, height: 18, ramp: 25 },
+  // Mouse body: center (5650, 4980), ~70x130, height ~30
+  { centerX: DESK_OFFSET_X + DESK_WIDTH / 2 + 650, centerZ: DESK_OFFSET_Z + DESK_HEIGHT / 2 - 20, halfW: 40, halfD: 65, height: 30, ramp: 20 },
+];
+
 // Terrain configuration - ONLY for areas OUTSIDE the desk
 export const TERRAIN_CONFIG = {
   // Maximum height of terrain (visual only)
@@ -43,6 +53,38 @@ function isInsideDesk(x: number, z: number): boolean {
   const deskMaxZ = DESK_OFFSET_Z + DESK_HEIGHT;
 
   return x >= deskMinX && x <= deskMaxX && z >= deskMinZ && z <= deskMaxZ;
+}
+
+/**
+ * Get elevation for desk relief objects (keyboard, mouse, mousepad).
+ * Returns the highest relief at a given point (objects can overlap, e.g. mouse on mousepad).
+ */
+function getDeskReliefHeight(x: number, z: number): number {
+  let maxHeight = 0;
+
+  for (const zone of DESK_RELIEF_ZONES) {
+    const dx = Math.abs(x - zone.centerX);
+    const dz = Math.abs(z - zone.centerZ);
+
+    // Outside zone + ramp entirely
+    if (dx > zone.halfW + zone.ramp || dz > zone.halfD + zone.ramp) continue;
+
+    // Inside the flat top of the object
+    if (dx <= zone.halfW && dz <= zone.halfD) {
+      maxHeight = Math.max(maxHeight, zone.height);
+      continue;
+    }
+
+    // In the ramp zone - smooth transition
+    const overX = Math.max(0, dx - zone.halfW);
+    const overZ = Math.max(0, dz - zone.halfD);
+    const rampDist = Math.sqrt(overX * overX + overZ * overZ);
+    const t = Math.max(0, 1 - rampDist / zone.ramp);
+    const smoothT = t * t * (3 - 2 * t); // smoothstep
+    maxHeight = Math.max(maxHeight, zone.height * smoothT);
+  }
+
+  return maxHeight;
 }
 
 /**
@@ -95,26 +137,17 @@ function getMapEdgeFadeFactor(x: number, z: number): number {
   return minDist / fadeDistance;
 }
 
-// Debug flag - set to true to see terrain height values
-let debugLogCount = 0;
-
 /**
  * Get terrain height at a given world position
  * Returns 0 for the desk area, terrain height for expanded areas
  */
 export function getTerrainHeight(x: number, z: number): number {
-  // DESK AREA - always flat at 0
+  // DESK AREA - flat at 0, except for relief objects (keyboard, mouse, mousepad)
   if (isInsideDesk(x, z)) {
-    return 0;
+    return getDeskReliefHeight(x, z);
   }
 
   initializeNoise();
-
-  // Debug log first few calls outside desk
-  if (debugLogCount < 5) {
-    debugLogCount++;
-    console.log(`[Terrain] Outside desk at (${x.toFixed(0)}, ${z.toFixed(0)})`);
-  }
 
   if (!primaryNoise || !secondaryNoise || !detailNoise) return 0;
 
@@ -153,11 +186,6 @@ export function getTerrainHeight(x: number, z: number): number {
   // Apply edge fade at map boundaries
   const edgeFade = getMapEdgeFadeFactor(x, z);
   height *= edgeFade;
-
-  // Debug log height values
-  if (debugLogCount <= 5 && height > 0) {
-    console.log(`[Terrain] Height at (${x.toFixed(0)}, ${z.toFixed(0)}) = ${height.toFixed(1)}`);
-  }
 
   return height;
 }

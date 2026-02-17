@@ -17,7 +17,7 @@ public class Player
     public int Evasao { get; set; }
     public int Armadura { get; set; }
 
-    // Reino (linguagem principal)
+    // Reino - deprecated, kept for DB compat
     public string Reino { get; set; } = string.Empty;
 
     // Posicao no mundo

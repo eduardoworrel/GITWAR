@@ -2,20 +2,20 @@
  * InstancedPlayers - Maximum Performance Player Rendering
  *
  * Uses THREE.InstancedMesh to render ALL players in minimal draw calls.
- * Groups players by reino (kingdom) for efficient batch rendering.
+ * Colors players by ELO rank for efficient batch rendering.
  *
  * Performance: 1000+ players at 60 FPS vs 200 players at 5 FPS with individual meshes
  */
 
-import { useRef, useMemo } from 'react';
+import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../stores/gameStore';
-import { getCorReino } from './constants';
-import { getTerrainHeight } from './TerrainHeight';
+import { getCorElo } from './constants';
+import { getTerrainHeight, isInTerrainArea } from './TerrainHeight';
 
-// Maximum instances per reino group
-const MAX_INSTANCES_PER_GROUP = 500;
+// Maximum player instances
+const MAX_INSTANCES = 5000;
 
 // Character dimensions
 const BODY_HEIGHT = 14;
@@ -37,12 +37,7 @@ const tempPosition = new THREE.Vector3();
 const tempQuaternion = new THREE.Quaternion();
 const tempScale = new THREE.Vector3(1, 1, 1);
 const tempEuler = new THREE.Euler();
-
-// All reino colors
-const REINOS = [
-  'JavaScript', 'Python', 'Java', 'CSharp', 'C',
-  'TypeScript', 'Go', 'Rust', 'Ruby', 'PHP'
-] as const;
+const tempColor = new THREE.Color();
 
 interface PlayerInstance {
   id: string;
@@ -53,8 +48,20 @@ interface PlayerInstance {
   isSwinging: boolean;
 }
 
-// Single reino group with instanced meshes
-function ReinoGroup({ reino }: { reino: string }) {
+// Shared materials - single white material that gets colored per-instance
+const bodyMaterial = new THREE.MeshBasicMaterial({ vertexColors: false });
+const headMaterial = new THREE.MeshBasicMaterial({ color: 0x00cccc });
+const legMaterial = new THREE.MeshBasicMaterial({ vertexColors: false });
+const armMaterial = new THREE.MeshBasicMaterial({ vertexColors: false });
+
+/**
+ * InstancedPlayers - Renders ALL players using instanced meshes with per-instance ELO colors
+ *
+ * Draw calls: 6 (body parts) vs 1200+ with individual meshes
+ * Memory: Shared geometries and materials
+ * CPU: Single useFrame for all players
+ */
+export function InstancedPlayers() {
   const bodyMeshRef = useRef<THREE.InstancedMesh>(null);
   const headMeshRef = useRef<THREE.InstancedMesh>(null);
   const leftLegMeshRef = useRef<THREE.InstancedMesh>(null);
@@ -66,28 +73,11 @@ function ReinoGroup({ reino }: { reino: string }) {
   const getInterpolatedPosition = useGameStore((s) => s.getInterpolatedPosition);
   const getLastAttackTime = useGameStore((s) => s.getLastAttackTime);
 
-  // Track player instances for this reino
+  // Track player instances
   const instancesRef = useRef<Map<string, PlayerInstance>>(new Map());
   const countRef = useRef(0);
 
-  // Material for this reino (memoized)
-  const bodyMaterial = useMemo(() => {
-    const color = getCorReino(reino);
-    return new THREE.MeshBasicMaterial({ color });
-  }, [reino]);
-
-  const headMaterial = useMemo(() => {
-    return new THREE.MeshBasicMaterial({
-      color: 0x00cccc
-    });
-  }, []);
-
-  const legMaterial = useMemo(() => {
-    const color = new THREE.Color(getCorReino(reino)).multiplyScalar(0.6);
-    return new THREE.MeshBasicMaterial({ color });
-  }, [reino]);
-
-  // Single animation loop for ALL players in this reino
+  // Single animation loop for ALL players
   useFrame((_, delta) => {
     const meshes = [
       bodyMeshRef.current,
@@ -103,16 +93,16 @@ function ReinoGroup({ reino }: { reino: string }) {
     // Access players directly from store state to avoid re-renders
     const players = useGameStore.getState().players;
     const instances = instancesRef.current;
-    const reinoPlayers = Array.from(players.values()).filter(
-      p => p.reino === reino && (p.type === 'player' || p.type === undefined)
+    const allPlayers = Array.from(players.values()).filter(
+      p => p.type === 'player' || p.type === undefined
     );
 
     // Update instance count
-    const count = Math.min(reinoPlayers.length, MAX_INSTANCES_PER_GROUP);
+    const count = Math.min(allPlayers.length, MAX_INSTANCES);
     countRef.current = count;
 
     // Update instance map and remove stale entries
-    const currentIds = new Set(reinoPlayers.map(p => p.id));
+    const currentIds = new Set(allPlayers.map(p => p.id));
     for (const id of instances.keys()) {
       if (!currentIds.has(id)) {
         instances.delete(id);
@@ -120,8 +110,8 @@ function ReinoGroup({ reino }: { reino: string }) {
     }
 
     // Process each player
-    reinoPlayers.forEach((player, i) => {
-      if (i >= MAX_INSTANCES_PER_GROUP) return;
+    allPlayers.forEach((player, i) => {
+      if (i >= MAX_INSTANCES) return;
 
       const pos = getInterpolatedPosition(player.id);
       if (!pos) return;
@@ -167,10 +157,29 @@ function ReinoGroup({ reino }: { reino: string }) {
       const legSwing = isWalking ? Math.sin(instance.walkPhase) * 0.8 : 0;
 
       // Calculate terrain height for this player's position
-      // pos.x = world X, pos.y = world Z (in Three.js coordinates)
       const terrainHeight = getTerrainHeight(pos.x, pos.y);
-      const terrainOffset = terrainHeight > 0 ? TERRAIN_BASE_Y + terrainHeight : 0;
+      const terrainOffset = terrainHeight > 0
+        ? (isInTerrainArea(pos.x, pos.y) ? TERRAIN_BASE_Y + terrainHeight : terrainHeight)
+        : 0;
       const baseY = LEG_HEIGHT + terrainOffset;
+
+      // Per-instance ELO color
+      const eloColor = getCorElo(player.elo ?? 1000);
+      tempColor.set(eloColor);
+
+      // Set body and arm colors
+      bodyMeshRef.current!.setColorAt(i, tempColor);
+      leftArmMeshRef.current!.setColorAt(i, tempColor);
+      rightArmMeshRef.current!.setColorAt(i, tempColor);
+
+      // Leg color is darker version of ELO color
+      const legColor = tempColor.clone().multiplyScalar(0.6);
+      leftLegMeshRef.current!.setColorAt(i, legColor);
+      rightLegMeshRef.current!.setColorAt(i, legColor);
+
+      // Head color (cyan for all)
+      tempColor.set(0x00cccc);
+      headMeshRef.current!.setColorAt(i, tempColor);
 
       // === BODY ===
       tempPosition.set(pos.x, baseY + BODY_HEIGHT / 2, pos.y);
@@ -181,7 +190,6 @@ function ReinoGroup({ reino }: { reino: string }) {
 
       // === HEAD ===
       tempPosition.set(pos.x, baseY + BODY_HEIGHT + HEAD_SIZE / 2, pos.y);
-      // Offset head position based on body rotation
       const headOffsetX = Math.sin(instance.rotation) * 0;
       const headOffsetZ = Math.cos(instance.rotation) * 0;
       tempPosition.x += headOffsetX;
@@ -230,13 +238,13 @@ function ReinoGroup({ reino }: { reino: string }) {
       rightArmMeshRef.current!.setMatrixAt(i, tempMatrix);
     });
 
-    // Mark matrices as needing update
-    // Ensure count is a valid integer (WebGPU requires this)
-    const safeCount = Math.max(0, Math.min(count, MAX_INSTANCES_PER_GROUP)) | 0;
+    // Mark matrices and colors as needing update
+    const safeCount = Math.max(0, Math.min(count, MAX_INSTANCES)) | 0;
     meshes.forEach(mesh => {
       if (mesh) {
         mesh.count = safeCount;
         mesh.instanceMatrix.needsUpdate = true;
+        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       }
     });
   });
@@ -245,51 +253,34 @@ function ReinoGroup({ reino }: { reino: string }) {
     <group>
       <instancedMesh
         ref={bodyMeshRef}
-        args={[BODY_GEOMETRY, bodyMaterial, MAX_INSTANCES_PER_GROUP]}
+        args={[BODY_GEOMETRY, bodyMaterial, MAX_INSTANCES]}
         frustumCulled={false}
       />
       <instancedMesh
         ref={headMeshRef}
-        args={[HEAD_GEOMETRY, headMaterial, MAX_INSTANCES_PER_GROUP]}
+        args={[HEAD_GEOMETRY, headMaterial, MAX_INSTANCES]}
         frustumCulled={false}
       />
       <instancedMesh
         ref={leftLegMeshRef}
-        args={[LEG_GEOMETRY, legMaterial, MAX_INSTANCES_PER_GROUP]}
+        args={[LEG_GEOMETRY, legMaterial, MAX_INSTANCES]}
         frustumCulled={false}
       />
       <instancedMesh
         ref={rightLegMeshRef}
-        args={[LEG_GEOMETRY, legMaterial, MAX_INSTANCES_PER_GROUP]}
+        args={[LEG_GEOMETRY, legMaterial, MAX_INSTANCES]}
         frustumCulled={false}
       />
       <instancedMesh
         ref={leftArmMeshRef}
-        args={[ARM_GEOMETRY, bodyMaterial, MAX_INSTANCES_PER_GROUP]}
+        args={[ARM_GEOMETRY, armMaterial, MAX_INSTANCES]}
         frustumCulled={false}
       />
       <instancedMesh
         ref={rightArmMeshRef}
-        args={[ARM_GEOMETRY, bodyMaterial, MAX_INSTANCES_PER_GROUP]}
+        args={[ARM_GEOMETRY, armMaterial, MAX_INSTANCES]}
         frustumCulled={false}
       />
     </group>
-  );
-}
-
-/**
- * InstancedPlayers - Renders ALL players using instanced meshes
- *
- * Draw calls: ~60 (10 reinos × 6 body parts) vs 1200+ with individual meshes
- * Memory: Shared geometries and materials
- * CPU: Single useFrame per reino instead of per-player
- */
-export function InstancedPlayers() {
-  return (
-    <>
-      {REINOS.map(reino => (
-        <ReinoGroup key={reino} reino={reino} />
-      ))}
-    </>
   );
 }

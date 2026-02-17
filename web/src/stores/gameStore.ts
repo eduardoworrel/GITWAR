@@ -98,7 +98,6 @@ export interface EntityPayload {
   maxHp?: number;
   estado?: string;
   state?: string;
-  reino: string;
   type?: string;
   alvoId?: string;
   velocidadeAtaque?: number;
@@ -123,7 +122,6 @@ export interface Player {
   y: number;
   hp: number;
   maxHp: number;
-  reino: string;
   type?: EntityType;
   estado?: string;
   velocidadeAtaque?: number;
@@ -224,13 +222,6 @@ export interface StreamInfo {
   readToken?: string | null;
 }
 
-// Selected player for radial menu
-export interface SelectedPlayerForMenu {
-  id: string;
-  githubLogin: string;
-  position: { x: number; y: number };
-}
-
 interface GameState {
   players: Map<string, InterpolatedPlayer>;
   combatEvents: CombatEvent[];
@@ -250,18 +241,12 @@ interface GameState {
   shopItems: Item[];
   inventory: PlayerItem[];
   inventoryLoading: boolean;
-  // Radial menu
-  selectedPlayerForMenu: SelectedPlayerForMenu | null;
-  radialMenuScreenPos: { x: number; y: number } | null;
   setCameraMode: (mode: CameraMode) => void;
   setCurrentPlayer: (id: string | null) => void;
   setStreamInfo: (info: StreamInfo | null) => void;
   setCurrentPlayerPos: (pos: { x: number; y: number } | null) => void;
   setCurrentPlayerRotation: (rotation: number) => void;
-  updatePlayer: (player: Player) => void;
   removePlayer: (id: string) => void;
-  setPlayers: (players: Player[]) => void;
-  updatePlayersPartial: (partials: Partial<Player & { id: string }>[]) => void;
   mergeEntities: (players: Player[], removeAbsent: boolean) => void;
   mergeEntitiesRaw: (entities: EntityPayload[], removeAbsent: boolean, parseEntityType: (type?: string) => EntityType) => void;
   setFrameTime: (time: number) => void;
@@ -282,9 +267,6 @@ interface GameState {
   updateInventoryItem: (playerItemId: string, updates: Partial<PlayerItem>) => void;
   removeFromInventory: (playerItemId: string) => void;
   getEquippedItems: () => PlayerItem[];
-  // Radial menu
-  setSelectedPlayerForMenu: (player: SelectedPlayerForMenu | null) => void;
-  setRadialMenuScreenPos: (pos: { x: number; y: number } | null) => void;
 }
 
 function lerp(start: number, end: number, t: number): number {
@@ -310,10 +292,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   shopItems: [],
   inventory: [],
   inventoryLoading: false,
-  // Radial menu
-  selectedPlayerForMenu: null,
-  radialMenuScreenPos: null,
-
   setCameraMode: (mode) => set({ cameraMode: mode }),
 
   setStreamInfo: (info) => set({ streamInfo: info }),
@@ -332,162 +310,10 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setFrameTime: (time) => set({ frameTime: time }),
 
-  updatePlayer: (player) =>
-    set((state) => {
-      const newPlayers = new Map(state.players);
-      const existing = newPlayers.get(player.id);
-      const now = Date.now();
-
-      if (existing) {
-        // Update target position, keep current position for interpolation
-        newPlayers.set(player.id, {
-          ...player,
-          x: existing.x,
-          y: existing.y,
-          targetX: player.x,
-          targetY: player.y,
-          lastUpdateTime: now,
-        });
-      } else {
-        // New player, set position directly
-        newPlayers.set(player.id, {
-          ...player,
-          targetX: player.x,
-          targetY: player.y,
-          lastUpdateTime: now,
-        });
-      }
-      return { players: newPlayers };
-    }),
-
   removePlayer: (id) =>
     set((state) => {
       const newPlayers = new Map(state.players);
       newPlayers.delete(id);
-      return { players: newPlayers };
-    }),
-
-  setPlayers: (players) =>
-    set((state) => {
-      const newPlayers = new Map<string, InterpolatedPlayer>();
-      const now = Date.now();
-
-      for (const player of players) {
-        const existing = state.players.get(player.id);
-
-        if (existing) {
-          // Check if player just respawned (was dead, now alive) or teleported
-          const wasDeadNowAlive = existing.estado === 'dead' && player.estado !== 'dead';
-          const dx = Math.abs(player.x - existing.targetX);
-          const dy = Math.abs(player.y - existing.targetY);
-          const isTeleport = dx > 500 || dy > 500; // Large position change = teleport/respawn
-
-          if (wasDeadNowAlive || isTeleport) {
-            // Skip interpolation - set position directly
-            newPlayers.set(player.id, {
-              ...player,
-              x: player.x,
-              y: player.y,
-              targetX: player.x,
-              targetY: player.y,
-              lastUpdateTime: now,
-            });
-          } else {
-            // Calculate current interpolated position to use as new starting point
-            const elapsed = now - existing.lastUpdateTime;
-            const t = Math.min(1, elapsed / INTERPOLATION_DURATION_MS);
-            const currentX = lerp(existing.x, existing.targetX, t);
-            const currentY = lerp(existing.y, existing.targetY, t);
-
-            // Update: use current interpolated position as starting point
-            newPlayers.set(player.id, {
-              ...player,
-              x: currentX,
-              y: currentY,
-              targetX: player.x,
-              targetY: player.y,
-              lastUpdateTime: now,
-            });
-          }
-        } else {
-          // New player, set position directly
-          newPlayers.set(player.id, {
-            ...player,
-            targetX: player.x,
-            targetY: player.y,
-            lastUpdateTime: now,
-          });
-        }
-      }
-
-      return { players: newPlayers };
-    }),
-
-  // Merge partial updates (delta updates) with existing player state
-  updatePlayersPartial: (partials) =>
-    set((state) => {
-      const newPlayers = new Map(state.players);
-      const now = Date.now();
-
-      for (const partial of partials) {
-        if (!partial.id) continue;
-
-        const existing = newPlayers.get(partial.id);
-        if (existing) {
-          // Merge partial with existing state
-          const hasPositionChange = partial.x !== undefined || partial.y !== undefined;
-
-          if (hasPositionChange) {
-            // Handle position updates with interpolation
-            const newX = partial.x ?? existing.targetX;
-            const newY = partial.y ?? existing.targetY;
-
-            // Check for teleport
-            const dx = Math.abs(newX - existing.targetX);
-            const dy = Math.abs(newY - existing.targetY);
-            const isTeleport = dx > 500 || dy > 500;
-
-            // Was dead, now alive
-            const wasDeadNowAlive = existing.estado === 'dead' && partial.estado && partial.estado !== 'dead';
-
-            if (wasDeadNowAlive || isTeleport) {
-              newPlayers.set(partial.id, {
-                ...existing,
-                ...partial,
-                x: newX,
-                y: newY,
-                targetX: newX,
-                targetY: newY,
-                lastUpdateTime: now,
-              } as InterpolatedPlayer);
-            } else {
-              // Calculate current interpolated position
-              const elapsed = now - existing.lastUpdateTime;
-              const t = Math.min(1, elapsed / INTERPOLATION_DURATION_MS);
-              const currentX = lerp(existing.x, existing.targetX, t);
-              const currentY = lerp(existing.y, existing.targetY, t);
-
-              newPlayers.set(partial.id, {
-                ...existing,
-                ...partial,
-                x: currentX,
-                y: currentY,
-                targetX: newX,
-                targetY: newY,
-                lastUpdateTime: now,
-              } as InterpolatedPlayer);
-            }
-          } else {
-            // No position change, just merge other fields
-            newPlayers.set(partial.id, {
-              ...existing,
-              ...partial,
-            } as InterpolatedPlayer);
-          }
-        }
-        // Note: We don't add new players from partials - they should come from full state
-      }
-
       return { players: newPlayers };
     }),
 
@@ -644,7 +470,6 @@ export const useGameStore = create<GameState>((set, get) => ({
             lastUpdateTime: now,
             hp: e.hp ?? e.currentHp ?? 100,
             maxHp: e.hpMax ?? e.maxHp ?? 100,
-            reino: e.reino,
             type: parseEntityType(e.type),
             estado: e.estado || e.state || 'idle',
             velocidadeAtaque: e.velocidadeAtaque ?? 50,
@@ -797,7 +622,4 @@ export const useGameStore = create<GameState>((set, get) => ({
     return state.inventory.filter((pi) => pi.isEquipped);
   },
 
-  setSelectedPlayerForMenu: (player) => set({ selectedPlayerForMenu: player }),
-
-  setRadialMenuScreenPos: (pos) => set({ radialMenuScreenPos: pos }),
 }));

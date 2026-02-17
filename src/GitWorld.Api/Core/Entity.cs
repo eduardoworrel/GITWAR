@@ -148,7 +148,6 @@ public class Entity
 {
     public Guid Id { get; init; }
     public string GithubLogin { get; init; } = string.Empty;
-    public string Reino { get; set; } = string.Empty;
     public EntityType Type { get; init; } = EntityType.Player;
 
     // Posição
@@ -232,11 +231,10 @@ public class Entity
         );
     }
 
-    public Entity(Guid id, string githubLogin, PlayerStats stats, string reino, float x, float y, EntityType type = EntityType.Player, int elo = 1000, int vitorias = 0, int derrotas = 0, int level = 1, int exp = 0, int gold = 0)
+    public Entity(Guid id, string githubLogin, PlayerStats stats, float x, float y, EntityType type = EntityType.Player, int elo = 1000, int vitorias = 0, int derrotas = 0, int level = 1, int exp = 0, int gold = 0)
     {
         Id = id;
         GithubLogin = githubLogin;
-        Reino = reino;
         X = x;
         Y = y;
         Type = type;
@@ -275,6 +273,7 @@ public class Entity
     }
 
     public bool IsAlive => State != EntityState.Dead;
+    public long DeathTick { get; private set; }
 
     public void SetTarget(float x, float y, bool preserveAttackState = false)
     {
@@ -299,6 +298,7 @@ public class Entity
     {
         State = EntityState.Dead;
         CurrentHp = 0;
+        DeathTick = currentTick;
         TargetEntityId = null;
         ClearTarget();
         RespawnAtTick = currentTick + (GameConstants.TempoRespawnMs / GameConstants.TickRateMs);

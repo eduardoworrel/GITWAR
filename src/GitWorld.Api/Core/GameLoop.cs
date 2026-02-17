@@ -212,12 +212,11 @@ public class GameLoop : IDisposable
             }
             else
             {
-                // Players respawn in their kingdom
-                (x, y) = _world.GetRespawnPosition(entity.Reino);
+                // Players respawn at random safe position
+                (x, y) = _world.GetRespawnPosition();
             }
 
             entity.Respawn(x, y);
-            Console.WriteLine($"[Respawn] {entity.GithubLogin} respawned at ({x:F0}, {y:F0}) in {entity.Reino}");
 
             // Emit respawn event
             _combatSystem.EventQueue.Add(new CombatEvent(

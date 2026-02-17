@@ -23,4 +23,5 @@ public class PlayerSession
     // Adaptive frequency tracking
     public PlayerActivityLevel ActivityLevel { get; set; } = PlayerActivityLevel.Idle;
     public long LastBroadcastTick { get; set; } = 0;
+    public long LastCombatTick { get; set; } = 0;
 }

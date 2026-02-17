@@ -78,7 +78,6 @@ public class CombatSystem
                     if (eloDiff >= GameConstants.EloProtectionThreshold)
                     {
                         // Target became too weak and not attacking us - clear combat, find new target
-                        Console.WriteLine($"[Combat] {player.GithubLogin} stops attacking {target.GithubLogin} (ELO protected: {eloDiff} diff)");
                         ClearCombat(player);
                     }
                 }
@@ -132,10 +131,6 @@ public class CombatSystem
 
             var targetDied = target.TakeDamage(damage, currentTick);
 
-            // Log combat event
-            var critText = isCritical ? " CRIT!" : "";
-            Console.WriteLine($"[Combat] {entity.GithubLogin} hits {target.GithubLogin} for {damage} damage{critText} ({target.CurrentHp}/{target.MaxHp} HP)");
-
             // Create projectile info if entity has ranged attack (RangeBonus > 0)
             ProjectileInfo? projectile = entity.RangeBonus > 0
                 ? new ProjectileInfo(
@@ -164,8 +159,6 @@ public class CombatSystem
 
             if (targetDied)
             {
-                Console.WriteLine($"[Combat] {target.GithubLogin} has been killed by {entity.GithubLogin}!");
-
                 // Calculate ELO for player vs player kills
                 if (entity.Type == EntityType.Player && target.Type == EntityType.Player)
                 {
@@ -204,10 +197,7 @@ public class CombatSystem
         }
         else
         {
-            // Attack missed (evasion)
-            Console.WriteLine($"[Combat] {entity.GithubLogin} missed {target.GithubLogin} (evaded)");
-
-            // Create projectile info for miss event too (projectile still travels)
+            // Create projectile info for miss event too (projectile still travels) (projectile still travels)
             ProjectileInfo? projectile = entity.RangeBonus > 0
                 ? new ProjectileInfo(
                     entity.X, entity.Y,
@@ -347,6 +337,5 @@ public class CombatSystem
         killer.Vitorias++;
         victim.Derrotas++;
 
-        Console.WriteLine($"[ELO] {killer.GithubLogin} +{killerGain} ({killer.Elo}) | {victim.GithubLogin} death #{victim.Derrotas} (ELO unchanged: {victim.Elo})");
     }
 }

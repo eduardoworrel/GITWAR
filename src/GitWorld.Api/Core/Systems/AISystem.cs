@@ -269,37 +269,6 @@ public class AISystem
         UpdateAggressiveMonster(monster, currentTick);
     }
 
-    private void UpdateBug(Entity bug, long currentTick)
-    {
-        // Bug uses NPC data structure for passive behavior
-        if (!_npcData.TryGetValue(bug.Id, out var data))
-        {
-            RegisterNpc(bug);
-            data = _npcData[bug.Id];
-        }
-
-        switch (data.State)
-        {
-            case AIState.Idle:
-                // Bug is passive - just stand still until attacked
-                break;
-
-            case AIState.Chasing:
-                ProcessChasing(bug, data, currentTick);
-                break;
-
-            case AIState.Attacking:
-                ProcessAttacking(bug, data, currentTick);
-                break;
-
-            case AIState.Returning:
-                // Bugs don't return to spawn, they just idle after losing target
-                data.State = AIState.Idle;
-                bug.ClearTarget();
-                break;
-        }
-    }
-
     private void UpdateAggressiveMonster(Entity monster, long currentTick)
     {
         // Find nearest player in aggro range

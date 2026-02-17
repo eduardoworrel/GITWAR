@@ -9,7 +9,6 @@ interface SpectatePlayer {
   playerId: string;
   entityId: string;
   githubLogin: string;
-  reino: string;
   level: number;
   elo: number;
   x: number;
@@ -71,7 +70,7 @@ export function useSpectatorMode(enabled: boolean) {
     const safeIndex = index % players.length;
     const player = players[safeIndex];
 
-    console.log(`[Spectator] Following ${player.githubLogin} (${player.reino}) - stream: ${player.stream.streamName}`);
+    console.log(`[Spectator] Following ${player.githubLogin} - stream: ${player.stream.streamName}`);
 
     // Set stream info so useS2Stream connects to this player's stream
     const streamInfo: StreamInfo = {

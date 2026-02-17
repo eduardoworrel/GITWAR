@@ -46,7 +46,7 @@ A passive 3D MMO where players log in via OAuth (GitHub, GitLab, HuggingFace) an
 | Auth | Clerk (GitHub, GitLab, HuggingFace OAuth) |
 | Streaming | S2.dev (SSE with per-player streams) |
 | i18n | i18next |
-| Deploy | DigitalOcean App Platform |
+| CI/CD | GitHub Actions + GHCR |
 
 ## Run Locally
 
@@ -100,9 +100,9 @@ npm run dev
 │   │   └── i18n/               # Internationalization
 │   └── package.json
 │
-├── .do/app.yaml                # DigitalOcean config
+├── .github/workflows/deploy.yml  # CI/CD: build & push images
 ├── docker-compose.yml          # Local dev (PostgreSQL + Redis + API)
-└── deploy.sh                   # Production deployment
+└── .env.example                # Environment variables template
 ```
 
 ## Environment Variables
@@ -125,11 +125,9 @@ npm run dev
 
 ## Deploy (Production)
 
-```bash
-./deploy.sh api    # API only
-./deploy.sh web    # Web only
-./deploy.sh all    # Everything
-```
+Merging to `main` triggers GitHub Actions which builds and pushes Docker images to GHCR:
+- `ghcr.io/eduardoworrel/gitwar/api:latest`
+- `ghcr.io/eduardoworrel/gitwar/web:latest`
 
 ## Game Loop
 
@@ -178,6 +176,5 @@ Server (20 ticks/s) -> Delta State -> S2.dev -> Per-player SSE -> Zustand -> Thr
 ## Important Notes
 
 1. **WebGL:** Use `meshBasicMaterial` (not `meshStandardMaterial`) for iOS/Safari compatibility
-2. **Routes:** DigitalOcean strips prefix before container (`/api/health` -> `/health`)
-3. **Docker Mac:** Build with `--platform linux/amd64`
+2. **Docker Mac:** Build with `--platform linux/amd64`
 4. **Performance:** Instanced rendering, material pooling, LOD culling by distance

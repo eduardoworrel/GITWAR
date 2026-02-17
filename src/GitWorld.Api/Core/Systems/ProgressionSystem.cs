@@ -190,23 +190,28 @@ public class ProgressionSystem
     }
 
     /// <summary>
-    /// Get and clear pending reward events
+    /// Get reward events since a given tick (tick-based retrieval, not drain)
     /// </summary>
-    public List<RewardEvent> GetAndClearRewardEvents()
+    public List<RewardEvent> GetRewardEventsSince(long sinceTick)
     {
-        var events = _pendingRewards.ToList();
-        _pendingRewards.Clear();
-        return events;
+        return _pendingRewards.Where(r => r.Tick > sinceTick).ToList();
     }
 
     /// <summary>
-    /// Get and clear pending level up events
+    /// Get level up events since a given tick (tick-based retrieval, not drain)
     /// </summary>
-    public List<LevelUpEvent> GetAndClearLevelUpEvents()
+    public List<LevelUpEvent> GetLevelUpEventsSince(long sinceTick)
     {
-        var events = _pendingLevelUps.ToList();
-        _pendingLevelUps.Clear();
-        return events;
+        return _pendingLevelUps.Where(l => l.Tick > sinceTick).ToList();
+    }
+
+    /// <summary>
+    /// Clear old reward/level up events to prevent memory growth
+    /// </summary>
+    public void ClearOldEvents(long olderThanTick)
+    {
+        _pendingRewards.RemoveAll(r => r.Tick < olderThanTick);
+        _pendingLevelUps.RemoveAll(l => l.Tick < olderThanTick);
     }
 
     /// <summary>

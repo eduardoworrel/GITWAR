@@ -569,25 +569,25 @@ function DeskEdges() {
       {/* North edge (desk top) */}
       <mesh position={[DESK_CENTER_X, -WALL_DEPTH / 2, DESK_OFFSET_Z]}>
         <planeGeometry args={[DESK_WIDTH, WALL_DEPTH]} />
-        <meshBasicMaterial color={edgeColor} side={THREE.DoubleSide} />
+        <meshBasicMaterial color={edgeColor} side={THREE.DoubleSide} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
       </mesh>
 
       {/* South edge (desk bottom) */}
       <mesh position={[DESK_CENTER_X, -WALL_DEPTH / 2, DESK_OFFSET_Z + DESK_HEIGHT]}>
         <planeGeometry args={[DESK_WIDTH, WALL_DEPTH]} />
-        <meshBasicMaterial color={edgeColor} side={THREE.DoubleSide} />
+        <meshBasicMaterial color={edgeColor} side={THREE.DoubleSide} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
       </mesh>
 
       {/* West edge (desk left) */}
       <mesh position={[DESK_OFFSET_X, -WALL_DEPTH / 2, DESK_CENTER_Z]} rotation={[0, Math.PI / 2, 0]}>
         <planeGeometry args={[DESK_HEIGHT, WALL_DEPTH]} />
-        <meshBasicMaterial color={edgeColor} side={THREE.DoubleSide} />
+        <meshBasicMaterial color={edgeColor} side={THREE.DoubleSide} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
       </mesh>
 
       {/* East edge (desk right) */}
       <mesh position={[DESK_OFFSET_X + DESK_WIDTH, -WALL_DEPTH / 2, DESK_CENTER_Z]} rotation={[0, Math.PI / 2, 0]}>
         <planeGeometry args={[DESK_HEIGHT, WALL_DEPTH]} />
-        <meshBasicMaterial color={edgeColor} side={THREE.DoubleSide} />
+        <meshBasicMaterial color={edgeColor} side={THREE.DoubleSide} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
       </mesh>
     </group>
   );
@@ -662,22 +662,22 @@ function TableLegs() {
       {/* Front apron */}
       <mesh position={[DESK_CENTER_X, -20, deskMinZ]}>
         <boxGeometry args={[DESK_WIDTH + 40, 40, 30]} />
-        <meshBasicMaterial color={0x5a3a2a} />
+        <meshBasicMaterial color={0x5a3a2a} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
       </mesh>
       {/* Back apron */}
       <mesh position={[DESK_CENTER_X, -20, deskMaxZ]}>
         <boxGeometry args={[DESK_WIDTH + 40, 40, 30]} />
-        <meshBasicMaterial color={0x5a3a2a} />
+        <meshBasicMaterial color={0x5a3a2a} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
       </mesh>
       {/* Left apron */}
       <mesh position={[deskMinX, -20, DESK_CENTER_Z]}>
         <boxGeometry args={[30, 40, DESK_HEIGHT]} />
-        <meshBasicMaterial color={0x5a3a2a} />
+        <meshBasicMaterial color={0x5a3a2a} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
       </mesh>
       {/* Right apron */}
       <mesh position={[deskMaxX, -20, DESK_CENTER_Z]}>
         <boxGeometry args={[30, 40, DESK_HEIGHT]} />
-        <meshBasicMaterial color={0x5a3a2a} />
+        <meshBasicMaterial color={0x5a3a2a} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
       </mesh>
     </group>
   );
@@ -753,7 +753,7 @@ function Terrain() {
 
   return (
     <mesh geometry={geometry}>
-      <meshBasicMaterial vertexColors side={THREE.DoubleSide} />
+      <meshBasicMaterial vertexColors side={THREE.DoubleSide} polygonOffset polygonOffsetFactor={4} polygonOffsetUnits={4} />
     </mesh>
   );
 }
@@ -761,9 +761,9 @@ function Terrain() {
 // Flat desk surface (wood texture) - ONLY the desk area, at Y=0
 function DeskSurface({ woodTexture }: { woodTexture: THREE.Texture }) {
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[DESK_CENTER_X, 0, DESK_CENTER_Z]}>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[DESK_CENTER_X, 2, DESK_CENTER_Z]}>
       <planeGeometry args={[DESK_WIDTH, DESK_HEIGHT]} />
-      <meshBasicMaterial map={woodTexture} />
+      <meshBasicMaterial map={woodTexture} polygonOffset polygonOffsetFactor={-2} polygonOffsetUnits={-2} />
     </mesh>
   );
 }

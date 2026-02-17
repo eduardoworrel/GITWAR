@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 
 WORKDIR /src
 COPY src/GitWorld.Shared/*.csproj GitWorld.Shared/
@@ -9,7 +9,7 @@ COPY src/GitWorld.Shared/ GitWorld.Shared/
 COPY src/GitWorld.Api/ GitWorld.Api/
 RUN dotnet publish GitWorld.Api/GitWorld.Api.csproj -c Release -o /app
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /app .
 

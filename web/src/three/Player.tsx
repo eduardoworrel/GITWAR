@@ -3,9 +3,9 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Text, Billboard } from '@react-three/drei';
 import { useTranslation } from 'react-i18next';
-import { getCorReino } from './constants';
+import { getCorElo } from './constants';
 import { getHpBarGeometry, getHpBarPositionX } from './optimizations';
-import { getTerrainHeight } from './TerrainHeight';
+import { getTerrainHeight, isInTerrainArea } from './TerrainHeight';
 import {
   NotebookPreview,
   TecladoPreview,
@@ -271,7 +271,7 @@ const MONSTER_TYPE_KEYS = Object.keys(MONSTER_COLORS);
 
 interface PlayerProps {
   position: [number, number, number];
-  reino: string;
+  elo?: number;
   isCurrentPlayer?: boolean;
   hp?: number;
   maxHp?: number;
@@ -549,7 +549,7 @@ function isMonsterType(type: EntityType): boolean {
 
 export function Player({
   position,
-  reino,
+  elo = 1000,
   isCurrentPlayer = false,
   hp = 100,
   maxHp = 100,
@@ -595,7 +595,7 @@ export function Player({
   // Get color based on entity type
   const color = isMonster
     ? MONSTER_COLORS[type] ?? 0x888888
-    : getCorReino(reino);
+    : getCorElo(elo);
 
   // Get scale based on entity type
   const scale = isMonster
@@ -666,8 +666,10 @@ export function Player({
     if (!groupRef.current) return;
     const [x, y, z] = position;
     const terrainHeight = getTerrainHeight(x, z);
-    // Only apply terrain height for areas outside the desk (where terrainHeight > 0)
-    const adjustedY = terrainHeight > 0 ? y + TERRAIN_BASE_Y + terrainHeight : y;
+    // External terrain uses TERRAIN_BASE_Y offset; desk relief (keyboard/mouse) applies directly
+    const adjustedY = terrainHeight > 0
+      ? (isInTerrainArea(x, z) ? y + TERRAIN_BASE_Y + terrainHeight : y + terrainHeight)
+      : y;
     groupRef.current.position.set(x, adjustedY, z);
   });
 

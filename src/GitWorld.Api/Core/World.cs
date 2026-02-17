@@ -12,7 +12,7 @@ public class World
     public int Width { get; } = GameConstants.MapaWidth;
     public int Height { get; } = GameConstants.MapaHeight;
 
-    public IReadOnlyCollection<Entity> Entities => _entities.Values.ToList();
+    public IEnumerable<Entity> Entities => _entities.Values;
 
     public Entity? GetEntity(Guid id)
     {
@@ -20,10 +20,10 @@ public class World
         return entity;
     }
 
-    public Entity AddEntity(Guid playerId, string githubLogin, PlayerStats stats, string reino, int elo = 1000, int vitorias = 0, int derrotas = 0, int level = 1, int exp = 0, int gold = 0)
+    public Entity AddEntity(Guid playerId, string githubLogin, PlayerStats stats, int elo = 1000, int vitorias = 0, int derrotas = 0, int level = 1, int exp = 0, int gold = 0)
     {
-        var (x, y) = GetSpawnPosition(reino);
-        var entity = new Entity(playerId, githubLogin, stats, reino, x, y, EntityType.Player, elo, vitorias, derrotas, level, exp, gold);
+        var (x, y) = GetSpawnPosition();
+        var entity = new Entity(playerId, githubLogin, stats, x, y, EntityType.Player, elo, vitorias, derrotas, level, exp, gold);
         _entities[entity.Id] = entity;
         Console.WriteLine($"[World:{GetHashCode()}] AddEntity {githubLogin} (Lv.{level}) - Total: {_entities.Count}");
         return entity;
@@ -37,7 +37,7 @@ public class World
     public Entity AddNpc(string name, PlayerStats stats, float x, float y)
     {
         var (clampedX, clampedY) = ClampToWorld(x, y);
-        var entity = new Entity(Guid.NewGuid(), name, stats, "NPC", clampedX, clampedY, EntityType.NPC);
+        var entity = new Entity(Guid.NewGuid(), name, stats, clampedX, clampedY, EntityType.NPC);
         _entities[entity.Id] = entity;
         return entity;
     }
@@ -48,7 +48,7 @@ public class World
         // Find unoccupied position to avoid stacking on other entities
         var (finalX, finalY) = FindUnoccupiedPosition(clampedX, clampedY, 25f, 15);
         var (stats, name) = GetMonsterStatsAndName(type);
-        var entity = new Entity(Guid.NewGuid(), name, stats, "Monster", finalX, finalY, type);
+        var entity = new Entity(Guid.NewGuid(), name, stats, finalX, finalY, type);
         _entities[entity.Id] = entity;
         Console.WriteLine($"[World] Spawned {name} at ({finalX:F0}, {finalY:F0})");
         return entity;
@@ -199,16 +199,36 @@ public class World
             .Where(e => e.IsAlive && e.DistanceTo(x, y) <= range);
     }
 
-    private (float x, float y) GetSpawnPosition(string reino)
+    private (float x, float y) GetSpawnPosition()
     {
-        // Spawn no território do reino
-        return Territories.GetSpawnPosition(reino, _random);
+        const int maxAttempts = 50;
+        const float margin = 50f;
+        // Use larger radius for spawn check to account for discrete grid cell boundaries
+        // Grid cells are 25x25, so a position near a collision zone edge might be on an unwalkable cell
+        const float spawnSafeRadius = 30f;
+
+        // Spawn within the desk area (where gameplay happens)
+        var deskMinX = GameConstants.DeskOffsetX + margin;
+        var deskMaxX = GameConstants.DeskOffsetX + GameConstants.DeskWidth - margin;
+        var deskMinY = GameConstants.DeskOffsetZ + margin;
+        var deskMaxY = GameConstants.DeskOffsetZ + GameConstants.DeskHeight - margin;
+
+        for (int i = 0; i < maxAttempts; i++)
+        {
+            var x = deskMinX + _random.NextSingle() * (deskMaxX - deskMinX);
+            var y = deskMinY + _random.NextSingle() * (deskMaxY - deskMinY);
+
+            if (!IsInsideCollisionZone(x, y, spawnSafeRadius))
+                return (x, y);
+        }
+
+        // Fallback: safe position far from keyboard/monitor (south-west desk area)
+        return (GameConstants.DeskOffsetX + 500f, GameConstants.DeskOffsetZ + GameConstants.DeskHeight - 500f);
     }
 
-    public (float x, float y) GetRespawnPosition(string reino)
+    public (float x, float y) GetRespawnPosition()
     {
-        // Respawn no território do reino
-        return Territories.GetSpawnPosition(reino, _random);
+        return GetSpawnPosition();
     }
 
     public (float x, float y) GetRandomPosition()
@@ -295,7 +315,7 @@ public class World
     {
         if (IsInsideCollisionZone(entity.X, entity.Y))
         {
-            var (safeX, safeY) = GetSpawnPosition(entity.Reino);
+            var (safeX, safeY) = GetSpawnPosition();
             entity.X = safeX;
             entity.Y = safeY;
             Console.WriteLine($"[World] Unstuck {entity.GithubLogin} from collision zone -> ({safeX:F0}, {safeY:F0})");

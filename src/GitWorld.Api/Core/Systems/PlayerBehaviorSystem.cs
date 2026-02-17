@@ -39,13 +39,6 @@ public class PlayerBehaviorSystem
 
         if (enemy == null)
         {
-            // Debug: log why player is idle (every 2 seconds)
-            if (currentTick % 40 == 0)
-            {
-                var monsterCount = _world.Entities.Count(e => IsMonsterOrNpc(e.Type) && e.IsAlive);
-                var playerCount = _world.Entities.Count(e => e.Type == EntityType.Player && e.IsAlive && e.Id != player.Id);
-                Console.WriteLine($"[Idle] {player.GithubLogin} at ({player.X:F0},{player.Y:F0}) - no enemy. Monsters:{monsterCount} Players:{playerCount}");
-            }
             // No enemies - go idle
             player.TargetEntityId = null;
             player.State = EntityState.Idle;
@@ -64,11 +57,6 @@ public class PlayerBehaviorSystem
             player.TargetX = null;
             player.TargetY = null;
 
-            // Debug: log attacking (every 2 seconds)
-            if (currentTick % 40 == 0)
-            {
-                Console.WriteLine($"[Attack] {player.GithubLogin} attacking {enemy.GithubLogin} dist={distance:F0}");
-            }
         }
         else
         {
@@ -78,11 +66,6 @@ public class PlayerBehaviorSystem
             player.TargetX = enemy.X;
             player.TargetY = enemy.Y;
 
-            // Debug: log moving (every 2 seconds)
-            if (currentTick % 40 == 0)
-            {
-                Console.WriteLine($"[Move] {player.GithubLogin} -> {enemy.GithubLogin} ({enemy.Type}) dist={distance:F0}");
-            }
         }
     }
 
@@ -105,7 +88,6 @@ public class PlayerBehaviorSystem
         {
             if (entity.Id == player.Id) continue;
             if (!entity.IsAlive) continue;
-            if (entity.Reino == player.Reino) continue;
 
             var distance = player.DistanceTo(entity);
 

@@ -44,8 +44,8 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Evasao).HasColumnName("evasao");
             entity.Property(e => e.Armadura).HasColumnName("armadura");
 
-            // Reino
-            entity.Property(e => e.Reino).HasColumnName("reino").HasMaxLength(50).IsRequired();
+            // Reino - kept in DB but no longer used in code
+            entity.Property(e => e.Reino).HasColumnName("reino").HasMaxLength(50).HasDefaultValue("");
 
             // Posicao
             entity.Property(e => e.X).HasColumnName("x").HasDefaultValue(5000f);

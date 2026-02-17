@@ -9,14 +9,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    docker compose build && docker compose up -d
    ```
 
-2. **Deploy = PRODUCTION** - Production deploy uses `./deploy.sh`:
-   ```bash
-   ./deploy.sh api    # API only
-   ./deploy.sh web    # Web only
-   ./deploy.sh all    # API + Web
-   ```
+2. **Deploy = PRODUCTION** - Production deploys automatically via GitHub Actions on merge to `main`. Images are pushed to GitHub Container Registry (ghcr.io).
 
-3. **NEVER deploy without explicit confirmation** - Always ask before deploying to production.
+3. **NEVER deploy without explicit confirmation** - Always ask before pushing to main.
 
 4. **Local vs Production**:
    - Local: `docker compose up` (port 5138)
@@ -122,9 +117,8 @@ GitWorld is a 3D passive MMO game where players login via OAuth (GitHub, GitLab,
 │   ├── nginx.conf
 │   └── package.json               # React 19.2, Three.js 0.182, Zustand 5.0
 │
-├── .do/app.yaml                   # DigitalOcean App Platform config
+├── .github/workflows/deploy.yml   # CI/CD: build & push images on merge to main
 ├── docker-compose.yml             # Local: PostgreSQL + Redis + API
-├── deploy.sh                      # Production deployment script
 └── .env.example                   # Environment variables template
 ```
 
@@ -161,35 +155,20 @@ npm run build    # TypeScript check + production build
 npm run lint     # ESLint
 ```
 
-### Deployment (DigitalOcean App Platform)
+### Deployment (GitHub Actions + GHCR)
 
-**App ID:** `a85bc799-f622-4953-a8d9-1c256133b924`
-**App URL:** `https://gitwar.eduardoworrel.com`
+**URL:** `https://gitwar.eduardoworrel.com`
+
+CI/CD is configured via `.github/workflows/deploy.yml`. On merge to `main`:
+1. Builds `api` and `web` Docker images (linux/amd64)
+2. Pushes to GitHub Container Registry (`ghcr.io/eduardoworrel/gitwar`)
+3. Images tagged with `latest` and commit SHA
 
 ```bash
-# Use deploy.sh script (preferred)
-./deploy.sh api    # Build, push and deploy API only
-./deploy.sh web    # Build, push and deploy Web only
-./deploy.sh all    # Build, push and deploy everything
-
-# Check deployment status
-doctl apps get-deployment a85bc799-f622-4953-a8d9-1c256133b924 <deployment-id> --format Phase,Progress
-
-# View logs
-doctl apps logs a85bc799-f622-4953-a8d9-1c256133b924 api
-doctl apps logs a85bc799-f622-4953-a8d9-1c256133b924 web
+# Images published:
+ghcr.io/eduardoworrel/gitwar/api:latest
+ghcr.io/eduardoworrel/gitwar/web:latest
 ```
-
-#### Route Configuration (Important)
-DO App Platform REMOVES the route prefix before forwarding to container:
-- Route `/api` in app.yaml -> Request `/api/health` -> Container receives `/health`
-- Endpoints in code should NOT include the route prefix
-
-**Routes configured in `.do/app.yaml`:**
-- `/api` -> API
-- `/game` -> API
-- `/health` -> API
-- `/` -> Web (fallback)
 
 ## Architecture
 
@@ -258,10 +237,9 @@ Position interpolation smooths movement between server updates (INTERPOLATION_DU
 - Delta state updates instead of full broadcasts
 
 ### Deployment
-- Web Docker images must be built with `--platform linux/amd64` on Mac
+- Docker images built with `--platform linux/amd64` via GitHub Actions
 - API health check configured with generous timeout (30s initial delay) due to S2 stream initialization
-- App spec at `.do/app.yaml`
-- Secrets configured via DigitalOcean dashboard (not in app.yaml)
+- Secrets configured via GitHub repository secrets
 
 ## Environment Variables
 

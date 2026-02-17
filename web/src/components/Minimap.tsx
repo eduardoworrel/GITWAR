@@ -1,35 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../stores/gameStore';
-import { MAP_WIDTH, MAP_HEIGHT, RAIO_BROADCAST } from '../three/constants';
+import { MAP_WIDTH, MAP_HEIGHT, RAIO_BROADCAST, getCorEloHex } from '../three/constants';
 
 // Proporção do mapa real: 5000 x 3000 (5:3)
 const MINIMAP_WIDTH = 200;
 const MINIMAP_HEIGHT = 120;
 const MINIMAP_HEADER_HEIGHT = 28;
-
-const reinoColors: Record<string, string> = {
-  Python: '#3776AB',
-  JavaScript: '#F7DF1E',
-  TypeScript: '#3178C6',
-  Java: '#ED8B00',
-  'C#': '#239120',
-  Go: '#00ADD8',
-  Rust: '#DEA584',
-  Ruby: '#CC342D',
-  PHP: '#777BB4',
-  'C++': '#00599C',
-  C: '#555555',
-  Swift: '#FA7343',
-  Kotlin: '#7F52FF',
-  Shell: '#89E051',
-  Scala: '#DC322F',
-  IA: '#a855f7',
-  NPC: '#ff4444',
-};
-
-function getColorForReino(reino: string): string {
-  return reinoColors[reino] || '#888888';
-}
 
 export function Minimap() {
   const { t } = useTranslation();
@@ -229,7 +205,7 @@ export function Minimap() {
           const mapX = (pos.x / MAP_WIDTH) * 100;
           const mapY = (pos.y / MAP_HEIGHT) * 100;
 
-          const color = isMonster ? '#ff4444' : getColorForReino(isNpc ? 'NPC' : player.reino);
+          const color = isMonster ? '#ff4444' : isNpc ? '#ff4444' : getCorEloHex(player.elo ?? 1000);
           const size = isCurrentPlayer ? 8 : isNpc || isMonster ? 4 : 6;
 
           // Convert rotation to degrees for CSS
@@ -251,7 +227,7 @@ export function Minimap() {
                 transition: isCurrentPlayer ? 'none' : 'left 0.1s linear, top 0.1s linear',
                 zIndex: isCurrentPlayer ? 10 : 1,
               }}
-              title={`${player.githubLogin} (${player.reino})`}
+              title={player.githubLogin}
             >
               {isCurrentPlayer ? (
                 // Arrow/triangle for current player showing direction

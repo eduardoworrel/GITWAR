@@ -45,7 +45,6 @@ services:
       - S2__StreamName=${S2_STREAM_NAME:-game-state-dev}
       - Clerk__Domain=${CLERK_DOMAIN}
       - Clerk__SecretKey=${CLERK_SECRET_KEY}
-      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
     ports:
       - "5138:8080"
     depends_on:

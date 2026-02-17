@@ -14,15 +14,8 @@ import { ConnectionStatus } from './components/ConnectionStatus';
 import { Dock } from './components/Dock';
 import { PlayerHUD } from './components/PlayerHUD';
 import { useGameStore } from './stores/gameStore';
-import type { EntityType } from './stores/gameStore';
 import { useSpectatorMode } from './hooks/useSpectatorMode';
-import { useS2Stream } from './hooks/useS2Stream';
-
-// Parse entity type from server string
-const parseEntityType = (typeStr?: string): EntityType => {
-  if (!typeStr) return 'player';
-  return typeStr.toLowerCase() as EntityType;
-};
+import { useS2Stream, parseEntityType } from './hooks/useS2Stream';
 
 function App() {
   const { t } = useTranslation();

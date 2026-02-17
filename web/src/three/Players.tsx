@@ -1,12 +1,12 @@
-import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
-import { useRef, useMemo, useCallback, useState } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
+import { useRef, useMemo, useState } from 'react';
 import * as THREE from 'three';
 import { useGameStore } from '../stores/gameStore';
 import type { InterpolatedPlayer } from '../stores/gameStore';
 import { Player } from './Player';
 import type { EquippableItem } from './ItemPreviewComponents';
 import { incrementGlobalFrameCount } from './optimizations';
-import { getTerrainHeight } from './TerrainHeight';
+import { getTerrainHeight, isInTerrainArea } from './TerrainHeight';
 
 // Frustum culling - reusable objects
 const frustum = new THREE.Frustum();
@@ -15,9 +15,6 @@ const boundingSphere = new THREE.Sphere();
 const CULLING_RADIUS = 150; // Entity bounding sphere radius
 const CULLING_UPDATE_FRAMES = 5; // Update culling every N frames
 const MAX_RENDER_DISTANCE_SQ = 300 * 300; // Max distance to render entities (squared)
-
-// Shared geometry for click hitbox
-const HITBOX_GEOMETRY = new THREE.CylinderGeometry(15, 15, 50, 8);
 
 // Base Y offset for terrain (must match Map.tsx, Buildings.tsx, Player.tsx, InstancedPlayers.tsx)
 const TERRAIN_BASE_Y = -50;
@@ -33,27 +30,9 @@ function InterpolatedPlayerMesh({ player, isCurrentPlayer, equippedItems = [] }:
   const getInterpolatedPosition = useGameStore((s) => s.getInterpolatedPosition);
   const getLastAttackTime = useGameStore((s) => s.getLastAttackTime);
   const setCurrentPlayerRotation = useGameStore((s) => s.setCurrentPlayerRotation);
-  const setSelectedPlayerForMenu = useGameStore((s) => s.setSelectedPlayerForMenu);
-  const players = useGameStore((s) => s.players);
   const lastRotationRef = useRef(0);
   // Smoothed position to eliminate jitter
   const smoothedPosRef = useRef<{ x: number; z: number } | null>(null);
-
-  // Only allow clicking on players (not monsters)
-  const isClickable = player.type === 'player' || player.type === undefined;
-
-  const handleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
-    if (!isClickable) return;
-    e.stopPropagation();
-    const pos = getInterpolatedPosition(player.id);
-    if (pos) {
-      setSelectedPlayerForMenu({
-        id: player.id,
-        githubLogin: player.githubLogin,
-        position: pos,
-      });
-    }
-  }, [player.id, player.githubLogin, isClickable, getInterpolatedPosition, setSelectedPlayerForMenu]);
 
   // Get last attack time for this player (triggers arm animation)
   const lastAttackTime = getLastAttackTime(player.id);
@@ -85,7 +64,9 @@ function InterpolatedPlayerMesh({ player, isCurrentPlayer, equippedItems = [] }:
 
       // Calculate terrain height for this entity's position
       const terrainHeight = getTerrainHeight(smoothedPosRef.current.x, smoothedPosRef.current.z);
-      const terrainY = terrainHeight > 0 ? TERRAIN_BASE_Y + terrainHeight : 0;
+      const terrainY = terrainHeight > 0
+        ? (isInTerrainArea(smoothedPosRef.current.x, smoothedPosRef.current.z) ? TERRAIN_BASE_Y + terrainHeight : terrainHeight)
+        : 0;
 
       groupRef.current.position.x = smoothedPosRef.current.x;
       groupRef.current.position.y = terrainY;
@@ -103,9 +84,9 @@ function InterpolatedPlayerMesh({ player, isCurrentPlayer, equippedItems = [] }:
         let nearestEnemyId: string | null = null;
         let nearestDist = Infinity;
 
+        const players = useGameStore.getState().players;
         players.forEach((other) => {
           if (other.id === player.id) return;
-          if (other.reino === player.reino) return;
           if (other.estado === 'dead') return;
 
           const otherPos = getInterpolatedPosition(other.id);
@@ -157,25 +138,9 @@ function InterpolatedPlayerMesh({ player, isCurrentPlayer, equippedItems = [] }:
 
   return (
     <group ref={groupRef}>
-      {/* Invisible clickable hitbox */}
-      {isClickable && (
-        <mesh
-          geometry={HITBOX_GEOMETRY}
-          position={[0, 25, 0]}
-          onClick={handleClick}
-          onPointerOver={() => {
-            document.body.style.cursor = 'pointer';
-          }}
-          onPointerOut={() => {
-            document.body.style.cursor = 'grab';
-          }}
-        >
-          <meshBasicMaterial transparent opacity={0} />
-        </mesh>
-      )}
       <Player
         position={[0, 0, 0]}
-        reino={player.reino}
+        elo={player.elo}
         isCurrentPlayer={isCurrentPlayer}
         hp={player.hp}
         maxHp={player.maxHp}

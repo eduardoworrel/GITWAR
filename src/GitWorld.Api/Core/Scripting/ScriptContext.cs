@@ -23,7 +23,6 @@ public class ScriptEntity
     public int VelocidadeAtaque { get; init; }
     public int VelocidadeMovimento { get; init; }
     public string Estado { get; init; } = string.Empty; // 'idle', 'moving', 'attacking', 'dead'
-    public string Reino { get; init; } = string.Empty;
     public bool IsMonster { get; init; }
     public bool IsPlayer { get; init; }
     public bool IsAlly { get; init; }
@@ -108,16 +107,12 @@ public class ScriptContext
             if (IsMonsterType(entity.Type))
             {
                 _monsters.Add(scriptEntity);
-                if (entity.Reino != player.Reino)
-                    _enemies.Add(scriptEntity);
+                _enemies.Add(scriptEntity);
             }
             else if (entity.Type == EntityType.Player)
             {
                 _players.Add(scriptEntity);
-                if (entity.Reino == player.Reino)
-                    _allies.Add(scriptEntity);
-                else
-                    _enemies.Add(scriptEntity);
+                _enemies.Add(scriptEntity); // Free-for-all: all players are enemies
             }
         }
     }
@@ -344,11 +339,10 @@ public class ScriptContext
             VelocidadeAtaque = entity.VelocidadeAtaque,
             VelocidadeMovimento = entity.VelocidadeMovimento,
             Estado = entity.State.ToString().ToLowerInvariant(),
-            Reino = entity.Reino,
             IsMonster = isMonster,
             IsPlayer = entity.Type == EntityType.Player,
-            IsAlly = entity.Reino == viewer.Reino && entity.Id != viewer.Id,
-            IsEnemy = entity.Reino != viewer.Reino
+            IsAlly = false, // Free-for-all: no allies
+            IsEnemy = entity.Id != viewer.Id
         };
     }
 

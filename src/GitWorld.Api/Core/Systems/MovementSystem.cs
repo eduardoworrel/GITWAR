@@ -27,6 +27,19 @@ public class MovementSystem
         if (entity.State == EntityState.Dead)
             return;
 
+        // If entity is on an unwalkable cell, push it to the nearest walkable position
+        // This handles the mismatch between continuous collision checks and discrete grid cells
+        if (!_pathfinding.IsWalkable(entity.X, entity.Y))
+        {
+            var escape = _pathfinding.FindNearestWalkableWorldPos(entity.X, entity.Y);
+            if (escape.HasValue)
+            {
+                entity.X = escape.Value.X;
+                entity.Y = escape.Value.Y;
+            }
+            return; // Skip normal movement this tick to allow position to stabilize
+        }
+
         // Apply separation force to avoid entity overlap
         ApplySeparation(entity);
 
@@ -233,17 +246,6 @@ public class MovementSystem
         _entityPaths.Remove(entity.Id);
     }
 
-    /// <summary>
-    /// Clean up paths for entities that no longer exist
-    /// </summary>
-    public void CleanupOrphanedPaths(HashSet<Guid> activeEntityIds)
-    {
-        var toRemove = _entityPaths.Keys.Where(id => !activeEntityIds.Contains(id)).ToList();
-        foreach (var id in toRemove)
-        {
-            _entityPaths.Remove(id);
-        }
-    }
 }
 
 /// <summary>

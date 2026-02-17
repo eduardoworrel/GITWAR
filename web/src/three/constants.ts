@@ -33,29 +33,20 @@ export const DRONE_CENTER_Z = DESK_OFFSET_Z + DESK_HEIGHT / 2; // Center of desk
 // Spawn único no centro do desk
 export const SPAWN_POINT = { x: DESK_OFFSET_X + DESK_WIDTH / 2, y: DESK_OFFSET_Z + DESK_HEIGHT / 2 };
 
-// Cores por reino (linguagens de programação) - ainda usadas para colorir jogadores
-export const CORES_REINO: Record<string, number> = {
-  Python: 0x3776ab,
-  JavaScript: 0xf7df1e,
-  TypeScript: 0x3178c6,
-  Java: 0xed8b00,
-  'C#': 0x239120,
-  Go: 0x00add8,
-  Rust: 0xdea584,
-  Ruby: 0xcc342d,
-  PHP: 0x777bb4,
-  'C++': 0x00599c,
-  C: 0x555555,
-  Swift: 0xfa7343,
-  Kotlin: 0x7f52ff,
-  Shell: 0x89e051,
-  Scala: 0xdc322f,
-  IA: 0xa855f7,  // Purple/violet - HuggingFace users
-};
+// ELO-based player colors
+export function getCorElo(elo: number): number {
+  if (elo >= 2000) return 0xb9f2ff; // Diamond
+  if (elo >= 1600) return 0x00ced1; // Platinum
+  if (elo >= 1200) return 0xffd700; // Gold
+  if (elo >= 800) return 0xc0c0c0;  // Silver
+  return 0xcd7f32;                   // Bronze
+}
 
-// Cor padrão para reinos não mapeados
-export const COR_PADRAO = 0x808080;
-
-export function getCorReino(reino: string): number {
-  return CORES_REINO[reino] ?? COR_PADRAO;
+// ELO-based CSS colors (for UI components)
+export function getCorEloHex(elo: number): string {
+  if (elo >= 2000) return '#B9F2FF'; // Diamond
+  if (elo >= 1600) return '#00CED1'; // Platinum
+  if (elo >= 1200) return '#FFD700'; // Gold
+  if (elo >= 800) return '#C0C0C0';  // Silver
+  return '#CD7F32';                   // Bronze
 }

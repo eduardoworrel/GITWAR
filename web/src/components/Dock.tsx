@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../stores/gameStore';
 import { PlayerModal } from './PlayerModal';
 import { CalendarModal } from './CalendarModal';
-import { UserProfileModal } from './UserProfileModal';
 import { ScriptEditorModal } from './ScriptEditorModal';
 
 // SVG Icons
@@ -42,13 +41,6 @@ const CompassIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="10"/>
     <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
-  </svg>
-);
-
-const UserIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-    <circle cx="12" cy="7" r="4"/>
   </svg>
 );
 
@@ -116,7 +108,6 @@ export function Dock() {
   const { t } = useTranslation();
   const [showShop, setShowShop] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
   const [showScriptEditor, setShowScriptEditor] = useState(false);
 
   const currentPlayerId = useGameStore((s) => s.currentPlayerId);
@@ -144,12 +135,6 @@ export function Dock() {
             label={t('ui.comingSoon')}
             disabled
           />
-          <DockItem
-            icon={<UserIcon />}
-            label={t('dock.profile')}
-            onClick={() => setShowProfile(true)}
-          />
-
           <DockSeparator />
 
           {/* Calendar */}
@@ -213,19 +198,9 @@ export function Dock() {
         document.body
       )}
 
-      {/* User Profile Modal */}
-      {showProfile && currentPlayer && createPortal(
-        <UserProfileModal
-          username={currentPlayer.githubLogin}
-          onClose={() => setShowProfile(false)}
-        />,
-        document.body
-      )}
-
       {/* Script Editor Modal */}
       {showScriptEditor && currentPlayer && (
         <ScriptEditorModal
-          reinoColor={getReinoColor(currentPlayer.reino)}
           onClose={() => setShowScriptEditor(false)}
         />
       )}
@@ -233,25 +208,3 @@ export function Dock() {
   );
 }
 
-// Helper to get reino color
-const reinoColors: Record<string, string> = {
-  Python: '#3776AB',
-  JavaScript: '#F7DF1E',
-  TypeScript: '#3178C6',
-  Java: '#ED8B00',
-  CSharp: '#239120',
-  Go: '#00ADD8',
-  Rust: '#DEA584',
-  Ruby: '#CC342D',
-  PHP: '#777BB4',
-  'C++': '#00599C',
-  C: '#555555',
-  Swift: '#FA7343',
-  Kotlin: '#7F52FF',
-  Shell: '#89E051',
-  Scala: '#DC322F',
-};
-
-function getReinoColor(reino: string): string {
-  return reinoColors[reino] || '#888888';
-}

@@ -29,11 +29,8 @@ const _offsetVec = new THREE.Vector3();
 const DEFAULT_MIN_DISTANCE = 50;
 const DEFAULT_MAX_DISTANCE = 1000;
 
-// Angle where we start limiting max distance (radians from top)
-// 0 = looking straight down, PI/2 = looking at horizon
-const ANGLE_START_LIMIT = 1.0; // ~57° from top
-const ANGLE_FULL_LIMIT = 1.5;  // ~86° from top (near horizon)
-const MIN_DISTANCE_AT_HORIZON = 60; // Minimum max distance when looking at horizon
+// Max polar angle: ~83° from top (7° above horizon) — prevents seeing under terrain
+const MAX_POLAR_ANGLE = 1.45;
 
 
 export function IsometricCamera({
@@ -50,13 +47,6 @@ export function IsometricCamera({
 
   // Drone mode state
   const droneAngleRef = useRef(0);
-
-  // Distance saved when ENTERING restricted angle (to restore later)
-  const savedDistanceRef = useRef<number>(CAMERA_DISTANCE);
-  // Was the camera in restricted angle last frame?
-  const wasRestrictedRef = useRef<boolean>(false);
-  // Are we currently restoring zoom after exiting restricted angle?
-  const isRestoringRef = useRef<boolean>(false);
 
   const cameraMode = useGameStore((s) => s.cameraMode);
   const setCameraMode = useGameStore((s) => s.setCameraMode);
@@ -159,26 +149,26 @@ export function IsometricCamera({
         controlsRef.current?.target.z ?? target[2]
       );
     } else {
-      // Free mode: camera follows player while maintaining user's chosen angle/distance
+      // Free mode: translate both target AND camera by the same delta.
+      // OrbitControls.update() recomputes offset = position - target each frame,
+      // so if only the target moves, the camera stays put. Moving both preserves
+      // the user's orbital view while tracking the player.
       if (controlsRef.current) {
         if (isTeleport) {
-          // Teleport: keep same relative offset from target (reuse _offsetVec)
-          _offsetVec.subVectors(cameraRef.current.position, prevTargetRef.current);
-          cameraRef.current.position.copy(_targetVec).add(_offsetVec);
+          const delta = _offsetVec.subVectors(_targetVec, controlsRef.current.target);
           controlsRef.current.target.copy(_targetVec);
+          cameraRef.current.position.add(delta);
         } else {
-          // Smooth follow - lerp camera and target
           const smoothFactor = 0.2;
-          // Store offset before modifying target (reuse _offsetVec)
-          _offsetVec.subVectors(cameraRef.current.position, controlsRef.current.target);
-
-          // Smoothly move control target toward player
-          controlsRef.current.target.x += (target[0] - controlsRef.current.target.x) * smoothFactor;
-          controlsRef.current.target.y += (target[1] - controlsRef.current.target.y) * smoothFactor;
-          controlsRef.current.target.z += (target[2] - controlsRef.current.target.z) * smoothFactor;
-
-          // Move camera to maintain offset from target
-          cameraRef.current.position.copy(controlsRef.current.target).add(_offsetVec);
+          const dx = (target[0] - controlsRef.current.target.x) * smoothFactor;
+          const dy = (target[1] - controlsRef.current.target.y) * smoothFactor;
+          const dz = (target[2] - controlsRef.current.target.z) * smoothFactor;
+          controlsRef.current.target.x += dx;
+          controlsRef.current.target.y += dy;
+          controlsRef.current.target.z += dz;
+          cameraRef.current.position.x += dx;
+          cameraRef.current.position.y += dy;
+          cameraRef.current.position.z += dz;
         }
 
         controlsRef.current.update();
@@ -187,76 +177,6 @@ export function IsometricCamera({
 
     // Store current target for next frame
     prevTargetRef.current.copy(_targetVec);
-
-    // === ZOOM LOGIC ===
-    // Only intervene when looking at horizon to prevent seeing under terrain
-    // Otherwise let user zoom freely without interference
-    if (controlsRef.current && cameraRef.current) {
-      const polarAngle = controlsRef.current.getPolarAngle();
-      const currentDistance = cameraRef.current.position.distanceTo(controlsRef.current.target);
-
-      // Is the viewing angle restricted? (looking towards horizon)
-      const isRestricted = polarAngle > ANGLE_START_LIMIT;
-
-      // Calculate max allowed distance when restricted
-      let maxAllowedDistance = DEFAULT_MAX_DISTANCE;
-      if (isRestricted) {
-        const t = Math.min(1, (polarAngle - ANGLE_START_LIMIT) / (ANGLE_FULL_LIMIT - ANGLE_START_LIMIT));
-        const smooth = t * t * (3 - 2 * t); // smoothstep
-        maxAllowedDistance = DEFAULT_MAX_DISTANCE - (DEFAULT_MAX_DISTANCE - MIN_DISTANCE_AT_HORIZON) * smooth;
-      }
-
-      // Set OrbitControls constraints
-      controlsRef.current.maxDistance = DEFAULT_MAX_DISTANCE;
-      controlsRef.current.minDistance = DEFAULT_MIN_DISTANCE;
-
-      // STATE TRANSITIONS:
-
-      // Just ENTERED restricted angle -> save distance
-      if (isRestricted && !wasRestrictedRef.current) {
-        savedDistanceRef.current = currentDistance;
-        isRestoringRef.current = false;
-      }
-
-      // Just EXITED restricted angle -> start restore if we were zoomed in
-      if (!isRestricted && wasRestrictedRef.current) {
-        if (currentDistance < savedDistanceRef.current - 5) {
-          isRestoringRef.current = true;
-        }
-      }
-
-      // WHILE RESTRICTED: zoom in if needed
-      if (isRestricted && currentDistance > maxAllowedDistance + 2) {
-        const direction = _offsetVec
-          .subVectors(cameraRef.current.position, controlsRef.current.target)
-          .normalize();
-        const targetPos = controlsRef.current.target.clone().add(
-          direction.multiplyScalar(maxAllowedDistance)
-        );
-        cameraRef.current.position.lerp(targetPos, 0.15);
-        controlsRef.current.update();
-      }
-
-      // RESTORING: zoom out to saved distance
-      if (isRestoringRef.current && !isRestricted) {
-        const diff = savedDistanceRef.current - currentDistance;
-        if (diff > 3) {
-          const direction = _offsetVec
-            .subVectors(cameraRef.current.position, controlsRef.current.target)
-            .normalize();
-          const targetPos = controlsRef.current.target.clone().add(
-            direction.multiplyScalar(savedDistanceRef.current)
-          );
-          cameraRef.current.position.lerp(targetPos, 0.08);
-          controlsRef.current.update();
-        } else {
-          // Restore complete
-          isRestoringRef.current = false;
-        }
-      }
-
-      wasRestrictedRef.current = isRestricted;
-    }
   });
 
   // Start at map center - camera will follow player once their data arrives
@@ -285,7 +205,7 @@ export function IsometricCamera({
         minDistance={DEFAULT_MIN_DISTANCE}
         maxDistance={DEFAULT_MAX_DISTANCE}
         minPolarAngle={0.02}
-        maxPolarAngle={2.5}
+        maxPolarAngle={MAX_POLAR_ANGLE}
         onStart={handleControlsStart}
       />
     </>

@@ -47,13 +47,12 @@ public class EntityStateTracker
         }
 
         // Compare and build delta
-        // Always include identity fields (Login, Type, Reino, Estado) to prevent issues after respawn/reconnect
+        // Always include identity fields (Login, Type, Estado) to prevent issues after respawn/reconnect
         var delta = new EntityPayload
         {
             Id = entity.Id,
             Login = entity.GithubLogin,
             Type = entity.Type.ToString().ToLowerInvariant(),
-            Reino = entity.Reino,
             Estado = newSnapshot.Estado
         };
         bool hasChanges = false;
@@ -139,7 +138,6 @@ public class EntityStateTracker
             Hp = entity.CurrentHp,
             HpMax = entity.MaxHp,
             Estado = entity.State.ToString().ToLowerInvariant(),
-            Reino = entity.Reino,
             AlvoId = entity.TargetEntityId,
             Type = entity.Type.ToString().ToLowerInvariant(),
             VelocidadeAtaque = entity.VelocidadeAtaque,
@@ -208,7 +206,7 @@ public class S2Publisher : IS2Publisher
     private readonly TimeSpan _retryInterval = TimeSpan.FromSeconds(30);
     private int _consecutiveFailures = 0;
     private const int MaxConsecutiveFailures = 5;
-    private readonly string _basinBaseUrl;
+    private string _basinBaseUrl = string.Empty;
     private readonly EntityStateTracker _stateTracker = new();
 
     public bool IsAvailable => _isAvailable;
@@ -442,7 +440,6 @@ public class S2Publisher : IS2Publisher
                     Hp = e.CurrentHp,
                     HpMax = e.MaxHp,
                     Estado = e.State.ToString().ToLowerInvariant(),
-                    Reino = e.Reino,
                     AlvoId = e.TargetEntityId,
                     Type = e.Type.ToString().ToLowerInvariant(),
                     VelocidadeAtaque = e.VelocidadeAtaque,
@@ -686,7 +683,6 @@ public class EntityPayload
     public int? Hp { get; set; }
     public int? HpMax { get; set; }
     public string? Estado { get; set; }
-    public string? Reino { get; set; }
     public Guid? AlvoId { get; set; }
     public string? Type { get; set; }
     public int? VelocidadeAtaque { get; set; }

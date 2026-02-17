@@ -17,7 +17,7 @@ interface ValidationResult {
 }
 
 interface ScriptEditorProps {
-  reinoColor: string;
+  accentColor?: string;
 }
 
 // JavaScript API documentation for autocomplete
@@ -71,7 +71,6 @@ interface ScriptEntity {
   velocidadeAtaque: number;
   velocidadeMovimento: number;
   estado: string;
-  reino: string;
   isMonster: boolean;
   isPlayer: boolean;
   isAlly: boolean;
@@ -113,7 +112,7 @@ declare function randomRange(min: number, max: number): number;
 declare function onTick(): void;
 `;
 
-export function ScriptEditor({ reinoColor }: ScriptEditorProps) {
+export function ScriptEditor({ accentColor = '#00CED1' }: ScriptEditorProps) {
   const { t } = useTranslation();
   const { getToken } = useAuth();
   const editorRef = useRef<any>(null);
@@ -244,7 +243,10 @@ export function ScriptEditor({ reinoColor }: ScriptEditorProps) {
   // Save script
   const handleSave = useCallback(async () => {
     const token = await getToken();
-    if (!token) return;
+    if (!token) {
+      setValidation({ isValid: false, error: 'Session expired. Please sign in again.' });
+      return;
+    }
 
     setSaving(true);
     setValidation(null);
@@ -274,8 +276,14 @@ export function ScriptEditor({ reinoColor }: ScriptEditorProps) {
           setStatus(await statusRes.json());
         }
       } else {
-        const data = await res.json();
-        setValidation({ isValid: false, error: data.error });
+        const data = await res.json().catch(() => null);
+        if (res.status === 401) {
+          setValidation({ isValid: false, error: 'Authentication failed. Please refresh the page and try again.' });
+        } else if (res.status === 404) {
+          setValidation({ isValid: false, error: 'Player not found. You may need to join the game first.' });
+        } else {
+          setValidation({ isValid: false, error: data?.error || 'Failed to save script' });
+        }
       }
     } catch (err) {
       setValidation({ isValid: false, error: 'Failed to save script' });
@@ -379,7 +387,7 @@ export function ScriptEditor({ reinoColor }: ScriptEditorProps) {
               padding: '6px 12px',
               borderRadius: '6px',
               border: 'none',
-              background: status?.enabled ? reinoColor : 'rgba(255,255,255,0.1)',
+              background: status?.enabled ? accentColor : 'rgba(255,255,255,0.1)',
               color: status?.enabled ? 'white' : 'rgba(255,255,255,0.6)',
               cursor: status?.isDisabled ? 'not-allowed' : 'pointer',
               fontSize: '12px',
@@ -481,7 +489,7 @@ export function ScriptEditor({ reinoColor }: ScriptEditorProps) {
               padding: '6px 16px',
               borderRadius: '6px',
               border: 'none',
-              background: hasUnsavedChanges ? reinoColor : 'rgba(255,255,255,0.1)',
+              background: hasUnsavedChanges ? accentColor : 'rgba(255,255,255,0.1)',
               color: hasUnsavedChanges ? 'white' : 'rgba(255,255,255,0.4)',
               cursor: saving || !hasUnsavedChanges ? 'not-allowed' : 'pointer',
               fontSize: '11px',
@@ -521,7 +529,7 @@ export function ScriptEditor({ reinoColor }: ScriptEditorProps) {
             overflow: 'auto',
             fontSize: '11px',
           }}>
-            <h4 style={{ margin: '0 0 12px 0', color: reinoColor }}>{t('script.variables', 'Variables')}</h4>
+            <h4 style={{ margin: '0 0 12px 0', color: accentColor }}>{t('script.variables', 'Variables')}</h4>
             {SCRIPT_API.variables.map((v) => (
               <div key={v.name} style={{ marginBottom: '8px' }}>
                 <code style={{ color: '#9cdcfe' }}>{v.name}</code>
@@ -530,7 +538,7 @@ export function ScriptEditor({ reinoColor }: ScriptEditorProps) {
               </div>
             ))}
 
-            <h4 style={{ margin: '16px 0 12px 0', color: reinoColor }}>{t('script.functions', 'Functions')}</h4>
+            <h4 style={{ margin: '16px 0 12px 0', color: accentColor }}>{t('script.functions', 'Functions')}</h4>
             {SCRIPT_API.functions.map((f) => (
               <div key={f.name} style={{ marginBottom: '8px' }}>
                 <code style={{ color: '#dcdcaa' }}>{f.name}</code>

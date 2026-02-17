@@ -75,6 +75,13 @@ interface UseS2StreamOptions {
   readToken?: string; // Read token for individual stream
 }
 
+// Parse entity type from server string - exported for use in App.tsx and other modules
+export const parseEntityType = (typeStr?: string): EntityType => {
+  if (!typeStr) return 'player';
+  // Server already sends lowercase types, just pass through
+  return typeStr.toLowerCase() as EntityType;
+};
+
 export function useS2Stream(options: UseS2StreamOptions = {}) {
   const { enabled = true, streamName: customStreamName, readToken: customReadToken } = options;
 
@@ -102,12 +109,7 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
   const isConnectingRef = useRef(false);
   const hasEverConnectedRef = useRef(false);
 
-  // Entity type parser - pass through all valid types (server sends lowercase)
-  const parseEntityType = useCallback((typeStr?: string): EntityType => {
-    if (!typeStr) return 'player';
-    // Server already sends lowercase types, just pass through
-    return typeStr.toLowerCase() as EntityType;
-  }, []);
+  // Entity type parser - use the module-level exported function
 
   // Process entities - pass raw data to store for intelligent merging
   const processEntities = useCallback((entities: EntityPayload[], isFullState: boolean = true) => {
@@ -118,7 +120,7 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
     if (mergeEntitiesRaw) {
       mergeEntitiesRaw(entities, isFullState, parseEntityType);
     }
-  }, [parseEntityType]);
+  }, []);
 
   // Process events
   const processEvents = useCallback((events: EventPayload[]) => {
@@ -324,77 +326,9 @@ export function useS2Stream(options: UseS2StreamOptions = {}) {
     }
   }, [processPayload, handleConnected, handleDisconnected, effectiveToken, effectiveStreamName]);
 
-  /**
-   * Fallback: Connect via backend proxy (original implementation)
-   * Used when S2_READ_TOKEN is not configured
-   */
-  const connectViaProxy = useCallback(async () => {
-    const S2_PROXY_URL = '/api/stream/s2';
-
-    abortControllerRef.current?.abort();
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    try {
-      const response = await fetch(S2_PROXY_URL, {
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        throw new Error(`S2 Proxy HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      if (!response.body) {
-        throw new Error('No response body');
-      }
-
-      handleConnected();
-
-      // NDJSON line splitter transform
-      let buffer = '';
-      const ndjsonTransform = new TransformStream<string, GameStatePayload>({
-        transform(chunk, controller) {
-          buffer += chunk;
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-          for (const line of lines) {
-            if (!line.trim()) continue;
-            try {
-              controller.enqueue(JSON.parse(line));
-            } catch {
-              // Ignore parse errors
-            }
-          }
-        }
-      });
-
-      await response.body
-        .pipeThrough(new TextDecoderStream())
-        .pipeThrough(ndjsonTransform)
-        .pipeTo(new WritableStream({
-          write: (payload) => processPayload(payload)
-        }));
-
-      handleDisconnected();
-
-    } catch (err: unknown) {
-      const error = err as Error;
-      if (error.name === 'AbortError') {
-        isConnectingRef.current = false;
-        return;
-      }
-
-      handleDisconnected();
-      reconnectTimeoutRef.current = window.setTimeout(() => connectViaProxy(), 2000);
-    }
-  }, [processPayload, handleConnected, handleDisconnected]);
-
   // Store callbacks in refs to avoid useEffect re-running and circular deps
   const connectToS2Ref = useRef(connectToS2);
   connectToS2Ref.current = connectToS2;
-
-  const connectViaProxyRef = useRef(connectViaProxy);
-  connectViaProxyRef.current = connectViaProxy;
 
   const handleDisconnectedRef = useRef(handleDisconnected);
   handleDisconnectedRef.current = handleDisconnected;

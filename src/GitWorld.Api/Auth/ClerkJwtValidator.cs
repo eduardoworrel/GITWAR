@@ -270,7 +270,6 @@ public class ClerkJwtValidator : IClerkJwtValidator
             }
 
             var content = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"[ClerkValidator] Clerk API response: {content}");
             var json = JsonDocument.Parse(content);
 
             OAuthProvider foundProvider = OAuthProvider.Unknown;
@@ -280,8 +279,6 @@ public class ClerkJwtValidator : IClerkJwtValidator
             // Check external_accounts for OAuth providers
             if (json.RootElement.TryGetProperty("external_accounts", out var externalAccounts))
             {
-                Console.WriteLine($"[ClerkValidator] Found {externalAccounts.GetArrayLength()} external accounts");
-
                 foreach (var account in externalAccounts.EnumerateArray())
                 {
                     if (account.TryGetProperty("provider", out var providerElement))
@@ -294,8 +291,6 @@ public class ClerkJwtValidator : IClerkJwtValidator
                             username = usernameElement.GetString();
                         if (account.TryGetProperty("avatar_url", out var avatarElement))
                             avatarUrl = avatarElement.GetString();
-
-                        Console.WriteLine($"[ClerkValidator] Account - Provider: '{providerString}', Username: '{username ?? "null"}'");
 
                         OAuthProvider provider = OAuthProvider.Unknown;
                         if (providerString.Contains("github"))
@@ -317,18 +312,9 @@ public class ClerkJwtValidator : IClerkJwtValidator
                                 foundUsername = username;
                             }
                         }
-                        else
-                        {
-                            Console.WriteLine($"[ClerkValidator] Skipping {providerString} - no username or unknown provider");
-                        }
                     }
                 }
             }
-            else
-            {
-                Console.WriteLine("[ClerkValidator] No external_accounts found in response");
-            }
-
             // Fallback: check username field directly
             if (foundProvider == OAuthProvider.Unknown && json.RootElement.TryGetProperty("username", out var directUsername))
             {
