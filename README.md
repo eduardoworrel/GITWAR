@@ -1,6 +1,6 @@
 # GitWorld
 
-A passive 3D MMO where players log in via OAuth (GitHub, GitLab, HuggingFace) and watch their characters auto-battle in a desk-themed world divided by programming language kingdoms. Player stats are derived from GitHub/GitLab activity (commits, contributions, followers).
+A passive 3D MMO where players log in via OAuth (GitHub, GitLab, HuggingFace) and watch their characters auto-battle in a desk-themed world. Free-for-all combat with ELO-based ranking and color tiers.
 
 **Production:** https://gitwar.eduardoworrel.com
 
@@ -8,6 +8,8 @@ A passive 3D MMO where players log in via OAuth (GitHub, GitLab, HuggingFace) an
 
 - **Multi-provider OAuth** - GitHub, GitLab, HuggingFace via Clerk
 - **Spectator Mode** - Watch other players battle (auto-cycles every 20s)
+- **Free-for-all Combat** - All players are enemies, no allies
+- **ELO Color Tiers** - Bronze, Silver, Gold, Platinum, Diamond based on ranking
 - **50+ Monster Types** - Language-specific errors (JavaScript, Python, Java, C#, Go, Rust, etc.)
 - **AI/ML Error Monsters** - VanishingGradient, Overfitting, ExplodingGradient, etc.
 - **Item Shop** - Tier-based pricing (F to S), equippable gear with stat bonuses
@@ -26,10 +28,10 @@ A passive 3D MMO where players log in via OAuth (GitHub, GitLab, HuggingFace) an
                                                          │
                                               ┌──────────┼──────────┐
                                               │          │          │
-                                         ┌────▼────┐ ┌───▼───┐ ┌────▼────┐
-                                         │PostgreSQL│ │ Redis │ │ GitHub  │
-                                         └─────────┘ │Upstash│ │  API    │
-                                                     └───────┘ └─────────┘
+                                         ┌────▼────┐ ┌───▼───┐     │
+                                         │PostgreSQL│ │ Redis │     │
+                                         └─────────┘ │Upstash│     │
+                                                     └───────┘     │
 ```
 
 - **API** (.NET 10): Game loop 20 ticks/s, Clerk auth, S2.dev streaming, Jint scripting
@@ -47,6 +49,7 @@ A passive 3D MMO where players log in via OAuth (GitHub, GitLab, HuggingFace) an
 | Streaming | S2.dev (SSE with per-player streams) |
 | i18n | i18next |
 | CI/CD | GitHub Actions + GHCR |
+| Infra | DigitalOcean Kubernetes + Nginx Ingress + cert-manager |
 
 ## Run Locally
 
@@ -78,7 +81,7 @@ npm run dev
 .
 ├── src/
 │   ├── GitWorld.Api/           # Backend .NET 10
-│   │   ├── Program.cs          # Entry point + game loop + endpoints (~2000 lines)
+│   │   ├── Program.cs          # Entry point + game loop + endpoints
 │   │   ├── Core/
 │   │   │   ├── World.cs        # Entity management
 │   │   │   ├── GameLoop.cs     # 20 ticks/s game loop
@@ -86,9 +89,7 @@ npm run dev
 │   │   │   └── Systems/        # Movement, Combat, AI, Events, Progression
 │   │   ├── Auth/               # Clerk JWT validation
 │   │   ├── Stream/             # S2.dev integration + per-player tokens
-│   │   ├── Caching/            # Redis with memory fallback
-│   │   ├── GitHub/             # GitHub stats fetcher
-│   │   └── Providers/          # GitLab, HuggingFace fetchers
+│   │   └── Caching/            # Redis with memory fallback
 │   └── GitWorld.Shared/        # Shared types and constants
 │
 ├── web/                        # Frontend React 19
@@ -100,6 +101,7 @@ npm run dev
 │   │   └── i18n/               # Internationalization
 │   └── package.json
 │
+├── k8s/                        # Kubernetes manifests
 ├── .github/workflows/deploy.yml  # CI/CD: build & push images
 ├── docker-compose.yml          # Local dev (PostgreSQL + Redis + API)
 └── .env.example                # Environment variables template
@@ -114,7 +116,6 @@ npm run dev
 | `S2__Token`, `S2__Basin`, `S2__StreamName` | S2.dev credentials |
 | `Clerk__Domain`, `Clerk__SecretKey` | Clerk auth |
 | `Redis__Enabled`, `Redis__ConnectionString` | Redis cache |
-| `GITHUB_TOKEN` | GitHub API token |
 
 ### Web (build-time)
 | Variable | Description |
@@ -123,11 +124,17 @@ npm run dev
 | `VITE_CLERK_PUBLISHABLE_KEY` | Clerk public key |
 | `VITE_S2_BASIN`, `VITE_S2_STREAM` | S2 config |
 
-## Deploy (Production)
+## Deploy
 
+### CI/CD
 Merging to `main` triggers GitHub Actions which builds and pushes Docker images to GHCR:
 - `ghcr.io/eduardoworrel/gitwar/api:latest`
 - `ghcr.io/eduardoworrel/gitwar/web:latest`
+
+### Kubernetes (DigitalOcean)
+- Nginx Ingress with `/api` rewrite-target for prefix stripping
+- cert-manager with Let's Encrypt for TLS
+- GHCR image pull via `ghcr-secret`
 
 ## Game Loop
 
@@ -142,10 +149,20 @@ Server (20 ticks/s) -> Delta State -> S2.dev -> Per-player SSE -> Zustand -> Thr
 ## Game Systems
 
 ### Combat
+- Free-for-all: all players are enemies
 - Auto-attack nearby enemies (30 unit range)
 - Critical hits (1.5x multiplier)
 - ELO-based matchmaking protection
 - Floating damage numbers with arc animation
+
+### ELO Color Tiers
+| ELO Range | Tier | Color |
+|-----------|------|-------|
+| < 800 | Bronze | #CD7F32 |
+| 800-1200 | Silver | #C0C0C0 |
+| 1200-1600 | Gold | #FFD700 |
+| 1600-2000 | Platinum | #00CED1 |
+| 2000+ | Diamond | #B9F2FF |
 
 ### Events
 - **Bug Swarm:** Every 1 min (1-3 bugs per player)
@@ -171,10 +188,10 @@ Server (20 ticks/s) -> Delta State -> S2.dev -> Per-player SSE -> Zustand -> Thr
 ### Player Scripting
 - Custom JavaScript behavior via Monaco editor
 - Executed in sandboxed Jint engine
-- Toggle on/off, validation, reset to default
+- Auto-enabled on save, toggle on/off, validation, reset to default
 
 ## Important Notes
 
 1. **WebGL:** Use `meshBasicMaterial` (not `meshStandardMaterial`) for iOS/Safari compatibility
 2. **Docker Mac:** Build with `--platform linux/amd64`
-4. **Performance:** Instanced rendering, material pooling, LOD culling by distance
+3. **Performance:** Instanced rendering, material pooling, LOD culling by distance
