@@ -1741,8 +1741,9 @@ app.MapPost("/player/script", async (HttpContext context, AppDbContext db, Scrip
         return Results.BadRequest(new { error = error });
     }
 
-    // Save script to database
+    // Save script to database and auto-enable it
     player.CustomScript = request.Script;
+    player.ScriptEnabled = true;
     player.ScriptUpdatedAt = DateTime.UtcNow;
     await db.SaveChangesAsync();
 
@@ -1751,14 +1752,17 @@ app.MapPost("/player/script", async (HttpContext context, AppDbContext db, Scrip
     if (entity != null)
     {
         entity.CustomScript = request.Script;
+        entity.ScriptEnabled = true;
     }
 
     // Clear script executor cache so new script takes effect
     scriptExecutor.InvalidateCache(player.Id);
+    scriptExecutor.ResetErrors(player.Id);
 
     return Results.Ok(new
     {
-        message = "Script saved successfully",
+        message = "Script saved and enabled",
+        enabled = true,
         updatedAt = player.ScriptUpdatedAt
     });
 }).WithName("SavePlayerScript");

@@ -268,7 +268,12 @@ export function ScriptEditor({ accentColor = '#00CED1' }: ScriptEditorProps) {
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
 
-        // Refresh status
+        // Save auto-enables the script — update local status immediately
+        if (status) {
+          setStatus({ ...status, enabled: true, isDisabled: false, errorCount: 0 });
+        }
+
+        // Also refresh from server
         const statusRes = await fetch('/api/player/script/status', {
           headers: { Authorization: `Bearer ${token}` },
         });
