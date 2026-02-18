@@ -67,8 +67,13 @@ export function IsometricCamera({
     }
   }, [cameraMode, targetRef]);
 
-  useFrame(() => {
+  // Priority 1: runs AFTER OrbitControls (priority 0) to prevent OrbitControls
+  // from overriding our manual camera positioning in follow/drone modes.
+  useFrame((_, delta) => {
     if (!cameraRef.current) return;
+
+    // Clamp delta to avoid huge jumps after tab-switch or GC pause
+    const dt = Math.min(delta, 0.1);
 
     const target = targetRef.current;
     const hasValidTarget = target[0] !== 0 || target[1] !== 0 || target[2] !== 0;
@@ -82,10 +87,11 @@ export function IsometricCamera({
       const x = DRONE_CENTER_X + DRONE_ORBIT_RADIUS_X * Math.cos(droneAngleRef.current);
       const z = DRONE_CENTER_Z + DRONE_ORBIT_RADIUS_Z * Math.sin(droneAngleRef.current);
 
-      // Smooth camera position
-      cameraRef.current.position.x += (x - cameraRef.current.position.x) * 0.02;
-      cameraRef.current.position.y += (DRONE_HEIGHT - cameraRef.current.position.y) * 0.02;
-      cameraRef.current.position.z += (z - cameraRef.current.position.z) * 0.02;
+      // Smooth camera position (frame-rate independent)
+      const droneSmooth = 1 - Math.exp(-2 * dt);
+      cameraRef.current.position.x += (x - cameraRef.current.position.x) * droneSmooth;
+      cameraRef.current.position.y += (DRONE_HEIGHT - cameraRef.current.position.y) * droneSmooth;
+      cameraRef.current.position.z += (z - cameraRef.current.position.z) * droneSmooth;
 
       // Look at center of map
       cameraRef.current.lookAt(DRONE_CENTER_X, 0, DRONE_CENTER_Z);
@@ -116,10 +122,11 @@ export function IsometricCamera({
     if (cameraMode === 'follow') {
       const playerRotation = useGameStore.getState().currentPlayerRotation;
 
-      // Smoothly interpolate camera rotation to follow player
+      // Smoothly interpolate camera rotation to follow player (frame-rate independent)
       const rotationDiff = playerRotation - currentCameraRotation.current;
       const normalizedDiff = Math.atan2(Math.sin(rotationDiff), Math.cos(rotationDiff));
-      currentCameraRotation.current += normalizedDiff * 0.05;
+      const rotSmooth = 1 - Math.exp(-3 * dt);
+      currentCameraRotation.current += normalizedDiff * rotSmooth;
 
       // Camera orbits behind the player based on their facing direction
       // Add diagonal offset for a more dynamic view angle
@@ -130,24 +137,21 @@ export function IsometricCamera({
       const targetCamY = target[1] + CAMERA_HEIGHT;
       const targetCamZ = target[2] + CAMERA_DISTANCE * Math.cos(orbitAngle);
 
-      // Smoothly interpolate camera position to reduce jitter
-      // Higher factor = more responsive, lower = smoother but laggy
-      const smoothFactor = isTeleport ? 1 : 0.25;
+      // Frame-rate independent smoothing: consistent feel regardless of FPS.
+      // Speed 25 gives ~0.34 at 60fps, ~0.57 at 30fps.
+      const FOLLOW_SMOOTH_SPEED = 25;
+      const smoothFactor = isTeleport ? 1 : (1 - Math.exp(-FOLLOW_SMOOTH_SPEED * dt));
       cameraRef.current.position.x += (targetCamX - cameraRef.current.position.x) * smoothFactor;
       cameraRef.current.position.y += (targetCamY - cameraRef.current.position.y) * smoothFactor;
       cameraRef.current.position.z += (targetCamZ - cameraRef.current.position.z) * smoothFactor;
 
-      // Always look at target (also smoothed)
+      // Set lookAt target directly (no extra smoothing — player mesh position is the source of truth)
+      cameraRef.current.lookAt(target[0], target[1], target[2]);
+
+      // Sync OrbitControls target so switching to free mode preserves the view
       if (controlsRef.current) {
-        controlsRef.current.target.x += (target[0] - controlsRef.current.target.x) * smoothFactor;
-        controlsRef.current.target.y += (target[1] - controlsRef.current.target.y) * smoothFactor;
-        controlsRef.current.target.z += (target[2] - controlsRef.current.target.z) * smoothFactor;
+        controlsRef.current.target.set(target[0], target[1], target[2]);
       }
-      cameraRef.current.lookAt(
-        controlsRef.current?.target.x ?? target[0],
-        controlsRef.current?.target.y ?? target[1],
-        controlsRef.current?.target.z ?? target[2]
-      );
     } else {
       // Free mode: translate both target AND camera by the same delta.
       // OrbitControls.update() recomputes offset = position - target each frame,
@@ -155,14 +159,15 @@ export function IsometricCamera({
       // the user's orbital view while tracking the player.
       if (controlsRef.current) {
         if (isTeleport) {
-          const delta = _offsetVec.subVectors(_targetVec, controlsRef.current.target);
+          const d = _offsetVec.subVectors(_targetVec, controlsRef.current.target);
           controlsRef.current.target.copy(_targetVec);
-          cameraRef.current.position.add(delta);
+          cameraRef.current.position.add(d);
         } else {
-          const smoothFactor = 0.2;
-          const dx = (target[0] - controlsRef.current.target.x) * smoothFactor;
-          const dy = (target[1] - controlsRef.current.target.y) * smoothFactor;
-          const dz = (target[2] - controlsRef.current.target.z) * smoothFactor;
+          const FREE_SMOOTH_SPEED = 12;
+          const freeSmooth = 1 - Math.exp(-FREE_SMOOTH_SPEED * dt);
+          const dx = (target[0] - controlsRef.current.target.x) * freeSmooth;
+          const dy = (target[1] - controlsRef.current.target.y) * freeSmooth;
+          const dz = (target[2] - controlsRef.current.target.z) * freeSmooth;
           controlsRef.current.target.x += dx;
           controlsRef.current.target.y += dy;
           controlsRef.current.target.z += dz;
@@ -177,7 +182,7 @@ export function IsometricCamera({
 
     // Store current target for next frame
     prevTargetRef.current.copy(_targetVec);
-  });
+  }, 1);
 
   // Start at map center - camera will follow player once their data arrives
   const initialPosition: [number, number, number] = [

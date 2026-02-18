@@ -51,33 +51,50 @@ function InterpolatedPlayerMesh({ player, isCurrentPlayer, equippedItems = [] }:
     }
 
     if (pos) {
-      // Initialize smoothed position on first frame
-      if (!smoothedPosRef.current) {
-        smoothedPosRef.current = { x: pos.x, z: pos.y };
+      let finalX: number;
+      let finalZ: number;
+
+      if (isCurrentPlayer) {
+        // Current player: use interpolated position directly (no extra smoothing).
+        // The camera follows the same interpolated position, so they stay perfectly in sync.
+        // The interpolation itself (lerp over 150ms) already provides smooth movement.
+        finalX = pos.x;
+        finalZ = pos.y;
+        // Keep smoothedPosRef updated so rotation calculations use consistent coords
+        if (!smoothedPosRef.current) {
+          smoothedPosRef.current = { x: finalX, z: finalZ };
+        } else {
+          smoothedPosRef.current.x = finalX;
+          smoothedPosRef.current.z = finalZ;
+        }
+      } else {
+        // Other players: smooth to reduce jitter from network updates
+        if (!smoothedPosRef.current) {
+          smoothedPosRef.current = { x: pos.x, z: pos.y };
+        }
+        const smoothFactor = 0.25;
+        smoothedPosRef.current.x += (pos.x - smoothedPosRef.current.x) * smoothFactor;
+        smoothedPosRef.current.z += (pos.y - smoothedPosRef.current.z) * smoothFactor;
+        finalX = smoothedPosRef.current.x;
+        finalZ = smoothedPosRef.current.z;
       }
 
-      // Smooth the position to eliminate micro-jitter from interpolation discontinuities
-      // Higher factor = more responsive but more jitter, lower = smoother but more lag
-      const smoothFactor = 0.25;
-      smoothedPosRef.current.x += (pos.x - smoothedPosRef.current.x) * smoothFactor;
-      smoothedPosRef.current.z += (pos.y - smoothedPosRef.current.z) * smoothFactor;
-
       // Calculate terrain height for this entity's position
-      const terrainHeight = getTerrainHeight(smoothedPosRef.current.x, smoothedPosRef.current.z);
+      const terrainHeight = getTerrainHeight(finalX, finalZ);
       const terrainY = terrainHeight > 0
-        ? (isInTerrainArea(smoothedPosRef.current.x, smoothedPosRef.current.z) ? TERRAIN_BASE_Y + terrainHeight : terrainHeight)
+        ? (isInTerrainArea(finalX, finalZ) ? TERRAIN_BASE_Y + terrainHeight : terrainHeight)
         : 0;
 
-      groupRef.current.position.x = smoothedPosRef.current.x;
+      groupRef.current.position.x = finalX;
       groupRef.current.position.y = terrainY;
-      groupRef.current.position.z = smoothedPosRef.current.z;
+      groupRef.current.position.z = finalZ;
 
       // Calculate rotation based on movement direction or nearest enemy
       let targetRotation = lastRotationRef.current;
 
-      // Use smoothed position for rotation calculations
-      const myX = smoothedPosRef.current.x;
-      const myZ = smoothedPosRef.current.z;
+      // Use final position for rotation calculations
+      const myX = finalX;
+      const myZ = finalZ;
 
       if (player.estado === 'attacking') {
         // When attacking, find nearest enemy and face them
