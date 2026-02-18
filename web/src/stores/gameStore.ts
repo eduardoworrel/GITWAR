@@ -156,6 +156,7 @@ export interface InterpolatedPlayer extends Player {
   isAttacking?: boolean;
   isDead?: boolean;
   isRespawning?: boolean;
+  deathTime?: number; // Timestamp when entity entered 'dead' state (for auto-cleanup)
 }
 
 export type CombatEventType = 'damage' | 'miss' | 'critical' | 'kill' | 'death' | 'respawn';
@@ -354,6 +355,8 @@ export const useGameStore = create<GameState>((set, get) => ({
               targetX: player.x,
               targetY: player.y,
               lastUpdateTime: now,
+              // Track when entity enters dead state for auto-cleanup
+              deathTime: (player.estado === 'dead' && existing.estado !== 'dead') ? now : existing.deathTime,
             });
           }
           // If nothing changed, keep existing reference (no update)
@@ -430,6 +433,10 @@ export const useGameStore = create<GameState>((set, get) => ({
           if (serverEstado !== undefined && serverEstado !== existing.estado) {
             updates.estado = serverEstado;
             hasChanges = true;
+            // Track when entity enters dead state for auto-cleanup
+            if (serverEstado === 'dead' && existing.estado !== 'dead') {
+              updates.deathTime = now;
+            }
           }
 
           // Progression stats - only if server sent them
@@ -573,10 +580,29 @@ export const useGameStore = create<GameState>((set, get) => ({
       const filteredLevelUps = state.levelUpEvents.filter(
         (e) => now - e.createdAt < 3000 // Level ups last longer
       );
+
+      // Auto-remove dead non-player entities after death animation completes
+      const DEATH_CLEANUP_MS = 3000; // 3 seconds: enough for fall + ghost animation
+      let playersChanged = false;
+      const newPlayers = new Map(state.players);
+      for (const [id, player] of newPlayers) {
+        if (player.estado === 'dead' && player.type !== 'player') {
+          if (!player.deathTime) {
+            // Backfill deathTime for entities that were already dead before tracking
+            newPlayers.set(id, { ...player, deathTime: now });
+            playersChanged = true;
+          } else if (now - player.deathTime > DEATH_CLEANUP_MS) {
+            newPlayers.delete(id);
+            playersChanged = true;
+          }
+        }
+      }
+
       return {
         combatEvents: filteredCombat,
         rewardEvents: filteredRewards,
         levelUpEvents: filteredLevelUps,
+        ...(playersChanged ? { players: newPlayers } : {}),
       };
     }),
 
